@@ -1,34 +1,82 @@
 /* ──────────────────────────────────────────────────────────────────────────
-   Pact of Heroes — design tokens.
+   Pact of Heroes — design tokens (revamp: "dark cathedral" palette).
    Single source of truth for colors, motion, spacing, type. Tailwind reads
-   these via tailwind.config.ts; raw CSS reads them via var(--c-*).
+   these via tailwind.config.ts; raw CSS reads them via var(--*).
+
+   The night/gold palette, hero element palettes, and type scale follow the
+   UI bible (docs/pact-of-heroes-ui-bible.md, Part 1). Legacy --c-* aliases
+   are preserved so existing screens keep working — they now point at the
+   new palette.
    ────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  /* ── Arena (warm-purple dark, never pure black) ─────────────────────────── */
-  --c-arena-0: #0E0814;     /* deepest */
-  --c-arena-1: #1B1228;
-  --c-arena-2: #2A1740;     /* highlight */
+  /* ── Night palette (backgrounds, surfaces) ──────────────────────────────── */
+  --night-deep:     #0a0a14;
+  --night-mid:      #14142a;
+  --night-stone:    #1a1830;
+  --night-velvet:   #221a3a;
 
-  /* ── Brand & semantic ────────────────────────────────────────────────────── */
-  --c-brand:   #A855F7;     /* magenta-purple */
-  --c-ember:   #F59E0B;     /* CP, crit, gold */
-  --c-cyan:    #06B6D4;     /* magic, CP gain */
-  --c-dmg:     #EF4444;     /* normal damage */
-  --c-heal:    #10B981;     /* healing */
-  --c-ink:     #F5F1FA;     /* primary text on dark */
-  --c-muted:   #9C8FB0;     /* secondary text */
+  /* ── Gold palette (accents, eligible halos, gold UI) ────────────────────── */
+  --gold:           #d4a548;
+  --gold-bright:    #f0c668;
+  --gold-glow:      #ffe09a;
+  --gold-dim:       #6e5524;
+  --gold-deep:      #443418;
 
-  /* ── Hero accents — defined per-hero in their content modules. The
-     surface helper below reads from the runtime --hero-accent custom
-     property which the hero panel sets per active player. ──────────── */
+  /* ── Frost palette (Berserker, defensive, ice) ──────────────────────────── */
+  --frost:          #4a8cc8;
+  --frost-bright:   #6cb0e8;
+  --frost-deep:     #1a3a5a;
+  --frost-pale:     #a8d0f0;
 
-  /* ── Type scale (used by raw CSS; Tailwind has its own) ──────────────────── */
+  /* ── Ember palette (Pyromancer, offense, fire) ──────────────────────────── */
+  --ember:          #c84a2a;
+  --ember-bright:   #f06848;
+  --ember-deep:     #6e2010;
+  --ember-glow:     #ff8a6a;
+
+  /* ── Dawn palette (Lightbearer, Radiance, dawn-gold) ────────────────────── */
+  --dawn:           #fbbf24;
+  --dawn-bright:    #fde088;
+  --dawn-deep:      #8a6810;
+
+  /* ── Bone palette (text, neutrals) ──────────────────────────────────────── */
+  --bone:           #d8d4c0;
+  --bone-bright:    #f0ecd8;
+  --bone-dim:       #88826c;
+  --bone-deeper:    #4a4638;
+
+  /* ── Status effect palette ──────────────────────────────────────────────── */
+  --green:          #4a8c5a;
+  --green-bright:   #6cb07a;
+  --green-deep:     #1a3a22;
+  --electric-purple:        #a778ff;
+  --electric-purple-bright: #c89bff;
+  --crimson:        #8a1828;
+  --crimson-bright: #c43848;
+
+  /* ── Frame and edge accents ─────────────────────────────────────────────── */
+  --frame-stroke:   rgba(212, 165, 72, 0.4);
+  --frame-stroke-dim: rgba(212, 165, 72, 0.18);
+
+  /* ── Legacy aliases (existing screens read these) ───────────────────────── */
+  --c-arena-0: var(--night-deep);
+  --c-arena-1: var(--night-mid);
+  --c-arena-2: var(--night-velvet);
+  --c-brand:   var(--gold);
+  --c-ember:   var(--gold-bright);
+  --c-cyan:    var(--frost-bright);
+  --c-dmg:     var(--ember-bright);
+  --c-heal:    var(--green-bright);
+  --c-ink:     var(--bone-bright);
+  --c-muted:   var(--bone-dim);
+
+  /* ── Type scale ─────────────────────────────────────────────────────────── */
   --t-display: "Cinzel", Georgia, serif;
-  --t-body:    "Inter", system-ui, sans-serif;
-  --t-num:     "Rubik", ui-monospace, monospace;
+  --t-body:    "Cormorant Garamond", Georgia, serif;
+  --t-num:     "JetBrains Mono", ui-monospace, monospace;
 
-  /* ── Spacing primitives ──────────────────────────────────────────────────── */
+  /* ── Spacing primitives ─────────────────────────────────────────────────── */
   --s-1:  4px;
   --s-2:  8px;
   --s-3:  12px;
@@ -37,7 +85,7 @@
   --s-6:  32px;
   --s-7:  48px;
 
-  /* ── Motion primitives — referenced by GSAP/Framer choreography ──────────── */
+  /* ── Motion primitives — referenced by GSAP/Framer choreography ─────────── */
   --d-hitstop:    100ms;
   --d-ladder:     200ms;     /* row state transitions */
   --d-tumble:     900ms;     /* mobile dice tumble */
@@ -51,15 +99,15 @@
   --e-in-quart:  cubic-bezier(.5,0,.75,0);
   --e-out-quart: cubic-bezier(.25,1,.5,1);
 
-  /* ── Shake magnitudes (used by transform-only screen-shake) ──────────────── */
+  /* ── Shake magnitudes (used by transform-only screen-shake) ─────────────── */
   --shake-tiny:   2px;       /* normal hit */
   --shake-med:    6px;       /* big hit (>=15 dmg) */
   --shake-large: 10px;       /* ultimate */
 
-  /* ── Surface treatment ───────────────────────────────────────────────────── */
-  --panel-stroke-top:    rgba(255,255,255,0.08);
+  /* ── Surface treatment ──────────────────────────────────────────────────── */
+  --panel-stroke-top:    rgba(240, 198, 104, 0.10);
   --panel-stroke-bot:    rgba(0,0,0,0.5);
-  --panel-shadow:        0 12px 24px rgba(20,8,32,0.45);
+  --panel-shadow:        0 12px 24px rgba(5,5,16,0.5);
   --rune-pattern-opacity: 0.04;
 }
 

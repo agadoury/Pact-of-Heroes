@@ -66,6 +66,24 @@ export interface ShakeState {
   startedAt: number;
 }
 
+/** Field-of-play scene — the middle-band resolution cinematic (bible Part 5).
+ *  One scene per choreographer beat; the FieldOfPlay component renders it
+ *  over the ability ladder and the pump clears it when the beat ends. */
+export type FopScene =
+  | { kind: "ability";    name: string; tier: 1 | 2 | 3 | 4; tone: FopTone; critical: boolean }
+  | { kind: "damage";     amount: number; type: "normal" | "undefendable" | "pure" | "collateral" | "ultimate"; tone: FopTone; targetName?: string }
+  | { kind: "heal";       amount: number; tone: FopTone }
+  | { kind: "upkeep";     label: string; value: string | null; sub?: string; tone: FopTone }
+  | { kind: "detonation"; status: string; stacks: number; tone: FopTone };
+
+export type FopTone = "gold" | "frost" | "ember" | "dawn" | "crimson" | "green";
+
+export interface FopState {
+  scene: FopScene;
+  startedAt: number;
+  durationMs: number;
+}
+
 export interface ChoreoState {
   queue: GameEvent[];
   playing: GameEvent | null;
@@ -76,6 +94,9 @@ export interface ChoreoState {
   cinematic: AbilityCinematicState | null;
   attackEffect: AttackEffectState | null;
   bannerText: string | null;     // turn-started, match-won, etc.
+  /** Field-of-play scene rendered in the middle band during resolution
+   *  beats (ability names, damage numbers, upkeep ticks, detonations). */
+  fop: FopState | null;
   /** Instant card prompt — set after qualifying events when either player
    *  has playable Instants in hand. Pump halts while non-null. */
   instantPrompt: InstantPromptState | null;
@@ -98,6 +119,7 @@ export interface ChoreoState {
   startInstantPrompt: (p: Omit<InstantPromptState, "expiresAt"> & { ttlMs: number }) => void;
   endInstantPrompt: () => void;
   setBanner: (text: string | null) => void;
+  setFop: (scene: FopScene | null, durationMs?: number) => void;
   reset: () => void;
 }
 
@@ -112,6 +134,7 @@ export const useChoreoStore = create<ChoreoState>((set) => ({
   cinematic: null,
   attackEffect: null,
   bannerText: null,
+  fop: null,
   instantPrompt: null,
   totalEventsHandled: 0,
 
@@ -173,10 +196,16 @@ export const useChoreoStore = create<ChoreoState>((set) => ({
 
   setBanner: (bannerText) => set({ bannerText }),
 
+  setFop: (scene, durationMs = 900) => set(
+    scene
+      ? { fop: { scene, startedAt: performance.now(), durationMs } }
+      : { fop: null },
+  ),
+
   reset: () => set({
     queue: [], playing: null, shake: null, hitStopUntil: 0,
     damageNumbers: [], cinematic: null, attackEffect: null, bannerText: null,
-    instantPrompt: null,
+    fop: null, instantPrompt: null,
   }),
 }));
 

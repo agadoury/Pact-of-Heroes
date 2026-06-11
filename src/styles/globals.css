@@ -72,13 +72,47 @@ button {
 
 /* Surfaces (cards, panels) — referenced via .surface utility class. */
 .surface {
-  background: linear-gradient(180deg, rgba(43,23,64,0.85) 0%, rgba(15,8,20,0.85) 100%);
-  border: 1px solid var(--panel-stroke-top);
+  background: linear-gradient(180deg, rgba(26,24,48,0.88) 0%, rgba(10,10,20,0.88) 100%);
+  border: 1px solid var(--frame-stroke-dim);
   box-shadow:
     0 1px 0 var(--panel-stroke-top) inset,
     0 -1px 0 var(--panel-stroke-bot) inset,
     var(--panel-shadow);
   border-radius: 12px;
+}
+
+/* Hide scrollbars on snap-scrolling card rows (bible Part 2.9). */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Cinder fuse ring — conic fill driven by the --fuse custom property
+   (bible Part 4.1; --fuse = stacks / 5 * 100). */
+.fuse-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from -90deg,
+    var(--ember-bright) calc(var(--fuse, 0) * 1%),
+    rgba(110, 32, 16, 0.4) 0%
+  );
+  -webkit-mask: radial-gradient(circle, transparent 60%, black 62%, black 100%);
+  mask: radial-gradient(circle, transparent 60%, black 62%, black 100%);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+/* FOP diagonal stripe texture (bible Part 5.1). */
+.fop-stripes::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg, transparent, transparent 28px,
+    rgba(212, 165, 72, 0.04) 28px, rgba(212, 165, 72, 0.04) 30px
+  );
+  mix-blend-mode: overlay;
+  pointer-events: none;
 }
 
 /* Hero atmospheric backdrop helper — gradient anchored to a hero accent.

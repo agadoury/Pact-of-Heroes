@@ -8,22 +8,33 @@ For screen layout see [`match-screen.md`](./match-screen.md). For choreography s
 
 ## Design tokens
 
-Single source of truth: `src/styles/tokens.css`. Tailwind reads it via `tailwind.config.ts`; raw CSS reads `var(--c-*)` directly.
+Single source of truth: `src/styles/tokens.css`. Tailwind reads it via `tailwind.config.ts`; raw CSS reads the vars directly.
 
-### Color
+> **Revamp note.** The palette moved to the UI bible's "dark cathedral"
+> night/gold system (bible Part 1.1). The bible token names (`--night-*`,
+> `--gold-*`, `--frost-*`, `--ember-*`, `--dawn-*`, `--bone-*`, `--crimson-*`)
+> are first-class; the legacy `--c-*` names below are preserved as aliases so
+> pre-revamp screens keep working.
 
-| Token | Hex | Use |
+### Color (legacy aliases → night/gold values)
+
+| Token | Now points at | Use |
 |---|---|---|
-| `--c-arena-0` | `#0E0814` | Deepest background (never pure black — warm-purple dark). |
-| `--c-arena-1` | `#1B1228` | Mid panel surfaces. |
-| `--c-arena-2` | `#2A1740` | Highlight surfaces. |
-| `--c-brand` | `#A855F7` | Magenta-purple. Default accent. |
-| `--c-ember` | `#F59E0B` | CP, crit numbers, gold flourishes. |
-| `--c-cyan` | `#06B6D4` | Magic effects, CP gain. |
-| `--c-dmg` | `#EF4444` | Normal damage numbers + Burn glyph. |
-| `--c-heal` | `#10B981` | Heal numbers + Regen glyph. |
-| `--c-ink` | `#F5F1FA` | Primary text on dark. |
-| `--c-muted` | `#9C8FB0` | Secondary text. |
+| `--c-arena-0` | `--night-deep` `#0a0a14` | Deepest background. |
+| `--c-arena-1` | `--night-mid` `#14142a` | Mid panel surfaces. |
+| `--c-arena-2` | `--night-velvet` `#221a3a` | Highlight surfaces. |
+| `--c-brand` | `--gold` `#d4a548` | Default accent. |
+| `--c-ember` | `--gold-bright` `#f0c668` | CP, crit numbers, gold flourishes. |
+| `--c-cyan` | `--frost-bright` `#6cb0e8` | Magic effects, defensive accents. |
+| `--c-dmg` | `--ember-bright` `#f06848` | Damage numbers + Burn glyph. |
+| `--c-heal` | `--green-bright` `#6cb07a` | Heal numbers + Regen glyph. |
+| `--c-ink` | `--bone-bright` `#f0ecd8` | Primary text on dark. |
+| `--c-muted` | `--bone-dim` `#88826c` | Secondary text. |
+
+Hero element palettes (frost / ember / dawn), the crimson lethal pair, and
+the gold ramp are defined alongside — see `tokens.css` for the full set.
+Fonts are now Cinzel (display) / Cormorant Garamond (body) / JetBrains Mono
+(numeric), loaded in `index.html`.
 
 Hero accent colors are not in this file — each hero defines its own `accentColor` hex on `HeroDefinition`. Components that need to theme-color a panel set `--side-glow` or `--hero-accent` as inline style and let CSS fall through.
 

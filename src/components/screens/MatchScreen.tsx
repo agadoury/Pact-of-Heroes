@@ -1,40 +1,39 @@
 /**
- * MatchScreen — full match UI.
+ * MatchScreen — the seven-band match layout (bible Part 2).
  *
- * Mobile portrait layout (primary):
- *   top status bar     — opponent panel (compact)
- *   arena center       — DiceTray + PhaseIndicator
- *   active hero panel  — full HeroPanel including ladder
- *   hand               — fanned cards
- *   action bar         — primary CTA (fixed bottom)
+ *   1. OpponentStrip   — non-viewer hero (portrait, HP, CP, status track)
+ *   2. PhaseBanner     — thin gold announcer band
+ *   3. DiceTray        — active player's five dice (tumble choreography)
+ *   4. MiddleBand      — ability ladder ⇄ FieldOfPlay resolution overlay
+ *   5. SelfStrip       — viewer hero
+ *   6. HandBand        — viewer's cards (scroll-snap, tap to expand)
+ *   7. MatchActionBar  — Skip Turn + contextual primary (Roll / Reroll / …)
  *
- * Desktop layout (Step 6) overlays via `lg:` Tailwind classes — the same
- * components reflow to a wide arena with side ladders.
+ * The middle band shows the ACTIVE player's ladder and dice (bible 7.3.5.1):
+ * on the opponent's turn the viewer watches their dice lock and their rows
+ * light up. Desktop (lg:) widens the column; the band order is identical.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useGameStore, useInputUnlocked } from "@/store/gameStore";
 import { useUIStore } from "@/store/uiStore";
-import { getHero } from "@/content";
-import type { CardId, HeroId, PlayerId } from "@/game/types";
-import { nextAiAction } from "@/game/ai";
-import { resolveAbilityFor } from "@/game/cards";
 import { useChoreoStore } from "@/store/choreoStore";
-import { Button } from "@/components/ui/Button";
-
-import { HeroPanel } from "@/components/game/HeroPanel";
-import { Hand } from "@/components/game/Hand";
-import { DiceTray } from "@/components/game/DiceTray";
-import { ActionBar } from "@/components/game/ActionBar";
-import { PhaseIndicator } from "@/components/game/PhaseIndicator";
-import { HotSeatCurtain } from "@/components/game/HotSeatCurtain";
-import { AbilityLadder } from "@/components/game/AbilityLadder";
-import { HeroBackground } from "@/components/effects/HeroBackground";
-import { ResultScreen } from "@/components/screens/ResultScreen";
+import { getHero, HEROES } from "@/content";
+import type { CardId, GameEvent, HeroId, PlayerId } from "@/game/types";
+import { nextAiAction } from "@/game/ai";
 import { buildMatchSummary } from "@/game/match-summary";
 import { STARTING_HP } from "@/game/types";
-import { useMemo } from "react";
-import { HEROES } from "@/content";
+
+import { HeroStrip } from "@/components/match/HeroStrip";
+import { PhaseBanner } from "@/components/match/PhaseBanner";
+import { Ladder } from "@/components/match/LadderV2";
+import { FieldOfPlay } from "@/components/match/FieldOfPlay";
+import { HandBand } from "@/components/match/HandBand";
+import { MatchActionBar } from "@/components/match/MatchActionBar";
+import { DiceTray } from "@/components/game/DiceTray";
+import { HotSeatCurtain } from "@/components/game/HotSeatCurtain";
+import { HeroBackground } from "@/components/effects/HeroBackground";
+import { ResultScreen } from "@/components/screens/ResultScreen";
 
 export default function MatchScreen() {
   const [params] = useSearchParams();
@@ -55,15 +54,13 @@ export default function MatchScreen() {
   const curtainOpen  = useUIStore(s => s.curtainOpen);
   const setCurtain   = useUIStore(s => s.setCurtain);
 
-  // Boot the match on first mount based on URL params. Hero IDs are
-  // validated against the live registry; if none are registered, the
-  // match-end overlay below renders with a "no heroes" message.
+  // Boot the match on first mount based on URL params.
   const startedRef = useRef(false);
   useEffect(() => {
     if (startedRef.current) return;
     const validHeroes = Object.keys(HEROES) as HeroId[];
     const fallback = validHeroes[0] ?? "";
-    if (!fallback) return;   // nothing to start; UI shows empty-state below
+    if (!fallback) return;
     startedRef.current = true;
     const p1   = readHero(params.get("p1"), validHeroes) ?? fallback;
     const p2   = readHero(params.get("p2"), validHeroes) ?? fallback;
@@ -73,8 +70,7 @@ export default function MatchScreen() {
     setViewer("p1");
   }, [params, startMatch, setViewer]);
 
-  // Hot-seat: when the active player changes mid-game, raise the curtain.
-  // Skip during the match-end phase and during the very first turn.
+  // Hot-seat: raise the curtain when the active player flips mid-game.
   const lastActiveRef = useRef<PlayerId | null>(null);
   useEffect(() => {
     if (!state) return;
@@ -91,10 +87,7 @@ export default function MatchScreen() {
     setCurtain(false);
   }
 
-  // AI driver — installed once per match-screen mount. Subscribes directly to
-  // the game and choreo stores so it reacts immediately to dispatches and
-  // queue drains without depending on React effect timing. Polls every 500ms
-  // as a safety net in case a store change races the subscribe.
+  // AI driver — unchanged contract from the pre-revamp screen.
   useEffect(() => {
     if (mode !== "vs-ai" || !aiPlayer) return;
     let timer: number | null = null;
@@ -109,16 +102,9 @@ export default function MatchScreen() {
       if (!inputReady) return;
       const aiIsDefender = !!(live.pendingAttack && live.pendingAttack.defender === aiPlayer);
       const aiHasPendingCounter = !!(live.pendingCounter && live.pendingCounter.holder === aiPlayer);
-      const aiCanAct =
-        live.activePlayer === aiPlayer || aiIsDefender || aiHasPendingCounter;
+      const aiCanAct = live.activePlayer === aiPlayer || aiIsDefender || aiHasPendingCounter;
       if (!aiCanAct) return;
-      // AI is the attacker waiting for the human to defend — don't fire,
-      // nextAiAction would advance-phase past the pause.
-      if (
-        live.activePlayer === aiPlayer &&
-        live.pendingAttack &&
-        live.pendingAttack.defender !== aiPlayer
-      ) return;
+      if (live.activePlayer === aiPlayer && live.pendingAttack && live.pendingAttack.defender !== aiPlayer) return;
       gs.dispatch(nextAiAction(live, aiPlayer));
     }
     function schedule() {
@@ -127,11 +113,8 @@ export default function MatchScreen() {
     }
     const unsubGame = useGameStore.subscribe(() => schedule());
     const unsubChoreo = useChoreoStore.subscribe(() => schedule());
-    // Safety-net poller: the subscribe targets cover the common cases, but a
-    // 500ms tick guarantees we never miss a transition (e.g. a queue drain
-    // that landed between subscribe registrations).
     const poller = window.setInterval(() => schedule(), 500);
-    schedule();   // kick once on mount
+    schedule();
     return () => {
       stopped = true;
       unsubGame();
@@ -141,9 +124,11 @@ export default function MatchScreen() {
     };
   }, [mode, aiPlayer]);
 
-  // Hooks that depend on `state` MUST be called before any early return —
-  // Rules of Hooks. All safely handle null state internally.
-  const rollKey = useDiceRollKey(viewer);
+  // Hooks before early return (Rules of Hooks).
+  const rollKey = useDiceRollKey();
+  const rolling = useTrayRolling();
+  const fopActive = useChoreoStore(s => !!s.fop);
+  const defenseBeat = useDefenseBeat();
   const summary = useMemo(() => {
     if (!state || !state.winner) return null;
     return buildMatchSummary(matchLog, {
@@ -152,9 +137,6 @@ export default function MatchScreen() {
       startingHp: STARTING_HP,
     });
   }, [state, matchLog]);
-  // Click-to-fire from the ladder is a two-step interaction: the click stashes
-  // the chosen ability index and surfaces a confirm modal; the confirm button
-  // dispatches advance-phase + select-offensive-ability. Cancel just clears.
   const [pendingLadderFire, setPendingLadderFire] = useState<number | null>(null);
   useEffect(() => {
     if (state?.phase !== "offensive-roll" && pendingLadderFire != null) setPendingLadderFire(null);
@@ -162,146 +144,104 @@ export default function MatchScreen() {
 
   if (!state) return null;
 
-  // Identify panels by viewer.
   const opponentId: PlayerId = viewer === "p1" ? "p2" : "p1";
   const meSnap   = state.players[viewer];
   const oppSnap  = state.players[opponentId];
   const meHero   = getHero(meSnap.hero);
   const oppHero  = getHero(oppSnap.hero);
 
-  // Capability gating.
   const myTurn   = state.activePlayer === viewer;
   const canInput = myTurn && inputUnlocked && !state.winner;
 
+  // Middle band follows the ACTIVE player (bible 7.3.5.1) — except during a
+  // defensive flow, where the defender owns the tray.
+  const defenseInFlight = !!state.pendingAttack;
+  const trayOwnerId: PlayerId = defenseInFlight && state.pendingAttack
+    ? state.pendingAttack.defender
+    : state.activePlayer;
+  const ladderOwnerId: PlayerId = state.activePlayer;
+  const ladderSnap = state.players[ladderOwnerId];
+  const ladderHero = getHero(ladderSnap.hero);
+  const ladderOppSnap = state.players[ladderOwnerId === "p1" ? "p2" : "p1"];
+
   // Action handlers.
-  function play(cardId: CardId, targetDie?: number) {
-    dispatch({ kind: "play-card", card: cardId, targetDie: targetDie as 0|1|2|3|4|undefined });
+  function play(cardId: CardId) {
+    dispatch({ kind: "play-card", card: cardId });
   }
   function sell(cardId: CardId) {
     dispatch({ kind: "sell-card", card: cardId });
   }
-  function roll() {
-    dispatch({ kind: "roll-dice" });
-  }
-  function advance() {
-    dispatch({ kind: "advance-phase" });
-  }
-  function endTurn() {
-    dispatch({ kind: "end-turn" });
-  }
+  function roll() { dispatch({ kind: "roll-dice" }); }
+  function advance() { dispatch({ kind: "advance-phase" }); }
+  function endTurn() { dispatch({ kind: "end-turn" }); }
   function toggleLock(idx: number) {
     const live = useGameStore.getState().state;
     if (!live || live.phase !== "offensive-roll") return;
     dispatch({ kind: "toggle-die-lock", die: idx as 0|1|2|3|4 });
   }
-  function requestFireFromLadder(abilityIndex: number) {
-    const live = useGameStore.getState().state;
-    if (!live || live.phase !== "offensive-roll") return;
-    setPendingLadderFire(abilityIndex);
-  }
-  function confirmLadderFire() {
-    const idx = pendingLadderFire;
-    setPendingLadderFire(null);
-    if (idx == null) return;
+  /** Fire from the ladder modal: advance to commit, then pick the ability. */
+  function fireFromLadder(abilityIndex: number) {
     const live = useGameStore.getState().state;
     if (!live || live.phase !== "offensive-roll") return;
     dispatch({ kind: "advance-phase" });
     const after = useGameStore.getState().state;
     if (!after?.pendingOffensiveChoice) return;
-    if (!after.pendingOffensiveChoice.matches.some(m => m.abilityIndex === idx)) return;
-    dispatch({ kind: "select-offensive-ability", abilityIndex: idx });
+    if (!after.pendingOffensiveChoice.matches.some(m => m.abilityIndex === abilityIndex)) return;
+    dispatch({ kind: "select-offensive-ability", abilityIndex });
   }
-  const ladderFire = canInput && state.phase === "offensive-roll" ? requestFireFromLadder : undefined;
+  const ladderFire = canInput && state.phase === "offensive-roll" ? fireFromLadder : undefined;
 
   return (
-    <div className="safe-pad min-h-svh bg-arena-0 text-ink relative flex flex-col
-                    lg:grid lg:grid-cols-[340px_1fr_340px] lg:grid-rows-[auto_1fr_auto] lg:gap-4 lg:p-6">
-      {/* Living arena background — atmospherics for the active player's hero. */}
+    <div className="min-h-svh flex flex-col text-ink relative"
+         style={{ background: "linear-gradient(180deg, var(--night-stone) 0%, var(--night-deep) 100%)", paddingTop: "max(8px, env(safe-area-inset-top))" }}>
       <HeroBackground
         hero={state.players[state.activePlayer].hero}
         intensity="ambient"
         className="z-0"
       />
-      {/* MOBILE: top opponent panel. DESKTOP: top-center opponent panel,
-          capped to a comfortable max-width and centered in the column. */}
-      <div
-        className="rounded-card mb-2 lg:mb-0 lg:col-start-2 lg:row-start-1
-                   lg:max-w-2xl lg:w-full lg:mx-auto"
-        style={{ background: `linear-gradient(180deg, ${oppHero.accentColor}11 0%, transparent 100%)` }}
-      >
-        <HeroPanel
-          hero={oppHero}
-          snapshot={oppSnap}
-          variant="opponent"
-          active={state.activePlayer === opponentId}
-          isOpponentView
-        />
-      </div>
 
-      {/* DESKTOP: opponent ladder on left side rail. */}
-      <div className="hidden lg:block lg:col-start-1 lg:row-start-1 lg:row-span-3 lg:self-start lg:sticky lg:top-6">
-        <div className="surface rounded-card p-3">
-          <div className="text-[10px] uppercase tracking-widest text-muted mb-2">
-            {oppHero.name} ladder
-          </div>
-          {/* Re-uses AbilityLadder via HeroPanel's collapsible — but on desktop we want it always-open and standalone. */}
-          <DesktopSideLadder hero={oppHero} rows={oppSnap.ladderState} isOpponentView snapshot={oppSnap} />
-        </div>
-      </div>
+      <div className="relative z-10 flex flex-col flex-1 w-full max-w-2xl mx-auto px-2">
+        {/* Band 1 — opponent strip */}
+        <HeroStrip hero={oppHero} snapshot={oppSnap} perspective="opponent" active={state.activePlayer === opponentId} />
 
-      {/* DESKTOP: own ladder on right side rail. */}
-      <div className="hidden lg:block lg:col-start-3 lg:row-start-1 lg:row-span-3 lg:self-start lg:sticky lg:top-6">
-        <div className="surface rounded-card p-3">
-          <div className="text-[10px] uppercase tracking-widest text-muted mb-2">
-            {meHero.name} ladder
-          </div>
-          <DesktopSideLadder hero={meHero} rows={meSnap.ladderState} snapshot={meSnap} onFire={ladderFire} />
-        </div>
-      </div>
+        {/* Band 2 — phase banner */}
+        <PhaseBanner state={state} viewer={viewer} />
 
-      {/* Arena center. */}
-      <div className="relative flex-1 flex flex-col items-center justify-center gap-2 my-2
-                      lg:my-0 lg:col-start-2 lg:row-start-2">
-        <PhaseIndicator
-          phase={state.phase}
-          activePlayer={state.activePlayer}
-          thinking={mode === "vs-ai" && state.activePlayer === aiPlayer && !state.winner}
-        />
-        {/* Dice tray dims outside the roll phases — cards own the screen during Main,
-            dice own it during Roll. */}
+        {/* Band 3 — dice tray (defender's during defense, else active player's) */}
         <div
           className="transition-opacity duration-300 ease-out-quart"
-          style={{
-            opacity: state.phase === "offensive-roll" || state.phase === "defensive-roll" ? 1 : 0.45,
-          }}
+          style={{ opacity: state.phase === "offensive-roll" || defenseInFlight || defenseBeat ? 1 : 0.45 }}
         >
-          <DefenseTray
-            state={state}
-            viewer={viewer}
+          <DiceTray
+            dice={state.players[trayOwnerId].dice}
+            accent={getHero(state.players[trayOwnerId].hero).accentColor}
             rollKey={rollKey}
-            onToggleLock={toggleLock}
-          />
-        </div>
-        {/* Match-end result — full ResultScreen overlay rendered below. */}
-      </div>
-
-      {/* Active hero panel + hand share one grid cell on desktop so they
-          stack vertically inside it; on mobile they sit in normal flow.
-          Capped to the same max-width as the opponent panel for symmetry. */}
-      <div className="lg:col-start-2 lg:row-start-3 flex flex-col gap-2
-                      lg:max-w-2xl lg:w-full lg:mx-auto">
-        <div className="rounded-card mb-1 lg:mb-0"
-             style={{ background: `linear-gradient(0deg, ${meHero.accentColor}1c 0%, transparent 100%)` }}>
-          <HeroPanel
-            hero={meHero}
-            snapshot={meSnap}
-            variant="active"
-            active={myTurn}
-            onFire={ladderFire}
+            onToggleLock={canInput && trayOwnerId === viewer && !defenseInFlight ? toggleLock : undefined}
+            centerStage={state.phase === "offensive-roll" || defenseInFlight}
+            dieSize={52}
+            className="!py-2"
           />
         </div>
 
-        <Hand
+        {/* Band 4 — middle band: ladder ⇄ field of play */}
+        <div className="relative flex-1 min-h-[210px] flex flex-col justify-center py-1"
+             style={{ borderTop: "1px solid var(--frame-stroke-dim)", borderBottom: "1px solid var(--frame-stroke-dim)" }}>
+          <Ladder
+            hero={ladderHero}
+            snapshot={ladderSnap}
+            opponent={ladderOppSnap}
+            rolling={rolling}
+            onFire={ladderOwnerId === viewer ? ladderFire : undefined}
+            dimmed={fopActive}
+          />
+          <FieldOfPlay />
+        </div>
+
+        {/* Band 5 — self strip */}
+        <HeroStrip hero={meHero} snapshot={meSnap} perspective="self" active={myTurn} className="mt-1" />
+
+        {/* Band 6 — hand */}
+        <HandBand
           state={state}
           hero={meSnap}
           opponent={oppSnap}
@@ -310,25 +250,24 @@ export default function MatchScreen() {
           onPlay={play}
           onSell={sell}
         />
+
+        {/* Spacer so the fixed action bar doesn't cover the hand. */}
+        <div className="h-[72px]" />
       </div>
 
-      {/* Spacer so the fixed action bar doesn't cover the hand on mobile. */}
-      <div className="h-[88px] sm:h-[96px] lg:hidden" />
-
-      {/* Action bar. Mobile: fixed bottom. Desktop: also fixed bottom but centered narrower. */}
-      <ActionBar
+      {/* Band 7 — action bar */}
+      <MatchActionBar
         state={state}
         active={meSnap}
-        accent={meHero.accentColor}
+        viewer={viewer}
         enabled={canInput}
-        isViewerActive={myTurn}
         onRoll={roll}
         onAdvancePhase={advance}
         onEndTurn={endTurn}
         onMenu={() => { reset(); navigate("/"); }}
       />
 
-      {/* Hot-seat curtain. */}
+      {/* Hot-seat curtain */}
       <HotSeatCurtain
         open={curtainOpen && mode === "hot-seat"}
         nextPlayer={state.activePlayer}
@@ -336,7 +275,7 @@ export default function MatchScreen() {
         onContinue={dismissCurtain}
       />
 
-      {/* Match-end overlay with descriptor + stats. */}
+      {/* Match-end overlay */}
       {state.winner && summary && (
         <ResultScreen
           summary={summary}
@@ -350,166 +289,35 @@ export default function MatchScreen() {
           }}
         />
       )}
-
-      {/* Ladder click-to-fire confirm. Resolves the ability through the
-          upgrade pipeline so the prompt shows the live name. */}
-      {pendingLadderFire != null && (() => {
-        // Click-to-fire indexes into the player's drafted offensive
-        // loadout (`activeOffense`), not the full catalog.
-        const a = meSnap.activeOffense[pendingLadderFire];
-        if (!a) return null;
-        const resolved = resolveAbilityFor(meSnap, a, "offensive");
-        return (
-          <FireConfirm
-            abilityName={resolved.name}
-            tier={resolved.tier}
-            shortText={resolved.shortText}
-            accent={meHero.accentColor}
-            onConfirm={confirmLadderFire}
-            onCancel={() => setPendingLadderFire(null)}
-          />
-        );
-      })()}
     </div>
   );
-}
-
-function FireConfirm({
-  abilityName, tier, shortText, accent, onConfirm, onCancel,
-}: {
-  abilityName: string;
-  tier: 1 | 2 | 3 | 4;
-  shortText: string;
-  accent: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div
-      role="dialog"
-      aria-label={`Activate ${abilityName}?`}
-      className="fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-sm px-4"
-      onClick={onCancel}
-    >
-      <div
-        className="surface rounded-card p-4 sm:p-5 max-w-sm w-full ring-1"
-        style={{ borderColor: accent, boxShadow: `0 0 24px ${accent}55` }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-3 mb-3">
-          <span
-            className="grid place-items-center w-8 h-8 rounded-md font-display tracking-widest text-xs shrink-0"
-            style={{ background: `${accent}25`, color: accent }}
-          >
-            T{tier}
-          </span>
-          <span className="font-display tracking-wider text-base" style={{ color: accent }}>
-            {abilityName}
-          </span>
-        </div>
-        <div className="text-sm text-ink/85 mb-4">{shortText}</div>
-        <div className="text-xs text-muted mb-4">Activate this ability?</div>
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Button variant="secondary" size="lg" onClick={onCancel} className="w-full" sound="ui-back">
-              Cancel
-            </Button>
-          </div>
-          <div className="flex-1">
-            <Button variant="primary" size="lg" heroAccent={accent} onClick={onConfirm} className="w-full" sound="ui-tap">
-              Activate
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Desktop side rail rendering the AbilityLadder (always open, no collapse). */
-function DesktopSideLadder({
-  hero, rows, isOpponentView, snapshot, onFire,
-}: {
-  hero: import("@/game/types").HeroDefinition;
-  rows: import("@/game/types").HeroSnapshot["ladderState"];
-  isOpponentView?: boolean;
-  snapshot?: import("@/game/types").HeroSnapshot;
-  onFire?: (abilityIndex: number) => void;
-}) {
-  return <AbilityLadder hero={hero} rows={rows} isOpponentView={isOpponentView} snapshot={snapshot} onFire={onFire} />;
 }
 
 function readHero(s: string | null, valid: HeroId[]): HeroId | null {
   return s && valid.includes(s as HeroId) ? (s as HeroId) : null;
 }
 
-/** Shows the defender's dice tray during a defensive flow.
- *
- * `pendingAttack` is cleared by the engine the instant select-defense
- * resolves — but the choreographer is still about to play out the defense
- * events afterwards. So we keep the tray pointed at the defender as long
- * as either pendingAttack is set OR a defense-* event is queued/playing.
- */
-function DefenseTray({
-  state, viewer, rollKey, onToggleLock,
-}: {
-  state: import("@/game/types").GameState;
-  viewer: PlayerId;
-  rollKey: number;
-  onToggleLock: (idx: number) => void;
-}) {
-  const queue   = useChoreoStore(s => s.queue);
-  const playing = useChoreoStore(s => s.playing);
-  // Look at the playing event + remaining queue for any defense markers.
-  const defenseEvent = (() => {
-    if (playing && isDefenseEvent(playing)) return playing;
-    return queue.find(isDefenseEvent);
-  })();
-  const defenseInFlight = !!state.pendingAttack || !!defenseEvent;
-  const defenderId =
-    state.pendingAttack?.defender ??
-    (defenseEvent && getDefenderId(defenseEvent));
-  const trayPlayerId = defenseInFlight && defenderId ? defenderId : state.activePlayer;
-  const trayHero = getHero(state.players[trayPlayerId].hero);
-  const canLock = state.activePlayer === viewer && !defenseInFlight;
-  return (
-    <DiceTray
-      dice={state.players[trayPlayerId].dice}
-      accent={trayHero.accentColor}
-      rollKey={rollKey}
-      onToggleLock={canLock ? onToggleLock : undefined}
-      centerStage={state.phase === "offensive-roll" || defenseInFlight}
-    />
-  );
+/** True while a defense-* beat is queued/playing — keeps the tray visible
+ *  through the defender's roll even after pendingAttack clears. */
+function useDefenseBeat(): boolean {
+  const isDef = (ev: GameEvent) =>
+    ev.t === "defense-intended" || ev.t === "defense-dice-rolled" || ev.t === "defense-resolved";
+  return useChoreoStore(s => (s.playing ? isDef(s.playing) : false) || s.queue.some(isDef));
 }
 
-function isDefenseEvent(ev: import("@/game/types").GameEvent): boolean {
-  return ev.t === "defense-intended" || ev.t === "defense-dice-rolled" || ev.t === "defense-resolved";
-}
-function getDefenderId(ev: import("@/game/types").GameEvent): PlayerId | undefined {
-  if (ev.t === "defense-intended") return ev.defender;
-  if (ev.t === "defense-dice-rolled" || ev.t === "defense-resolved") return ev.player;
-  return undefined;
-}
-
-/**
- * Returns a counter that bumps every time the viewer's last seen
- * `dice-rolled` event finished playing. DiceTray uses this to trigger a
- * fresh tumble on each roll.
- *
- * NOTE: We want the tray to only tumble once per server roll regardless of
- * whether the dice-rolled event is being processed by the choreographer
- * right now — so we listen for finishCurrent transitions on dice-rolled.
- */
-function useDiceRollKey(viewer: PlayerId): number {
+/** Bumps when a dice-rolled beat starts so the tray plays a fresh tumble. */
+function useDiceRollKey(): number {
   const playing = useChoreoStore(s => s.playing);
   const handled = useChoreoStore(s => s.totalEventsHandled);
   const lastBump = useRef(0);
-  // Bump on offensive `dice-rolled` and defensive `defense-dice-rolled` so
-  // the tray tumbles for both kinds of rolls.
   if (playing && (playing.t === "dice-rolled" || playing.t === "defense-dice-rolled")) {
-    void viewer;
     lastBump.current = handled + 1;
   }
   return lastBump.current;
+}
+
+/** True while the dice tumble beat is playing — pips drop unlocked dice. */
+function useTrayRolling(): boolean {
+  const playing = useChoreoStore(s => s.playing);
+  return !!playing && (playing.t === "dice-rolled" || playing.t === "defense-dice-rolled");
 }

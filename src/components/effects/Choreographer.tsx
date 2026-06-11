@@ -26,7 +26,6 @@ import { ScreenShake } from "./ScreenShake";
 import { HitStop } from "./HitStop";
 import { DamageNumberLayer } from "./DamageNumber";
 import { AbilityCinematicLayer } from "./AbilityCinematic";
-import { AttackEffectLayer } from "./AttackEffect";
 import { Banner } from "./Banner";
 import { ActionLog } from "./ActionLog";
 import { InstantPromptLayer } from "./InstantPrompt";
@@ -34,7 +33,7 @@ import { DefenseSelectLayer } from "./DefenseSelect";
 import { DefenseStatusPanel } from "./DefenseStatusPanel";
 import { AttackSelectLayer } from "./AttackSelect";
 import { useGameStore } from "@/store/gameStore";
-import { getHero } from "@/content";
+import type { FopScene } from "@/store/choreoStore";
 import type { HeroId, PlayerId } from "@/game/types";
 
 interface Props { children: ReactNode }
@@ -45,7 +44,6 @@ export function Choreographer({ children }: Props) {
       {children}
       <HitStop />
       <DamageNumberLayer />
-      <AttackEffectLayer />
       <AbilityCinematicLayer />
       <Banner />
       <ActionLog />
@@ -55,6 +53,19 @@ export function Choreographer({ children }: Props) {
       <DefenseStatusPanel />
     </ScreenShake>
   );
+}
+
+// ── FOP scene scheduling — one scene per beat, auto-cleared at beat end ──────
+
+let fopClearTimer: ReturnType<typeof setTimeout> | null = null;
+
+function showFop(scene: FopScene, durationMs: number): void {
+  if (fopClearTimer) { clearTimeout(fopClearTimer); fopClearTimer = null; }
+  useChoreoStore.getState().setFop(scene, durationMs);
+  fopClearTimer = setTimeout(() => {
+    fopClearTimer = null;
+    useChoreoStore.getState().setFop(null);
+  }, durationMs);
 }
 
 // ── Module-level queue driver — runs once per page load ─────────────────────
@@ -219,7 +230,17 @@ function playEvent(ev: GameEvent, ctx: PlayCtx): number {
 
     case "phase-changed":      return 200;       // small breath between phases
 
-    case "card-drawn":         return 350;
+    case "card-drawn": {
+      // Income draw beat — lightweight UpkeepFOP with the card name (bible 7.5).
+      const phase = livePhase();
+      if (phase === "income" || phase === "upkeep") {
+        const name = cardNameOf(ev.player, ev.cardId);
+        const dur = ctx.reduced ? 220 : 700;
+        showFop({ kind: "upkeep", label: "Draw", value: "+", sub: name ?? undefined, tone: "gold" }, dur);
+        return dur;
+      }
+      return 350;
+    }
     case "card-played":        vibrate("card-play"); return 700;
     case "card-sold": {
       ctx.spawnDmg({ amount: ev.cpGained, variant: "cp", x: 0.5, y: 0.62, size: "sm" });
@@ -227,7 +248,17 @@ function playEvent(ev: GameEvent, ctx: PlayCtx): number {
     }
     case "card-discarded":     return 350;
 
-    case "cp-changed":         return 350;
+    case "cp-changed": {
+      // Income CP beat (bible 7.5 — CP gain plays before draw). Cost payments
+      // (negative deltas) stay quick and quiet.
+      const phase = livePhase();
+      if (ev.delta > 0 && (phase === "income" || phase === "upkeep")) {
+        const dur = ctx.reduced ? 220 : 700;
+        showFop({ kind: "upkeep", label: `+${ev.delta} CP`, value: `+${ev.delta}`, tone: "gold" }, dur);
+        return dur;
+      }
+      return 300;
+    }
     case "hp-changed":         return 0;       // rendered by HealthBar via prop change
 
     case "dice-rolled":        return 1100;    // wait for the DiceTray's full tumble + settle
@@ -239,18 +270,14 @@ function playEvent(ev: GameEvent, ctx: PlayCtx): number {
     case "ability-triggered": {
       if (ev.tier === 4) return 500;             // ult cinematic handles its own hold
       const hero = heroIdFromPlayer(ev.player);
-      const accent = accentFor(hero);
       const dur = ctx.reduced ? 220 : (ev.isCritical ? 1200 : 1000);
-      ctx.startAttackEffect({
-        hero,
-        abilityId: abilityIdOf(ev.abilityName),
-        abilityName: ev.abilityName,
+      showFop({
+        kind: "ability",
+        name: ev.abilityName,
         tier: ev.tier as 1 | 2 | 3,
-        accent,
-        isCritical: !!ev.isCritical,
-        durationMs: dur,
-      });
-      setTimeout(() => ctx.endAttackEffect(), dur);
+        tone: heroTone(hero),
+        critical: !!ev.isCritical,
+      }, dur);
       vibrate("ability");
       return dur;
     }
@@ -277,22 +304,25 @@ function playEvent(ev: GameEvent, ctx: PlayCtx): number {
       ctx.setShake({ magnitude: mag, duration: shakeDur, startedAt: performance.now() });
       setTimeout(() => ctx.setShake(null), shakeDur);
 
-      const variant: "dmg" | "pure" | "white" | "crit" =
-        ev.type === "pure" ? "pure" :
-        ev.type === "undefendable" ? "white" :
-        ev.amount >= 15 ? "crit" : "dmg";
-      const size: "sm" | "md" | "lg" =
-        ev.amount >= 20 ? "lg" : ev.amount >= 10 ? "md" : "sm";
-      ctx.spawnDmg({ amount: ev.amount, variant, x: 0.5, y: 0.42, size });
+      // Damage renders in the field of play (bible Part 5.3) — big Cinzel
+      // number with overshoot pop, colored by damage type.
+      const dur = ctx.reduced ? 220 : ev.amount >= 15 ? 1300 : 900;
+      const lethal = targetDead(ev.to);
+      showFop({
+        kind: "damage",
+        amount: ev.amount,
+        type: ev.type,
+        tone: lethal ? "crimson" : ev.type === "ultimate" ? "crimson" : "ember",
+      }, dur);
 
       vibrate("damage-taken");
-      // Hold long enough to read the number floating up + the new HP value.
-      return ev.amount >= 15 ? 1300 : 900;
+      return dur;
     }
 
     case "heal-applied": {
-      ctx.spawnDmg({ amount: ev.amount, variant: "heal", x: 0.5, y: 0.42, size: "sm" });
-      return 800;
+      const dur = ctx.reduced ? 220 : 800;
+      showFop({ kind: "heal", amount: ev.amount, tone: "green" }, dur);
+      return dur;
     }
 
     case "offensive-pick-prompt": {
@@ -339,7 +369,18 @@ function playEvent(ev: GameEvent, ctx: PlayCtx): number {
 
     case "status-applied":
       vibrate("card-play"); return 700;
-    case "status-ticked":      return 600;
+    case "status-ticked": {
+      // Upkeep tick beat (bible Part 5.3.5) — tone-matched label + value.
+      const dur = ctx.reduced ? 220 : 700;
+      const name = statusDisplayName(ev.status);
+      const value = ev.effect === "heal" ? `+${ev.amount}` : ev.effect === "damage" ? `−${ev.amount}` : null;
+      const tone =
+        ev.effect === "heal" ? "green" as const :
+        String(ev.status).includes("frostbite") ? "frost" as const :
+        ev.effect === "damage" ? "ember" as const : "gold" as const;
+      showFop({ kind: "upkeep", label: `${name} ticks`, value, tone }, dur);
+      return dur;
+    }
     case "status-removed":     return 500;
     case "status-triggered":   return 500;
 
@@ -353,7 +394,9 @@ function playEvent(ev: GameEvent, ctx: PlayCtx): number {
       ctx.triggerHitStop(160);
       ctx.setShake({ magnitude: 6, duration: 200, startedAt: performance.now() });
       setTimeout(() => ctx.setShake(null), 200);
-      return 1100;
+      const dur = ctx.reduced ? 220 : 1100;
+      showFop({ kind: "detonation", status: String(ev.status), stacks: ev.threshold, tone: "ember" }, dur);
+      return dur;
     }
     case "ability-modifier-added":   return 600;
     case "ability-modifier-removed": return 400;
@@ -378,11 +421,40 @@ function heroIdFromPlayer(p: string): HeroId {
   return "";
 }
 
-function accentFor(hero: HeroId): string {
-  return getHero(hero).accentColor;
+/** Hero → FOP elemental tone (bible Part 1.8 hero element mapping). */
+function heroTone(hero: HeroId): "frost" | "ember" | "dawn" | "gold" {
+  switch (hero) {
+    case "berserker":   return "frost";
+    case "pyromancer":  return "ember";
+    case "lightbearer": return "dawn";
+    default:            return "gold";
+  }
 }
 
-/** Map a display ability name to the AttackEffect registry key. */
-function abilityIdOf(name: string): string {
-  return name.toLowerCase().replace(/\s+/g, "-");
+function livePhase(): string | null {
+  return useGameStore.getState().state?.phase ?? null;
+}
+
+/** Card name lookup for the income draw beat — the drawn card is already in
+ *  the player's hand when the event plays. */
+function cardNameOf(player: string, cardId: string): string | null {
+  const live = useGameStore.getState().state;
+  if (!live || (player !== "p1" && player !== "p2")) return null;
+  const snap = live.players[player as PlayerId];
+  return snap.hand.find(c => c.id === cardId)?.name
+      ?? snap.discard.find(c => c.id === cardId)?.name
+      ?? null;
+}
+
+function statusDisplayName(statusId: string): string {
+  const tail = statusId.split(":").pop() ?? statusId;
+  return tail.charAt(0).toUpperCase() + tail.slice(1).replace(/-/g, " ");
+}
+
+/** True when the damage target's HP has already hit 0 (engine state is
+ *  applied before the beat plays — snapshot-and-interpolate). */
+function targetDead(player: string): boolean {
+  const live = useGameStore.getState().state;
+  if (!live || (player !== "p1" && player !== "p2")) return false;
+  return live.players[player as PlayerId].hp <= 0;
 }

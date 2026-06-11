@@ -16,8 +16,8 @@ The choreographer is mounted at the route root in `App.tsx` via `<Choreographer>
 |---|---|
 | `ScreenShake` | Wraps children. Applies `transform: translate(...)` based on `choreoStore.shake`. Magnitudes from tokens: 2px / 6px / 10px (tiny / med / large). |
 | `HitStop` | Pauses CSS animations briefly via `animation-play-state: paused` when `choreoStore.hitStopUntil > now`. 100–200ms typical. |
-| `DamageNumberLayer` | Spawns floating numbers from `choreoStore.damageNumbers`. Variants: `dmg` (red), `heal` (green), `pure` (purple), `crit` (gold-large), `white` (undefendable), `cp` (ember-gold). Sizes `sm / md / lg` based on amount. Auto-cull after 1.4s. |
-| `AttackEffectLayer` | Per-ability hit FX (radial accent burst, slash streaks, etc.). |
+| `DamageNumberLayer` | Spawns floating numbers from `choreoStore.damageNumbers`. **Post-revamp this layer only carries CP floaters (card sells)** — damage, heals, upkeep ticks, and detonations render in the middle-band `FieldOfPlay` via the `choreoStore.fop` scene slice. |
+| `FieldOfPlay` (mounted inside MatchScreen's middle band) | Renders `choreoStore.fop`: one scene per beat (`ability` / `damage` / `heal` / `upkeep` / `detonation`), set by `playEvent` through the `showFop(scene, duration)` helper and auto-cleared when the beat ends. |
 | `AbilityCinematicLayer` | Full-screen Tier-4 Ultimate cinematic: letterbox bars, slow-mo, hero name + bark line, accent glow. Reads from `choreoStore.cinematic`. |
 | `Banner` | Centered title overlay (see [`match-screen.md` Overlays](./match-screen.md#overlays)). |
 | `ActionLog` | Live event feed. |

@@ -1,134 +1,120 @@
 # UI: Match screen
 
-How `MatchScreen.tsx` is composed — the layout grid, every component that lives inside it, and the overlays that render on top.
+How `MatchScreen.tsx` is composed after the **seven-band revamp** — the band
+stack, every component inside it, and the overlays that render on top. The
+authoritative behavioral spec for this surface is the UI bible
+(`docs/pact-of-heroes-ui-bible.md`, Parts 2–7, revision 1.1); this page is
+the code map.
 
-For the choreographer, beat durations, state stores, and input gating see [`choreography.md`](./choreography.md). For tokens + theming see [`tokens-and-theming.md`](./tokens-and-theming.md).
+For the choreographer, beat durations, state stores, and input gating see
+[`choreography.md`](./choreography.md). For tokens + theming see
+[`tokens-and-theming.md`](./tokens-and-theming.md).
 
 ---
 
-## Layout
+## Layout — the seven bands
 
-`src/components/screens/MatchScreen.tsx`. The layout uses one CSS grid that reflows between mobile (single column) and desktop (3-column rail + center + rail).
-
-### Mobile (<1024px)
+`src/components/screens/MatchScreen.tsx` stacks seven horizontal bands in a
+single column (capped `max-w-2xl`, centered on desktop):
 
 ```
 ┌────────────────────────────────────────┐
-│ HeroPanel — opponent  (compact)        │  top
+│ 1 HeroStrip — opponent                 │  portrait orb · name · hand/deck
+│                                        │  counts · HP bar · CP · status track
 ├────────────────────────────────────────┤
-│ PhaseIndicator                         │
-│                                        │
-│ DiceTray  (dimmed outside roll phases) │  arena center
-│                                        │
+│ 2 PhaseBanner                          │  ◆ ROLL · 1 OF 3 ◆  (gold Cinzel)
 ├────────────────────────────────────────┤
-│ HeroPanel — active   (full + ladder)   │
-│                                        │
-│ Hand   (horizontal scroll, fanned)     │
+│ 3 DiceTray                             │  ACTIVE player's dice (defender's
+│                                        │  during a defensive flow)
 ├────────────────────────────────────────┤
-│ ActionBar  (fixed bottom, primary CTA) │  fixed
+│ 4 MiddleBand                           │  Ladder (T4→T1) ⇄ FieldOfPlay
+│                                        │  resolution overlay (dims ladder)
+├────────────────────────────────────────┤
+│ 5 HeroStrip — self  (frost tint)       │
+├────────────────────────────────────────┤
+│ 6 HandBand                             │  80×116 cards, scroll-snap
+├────────────────────────────────────────┤
+│ 7 MatchActionBar (fixed bottom)        │  Skip Turn · Reroll · N · Confirm
 └────────────────────────────────────────┘
 ```
 
-The opponent ladder is collapsed under their HeroPanel on mobile (read-only). The active hero's ladder hangs under their HeroPanel as a `CollapsibleLadder` (open by default).
-
-### Desktop (≥1024px)
-
-```
-┌──────────┬─────────────────┬──────────┐
-│ Opponent │ Opponent panel  │ My       │
-│ ladder   │   (top, capped  │ ladder   │
-│ rail     │    max-w-2xl)   │ rail     │
-│ (sticky) │                 │ (sticky) │
-│          ├─────────────────┤          │
-│          │ DiceTray +      │          │
-│          │ PhaseIndicator  │          │
-│          │ (centered)      │          │
-│          ├─────────────────┤          │
-│          │ My panel + Hand │          │
-│          │   (capped)      │          │
-└──────────┴─────────────────┴──────────┘
-                ActionBar (fixed bottom)
-```
-
-Both ladders sit in 340px sticky side rails (`lg:sticky lg:top-6`) — wide enough that ability names + short-text don't truncate at typical desktop widths. The center column is capped at `max-w-2xl` for symmetry between the opponent and active panels. The action bar stays fixed-bottom on both layouts.
+The middle band shows the **active player's** ladder and dice (bible 7.3.5.1):
+on the opponent's turn the viewer watches their dice lock and their rows light
+up. During a defensive flow the tray re-points at the defender. The viewer's
+strip is always frost-tinted and the non-viewer's ember-tinted — a self /
+non-self encoding independent of hero element.
 
 ### Atmospheric background
 
-`HeroBackground` renders a full-bleed atmospheric layer behind everything. It cross-fades when the active player changes — particles drift in the active hero's accent color. Intensity is `"ambient"` during a match, `"full"` on the HeroSelect screen.
+`HeroBackground` renders a full-bleed atmospheric layer behind everything,
+cross-fading when the active player changes. Unchanged from the pre-revamp
+screen.
 
-### Hot-seat curtain
+### Hot-seat curtain / Result screen
 
-`HotSeatCurtain` is a full-screen overlay that raises when `state.activePlayer` changes mid-match in hot-seat mode. The viewer (whose perspective the screen renders from) doesn't change automatically — the curtain forces an explicit hand-off so player 2 doesn't see player 1's hand.
-
-### Result screen
-
-`ResultScreen` is a full-screen overlay rendered when `state.winner` is set. It runs `buildMatchSummary(matchLog, ...)` to produce a stats panel — turn count, total damage, biggest hit, ability landings — plus rematch / menu CTAs.
+`HotSeatCurtain` and `ResultScreen` keep their pre-revamp contracts (see git
+history); both mount from `MatchScreen` as before.
 
 ---
 
-## Component catalog
+## Match components (`src/components/match/`)
 
-### `src/components/ui/` — primitives
+| Component | File | Notes |
+|---|---|---|
+| `HeroStrip` | `HeroStrip.tsx` | Three-row strip per the bible: name + indicators / HP / CP + StatusTrack. `perspective="self" \| "opponent"` drives the tint. Damage/heal flash on hp change; HP bar has a wound-lag layer, shimmer, and a dawn over-heal segment; deck indicator pulses gold at ≤3 cards. |
+| `PhaseBanner` | `PhaseBanner.tsx` | Diamond-bracketed Cinzel microcopy per phase/prompt, "Opponent · " prefix on their turn; live FOP scenes override the copy ("Resolving · Cleave"). |
+| `Ladder` + `ExpandedAbilityView` | `LadderV2.tsx` | Rows T4→T1 over `activeOffense` resolved through `resolveAbilityFor`. The AbilityValueBadge shows *current achievable* value (scaling-damage counts settled matching dice; conditional 0-base heals fall back to a utility glyph). UI lethal kill-preview (`value ≥ opponent.hp` on a committable row) drives the crimson `animate-lethal-pulse` treatment and the modal's "LETHAL STRIKE" commit. Tap any row → inspection modal with per-pip combo readiness; Activate only for firing/triggered rows on the viewer's turn. |
+| `ComboPipStrip` | `ComboPips.tsx` | pulse / gold / outlined pip derivation for all combo kinds (symbol-count, n-of-a-kind, straight, compound + legacy). Tumbling dice contribute nothing — locked dice keep pulse pips through a reroll, unlocked gold pips revert to outlined. |
+| `StatusTrack` + chips | `chips.tsx` | Valence-grouped (positive left / negative right, thin gold divider, faint green/red group tints). `SignatureChip`: Frost-bite, Cinder (conic fuse ring at stacks/5, warn-pulse at 4), Verdict. `SignatureCounter`: Frenzy/Radiance from `signatureState`, rectangular, visible even at 0 (dimmed). `StatusChip`: universal statuses colored via the engine's `visualTreatment` registry. |
+| `FieldOfPlay` | `FieldOfPlay.tsx` | Middle-band resolution cinematic driven by `choreoStore.fop`: ability name (tone-tinted radial backdrop + capped CSS particles), damage number (Cinzel overshoot pop, type-colored: pure violet / undefendable white / crimson on kill), heal, upkeep beats (status ticks, +N CP, Draw + card name), Cinder detonation (bursting chips + equation caption). Reduced-motion: no particles, fades only. |
+| `HandBand` + `HandCard` + `ExpandedCardView` | `HandBand.tsx` | Bible card anatomy at 80×116: overhanging cost pip (gold = affordable, ember-ringed = not), `cardCategory`-tinted illustration glyph (generic ◆ / dice-manip ⚄ / ladder-upgrade ▲ / signature ✦), name strip, compact effect text, kind tag. Scroll-snap row; tap → expanded view with Play / Sell · +1 CP / Cancel. |
+| `MatchActionBar` | `MatchActionBar.tsx` | Skip Turn always present leftmost (muted variant, confirmation sheet per the bible); contextual primary right: Roll / Reroll · N + Confirm / End Turn; non-interactive ember "Opponent · {phase}" indicator on their turn. |
 
-| Component | Purpose |
-|---|---|
-| `Button` | Primary CTA. Variants: `primary` (accent-filled), `ghost`, `surface`. Sizes: `sm` / `md` / `lg`. Optional `heroAccent` prop for per-hero theming. Plays a `sound` SFX on press unless `sound={null}`. |
-| `HealthBar` | HP bar with optional label. Colors: green→amber→red gradient via accent. Animated width transitions on hp-changed. |
-| `CPMeter` | Pip row showing current CP / cap. Filled pips up to current; pulsing pip on the next-fillable slot. |
-| `Tooltip` | Hover/long-press tooltip. Mobile: long-press; desktop: hover. Auto-positions to stay in viewport. |
+## Legacy components
 
-### `src/components/game/` — match parts
-
-| Component | Purpose |
-|---|---|
-| `HeroPanel` | Portrait + name + HP + CP + status track + optional collapsible ladder (mobile only). Two variants: `opponent` (compact, top of screen) and `active` (full). Reactive to `hero-state` events from the choreographer — portrait shifts to hit / defended / low-hp / victorious / defeated. |
-| `HeroPortrait` | Per-hero sigil renderer. Falls back to a generic concentric-circle placeholder when no sigil is registered. Accent-glow ring on the active player. State variants drive subtle pose / glow shifts. |
-| `AbilityLadder` | Vertical stack of ability rows, T4 at top → T1 at bottom, grouped under "Tier N — Basic/Strong/Signature/Ultimate" headers (no per-row tier number — position under the header conveys it). Live-state styling per row: FIRING (bright glow + scale 1.04 + READY flag), TRIGGERED (60% glow + scale 1.02), REACHABLE (default + % badge), OUT-OF-REACH (40% opacity desaturated). LETHAL flag overlays a red-gold border + skull badge + bell sting on first appearance. Combos render as inline face-icons, not text. **Click-to-fire**: during `offensive-roll`, the active player can tap any FIRING or TRIGGERED row in their own ladder to open a confirm modal — confirming dispatches `advance-phase + select-offensive-ability` for that index, skipping the full picker overlay. |
-| `DiceTray` | 5 hero dice in a row. Tap to lock/unlock during offensive roll. Tumble animation on `dice-rolled` AND `defense-dice-rolled` events (900ms mobile / 1200ms desktop, 260ms in reduced-motion). Each die plays an overshoot bounce on land + dust + thud SFX + haptic tick. Dimmed at 45% opacity outside roll phases. `centerStage` prop scales it up during offensive-roll for focus. **During a defense flow** (either `pendingAttack` is set or a `defense-*` event is queued/playing), the tray switches to render the defender's dice with the defender's hero accent — the `DefenseTray` wrapper in `MatchScreen.tsx` handles the swap. Locking is disabled while a defense is in flight. |
-| `Die` | Single die. Renders a hero-specific glyph for the current face symbol (via `FACE_GLYPHS`), tinted with the symbol's `FACE_TINT` color. Also shows a small numeric face-value corner badge so straights and n-of-a-kind combos remain readable when several die faces share a symbol. Lock overlay = small padlock + dim background. |
-| `Hand` | Horizontally scrolling card row. Tap a card → lifts (scale 1.05 + translate-y -3 + accent ring) and opens a CardLiftedOverlay with PLAY / Sell / Cancel. Long-press for inspect tooltip. Cards that aren't currently playable fade to 60% opacity with a "not playable" badge. |
-| `CardView` | Single card. Visual treatment differentiates kind label (ACTION / ROLL / INSTANT / MASTERY / etc.), shows cost in an ember-gold disc, name in display font, text in body, optional flavor in italics. Hero-specific cards get the hero accent in the kind chip. |
-| `ActionBar` | Bottom-anchored phase-driven CTAs. Most phases show a single primary button (ROLL on `main-pre`, END TURN on `main-post`, OPPONENT'S TURN / MATCH OVER otherwise). On `offensive-roll` the bar splits into TWO equal-width buttons when rerolls remain: CONFIRM (primary) and REROLL (N left) (secondary). Once attempts hit zero, only CONFIRM remains. Includes a left-side menu button. |
-| `PhaseIndicator` | Small banner above the dice tray showing phase name + active player + "thinking..." spinner when AI is acting. |
-| `StatusTrack` / `StatusBadge` / `StatusIcon` | Status token chip row. Each chip shows the icon + stack count. Pulses if the status's `pulse` flag is set. Hover/long-press for tooltip. |
-| `dieFaces.tsx` | `FACE_GLYPHS: Record<symbol, ReactNode>` and `FACE_TINT: Record<symbol, hex>`. Currently populated for all three shipping heroes: Berserker (axe / fur / howl), Pyromancer (ash / ember / magma / ruin), Lightbearer (sword / sun / dawn / zenith). New heroes register their glyphs by extending these maps. |
-| `HotSeatCurtain` | Full-screen hand-off overlay between turns in hot-seat mode. Shows the next player's hero portrait + "Pass to PX" + a big TAP TO CONTINUE button. |
-
-### `src/components/screens/` — full screens
-
-`MainMenu`, `HeroSelect`, `MatchScreen`, `HowToPlay`, `Settings`, `ResultScreen`, `DevComponents`, `DevTokens`. See the [route map](./README.md#routes--screens).
-
-### `src/components/effects/` — choreography + overlays
-
-See [Overlays](#overlays) below and [`choreography.md`](./choreography.md).
+`HeroPanel`, `AbilityLadder` (v1), `Hand`, `CardView`, `ActionBar`,
+`PhaseIndicator`, `HealthBar`, and `CPMeter` under `src/components/game/` +
+`src/components/ui/` are retained for the dev benches (`/dev/components`) and
+other screens, but the match screen no longer mounts them. New match-surface
+work should target `src/components/match/`. `Die`, `DiceTray`,
+`dieFaces.tsx`, `HeroPortrait`, and `HotSeatCurtain` remain first-class and
+are shared by the revamped screen.
 
 ---
 
 ## Overlays
 
-Bottom-anchored or full-screen modal layers gated on the choreographer being idle. Listed roughly in z-order from lowest to highest.
+Rendered by `Choreographer` at app root; gated on the choreographer being
+idle. Z-order follows bible Part 6.4.
 
-| Overlay | Trigger | Z | Behaviour |
-|---|---|---|---|
-| `ResultScreen` | `state.winner != null` | full | Match summary + rematch / menu CTAs. Replaces the match UI entirely. |
-| `HotSeatCurtain` | `state.activePlayer` flips in hot-seat mode | 60 | Full-screen hand-off. Player must tap to continue. |
-| `CardLiftedOverlay` (in `Hand.tsx`) | Active card lifted | 30 | Dimmed backdrop + enlarged card + PLAY / Sell / Cancel buttons. Tap outside dismisses. |
-| `AttackSelectLayer` | `state.pendingOffensiveChoice && useInputUnlocked()` | 50 | **Active player picks which ability to fire.** Lists each match with tier chip, base damage, short text, damage type. Pass option at bottom. AI auto-picks `matches[0]`. See [Engine §11 attack flow](../engine/runtime.md#11-events--the-choreographer). |
-| `DefenseSelectLayer` | `state.pendingAttack && useInputUnlocked()` | 50 | **Defender picks which defense to attempt.** Shows incoming damage + type + tier; lists each defense with combo, dice count, effect. "Take it" option for no defense. AI picks highest-tier defense. The pick auto-rolls and resolves in a single dispatch — there is no separate ROLL action for defense. |
-| `DefenseStatusPanel` | `state.pendingAttack` set OR a `defense-*` event queued/playing | 40 | **Persistent context panel** pinned top-center while a defense is in flight. Shows the defender's accent header, the incoming attack name + damage, the chosen defense's combo strip + name + dice count, and a live status that progresses `DEFENDING…` → `ROLLING…` → `DEFENDED −X` (green) / `MISSED` (red). Lives separately from the picker so the player keeps full context through the entire choreography (picker disappears on click; this panel stays through the dice tumble and damage application). |
-| `InstantPromptLayer` | Choreographer detects a playable Instant after a qualifying event | 50 | 1.5s TTL countdown bar + Instant card buttons + Skip. Auto-closes on TTL. |
-| `Banner` | `bannerText` set in choreoStore | 40 | Centered title overlay used for `match-started`, `turn-started`, `match-won`, `attack-intended` (as "X → AbilityName"), `offensive-pick-prompt` (as "PICK YOUR ATTACK"). Auto-fades. |
-| `ActionLog` | Always rendered | 5 | Right-side feed of recent events (or bottom-corner on mobile). Every event maps to an optional one-line entry via `formatEvent` in `ActionLog.tsx`. |
+| Overlay | Trigger | Behaviour |
+|---|---|---|
+| `ResultScreen` | `state.winner != null` | Match summary + rematch / menu CTAs. |
+| `HotSeatCurtain` | active player flips in hot-seat | Full-screen hand-off. |
+| `ExpandedCardView` (in `HandBand.tsx`) | card tapped | Enlarged card + Play / Sell / Cancel. |
+| `ExpandedAbilityView` (in `LadderV2.tsx`) | ladder row tapped | Combo readiness + Activate / Lethal Strike. |
+| `AttackSelectLayer` | `pendingOffensiveChoice` + input unlocked | Pick which matched ability fires; Pass at bottom. |
+| `DefenseSelectLayer` | `pendingAttack` + input unlocked | **The DefensiveOverlay (bible 6.1):** centered ember "— Incoming —" block (amount, ability, damage type), two equal-weight frost defense rows (name, effect, frost combo pips, `ND` dice badge — no engine recommendation by design), then "Take It". |
+| `DefenseStatusPanel` | defense in flight | Persistent context pinned top-center through the defender's roll. |
+| `InstantPromptLayer` | playable Instant after a qualifying event | TTL countdown + card buttons + Skip. |
+| `AbilityCinematicLayer` | `ultimate-fired` | T4 full-screen takeover. |
+| `Banner` | `bannerText` set | Gold Cinzel announcer with diamond brackets (match/turn/attack events). |
+| `ActionLog` | always | Corner feed of recent events. |
+| `DamageNumberLayer` | CP floaters (card sells) | Damage itself now renders in the FieldOfPlay, not as floaters. |
 
 ### Why "input unlocked" gating
 
-Both `AttackSelectLayer` and `DefenseSelectLayer` only render when `useInputUnlocked()` returns true (queue empty + nothing playing + no cinematic running). This guarantees the lead-up choreography (e.g. the ability-triggered attack-effect, or the attack-intended banner) plays out before the picker overlay takes the floor. Gating happens in the layer itself, not in the choreographer pump — the queue still drains normally.
+`AttackSelectLayer` and `DefenseSelectLayer` only render when
+`useInputUnlocked()` is true (queue empty + nothing playing + no cinematic) so
+the lead-up choreography lands before a picker takes the floor. Gating happens
+in the layer, not the pump.
 
 ---
 
 ## See also
 
-- [`choreography.md`](./choreography.md) — choreographer pump, beat durations, input gating
-- [`tokens-and-theming.md`](./tokens-and-theming.md) — design tokens, hero theming pipeline
+- [`choreography.md`](./choreography.md) — choreographer pump, beat durations, the `fop` scene slice, input gating
+- [`tokens-and-theming.md`](./tokens-and-theming.md) — design tokens (night/gold palette), hero theming pipeline
 - [`README.md`](./README.md) — UI overview, routes, accessibility, audio, PWA
+- [`../pact-of-heroes-ui-bible.md`](../pact-of-heroes-ui-bible.md) — the authoritative UI spec (revision 1.1)
 - [`../engine/runtime.md`](../engine/runtime.md) — events + choreographer behaviour from the engine side
