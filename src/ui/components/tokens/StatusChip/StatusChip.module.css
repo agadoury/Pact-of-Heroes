@@ -1,0 +1,68 @@
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  background: rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+  color: var(--bone);
+}
+
+.badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 12px;
+  height: 12px;
+  padding: 0 2px;
+  border-radius: 50%;
+  background: rgba(10, 10, 20, 0.95);
+  border: 1px solid currentColor;
+  font-family: var(--font-family-tech);
+  font-size: 8px;
+  font-weight: 700;
+  color: currentColor;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.burn      { color: var(--ember-bright);           background: rgba(200, 74, 42, 0.15); }
+.stun      { color: var(--electric-purple-bright); background: rgba(167, 120, 255, 0.15); }
+.regen     { color: var(--green-bright);           background: rgba(74, 140, 90, 0.15); }
+.shield    { color: var(--frost-bright);           background: rgba(74, 140, 200, 0.15); }
+.protect   { color: var(--frost-bright);           background: rgba(74, 140, 200, 0.18); }
+.bleeding  { color: var(--crimson-bright);         background: rgba(196, 56, 72, 0.15); }
+.radiance  { color: var(--gold-bright);            background: rgba(212, 165, 72, 0.18); }
+.frenzy    { color: var(--frost-bright);           background: rgba(108, 176, 232, 0.18); }
+.frostbite { color: var(--frost-bright);           background: rgba(108, 176, 232, 0.15); }
+.cinder    { color: var(--ember-bright);           background: rgba(240, 104, 72, 0.15); }
+.verdict   { color: var(--dawn-bright);            background: rgba(251, 191, 36, 0.15); }
+.defense-handicap { color: var(--electric-purple-bright); background: rgba(167, 120, 255, 0.15); }
+
+.applying  { animation: chip-applying 250ms ease-out; }
+.expiring  { animation: chip-expiring 350ms ease-in;  }
+.ticking   { animation: chip-ticking  200ms ease-out; }
+
+@keyframes chip-applying {
+  0%   { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+@keyframes chip-expiring {
+  0%   { transform: scale(1);   opacity: 1; filter: saturate(1); }
+  100% { transform: scale(0.9); opacity: 0; filter: saturate(0); }
+}
+@keyframes chip-ticking {
+  0%   { transform: scale(1);   }
+  50%  { transform: scale(0.9); }
+  100% { transform: scale(1);   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .applying, .expiring, .ticking { animation: none; }
+}

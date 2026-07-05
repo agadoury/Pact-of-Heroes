@@ -1,0 +1,79 @@
+.strip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-3) var(--space-6);
+  width: 100%;
+  height: 100%;
+  border-bottom: 1px solid var(--frame-stroke);
+  transition: background 400ms ease;
+}
+
+.opponent {
+  background: linear-gradient(180deg,
+    rgba(200, 74, 42, 0.08) 0%,
+    rgba(110, 32, 16, 0.04) 100%);
+}
+
+.self {
+  background: linear-gradient(180deg,
+    rgba(74, 140, 200, 0.08) 0%,
+    rgba(26, 58, 90, 0.04)  100%);
+}
+
+.damageFlash {
+  animation: damage-flash 400ms ease-out;
+}
+
+@keyframes damage-flash {
+  0%   { background-color: rgba(240, 104, 72, 0.35); }
+  100% { background-color: transparent; }
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 16px;
+}
+
+.name {
+  font-family: var(--font-family-display);
+  font-size: var(--font-strip-name);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-cinzel-default);
+  text-transform: uppercase;
+  color: var(--bone);
+}
+
+.opponent .name { color: var(--ember-bright); }
+.self .name     { color: var(--frost-bright); }
+.element-dawn.self  .name { color: var(--dawn-bright); }
+.element-ember.self .name { color: var(--ember-bright); }
+
+.hpRow, .cpRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 14px;
+}
+
+.statusTrackSlot {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .damageFlash { animation: none; }
+}

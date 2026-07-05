@@ -1,0 +1,66 @@
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--frost);
+  background: linear-gradient(90deg,
+    rgba(20, 24, 40, 0.85),
+    rgba(26, 30, 48, 0.65));
+  cursor: pointer;
+  transition:
+    border-color 250ms ease,
+    background 250ms ease,
+    box-shadow 250ms ease;
+  min-height: 44px;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-family: var(--font-family-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-cinzel-default);
+  color: var(--bone);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text {
+  font-family: var(--font-family-body);
+  font-size: 10.5px;
+  font-style: italic;
+  color: var(--bone-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selected {
+  border-color: var(--dawn-bright);
+  background: linear-gradient(90deg,
+    rgba(30, 36, 60, 0.9),
+    rgba(36, 42, 68, 0.75));
+  box-shadow:
+    0 0 0 1px var(--dawn-bright),
+    0 0 12px rgba(253, 224, 136, 0.3);
+}
+
+.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 70%;
+  background: var(--dawn-bright);
+  border-radius: 0 2px 2px 0;
+}

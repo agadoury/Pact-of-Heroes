@@ -1,0 +1,43 @@
+.value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 18px;
+  font-family: var(--font-family-tech);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--gold-bright);
+  font-variant-numeric: tabular-nums;
+  transition: color 200ms ease, transform 200ms ease;
+}
+
+.capped {
+  color: var(--dawn-bright);
+  text-shadow: 0 0 4px rgba(253, 224, 136, 0.6);
+}
+
+.gaining {
+  animation: cp-gain-pulse 200ms ease-out;
+}
+
+.spending {
+  animation: cp-spend-flash 150ms ease-out;
+}
+
+@keyframes cp-gain-pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.15); color: var(--gold-glow); }
+  100% { transform: scale(1); }
+}
+
+@keyframes cp-spend-flash {
+  0%   { color: var(--gold-bright); }
+  50%  { color: var(--ember-bright); }
+  100% { color: var(--gold-bright); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gaining, .spending { animation: none; }
+}

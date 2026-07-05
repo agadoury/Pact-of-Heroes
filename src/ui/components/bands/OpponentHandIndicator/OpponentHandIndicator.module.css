@@ -1,0 +1,33 @@
+.indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 16px;
+  min-width: 18px;
+  padding: 1px 4px 1px 3px;
+  border-radius: 2px;
+  background: linear-gradient(180deg,
+    rgba(40, 40, 60, 0.55),
+    rgba(20, 20, 40, 0.4));
+  border: 1px solid rgba(200, 74, 42, 0.4);
+  font-family: var(--font-family-tech);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--bone);
+  margin-left: auto;
+}
+
+.icon {
+  font-size: 8.5px;
+  letter-spacing: -0.5px;
+  color: var(--bone-dim);
+  line-height: 1;
+}
+
+.count {
+  line-height: 1;
+}
+
+.indicator + span[data-deck-indicator] {
+  margin-left: var(--space-2);
+}

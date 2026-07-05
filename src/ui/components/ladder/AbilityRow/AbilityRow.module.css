@@ -1,0 +1,159 @@
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  border: 1px solid rgba(212, 165, 72, 0.22);
+  background: linear-gradient(90deg,
+    rgba(20, 20, 42, 0.85),
+    rgba(26, 24, 48, 0.65));
+  cursor: pointer;
+  transition:
+    border-color 250ms ease,
+    background 250ms ease,
+    box-shadow 250ms ease;
+  min-height: 44px;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.name {
+  font-family: var(--font-family-display);
+  font-size: var(--font-ability-name);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: var(--letter-spacing-cinzel-default);
+  color: var(--bone);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text {
+  font-family: var(--font-family-body);
+  font-size: 10.5px;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--bone-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lethalCondition {
+  font-family: var(--font-family-display);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--crimson-bright);
+}
+
+/* -------------------------------------------------------------- */
+/* States                                                         */
+/* -------------------------------------------------------------- */
+
+.eligible {
+  border-color: var(--gold);
+  background: linear-gradient(90deg,
+    rgba(60, 44, 12, 0.5),
+    rgba(40, 30, 10, 0.35));
+  box-shadow:
+    0 0 0 1px var(--gold),
+    0 0 16px rgba(212, 165, 72, 0.35);
+}
+.eligible .name { color: var(--gold-bright); text-shadow: 0 0 4px rgba(240, 198, 104, 0.4); }
+.eligible .text { color: var(--bone); }
+.eligible::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 70%;
+  background: var(--gold);
+  box-shadow: 0 0 6px var(--gold-bright);
+  border-radius: 0 2px 2px 0;
+}
+
+.near-eligible {
+  border-color: var(--gold-dim);
+  background: linear-gradient(90deg,
+    rgba(40, 32, 10, 0.45),
+    rgba(26, 24, 48, 0.65));
+}
+.near-eligible::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 50%;
+  background: var(--gold-dim);
+  opacity: 0.7;
+  border-radius: 0 2px 2px 0;
+}
+
+.ultimate {
+  /* Same as default — row position carries T4 info */
+}
+
+.ultimate-eligible {
+  border-color: var(--dawn);
+  box-shadow:
+    0 0 0 1px var(--dawn),
+    0 0 18px rgba(251, 191, 36, 0.45);
+}
+.ultimate-eligible .name { color: var(--dawn-bright); text-shadow: 0 0 4px rgba(253, 224, 136, 0.4); }
+.ultimate-eligible::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 70%;
+  background: var(--dawn);
+  box-shadow: 0 0 6px var(--dawn-bright);
+  border-radius: 0 2px 2px 0;
+}
+
+.ultimate-lethal {
+  border-color: var(--crimson-bright);
+  background: linear-gradient(90deg,
+    rgba(138, 24, 40, 0.55),
+    rgba(60, 16, 16, 0.4));
+  animation: lethal-pulse 1200ms ease-in-out infinite;
+}
+.ultimate-lethal .name {
+  color: var(--crimson-bright);
+  text-shadow: 0 0 6px rgba(196, 56, 72, 0.6);
+}
+.ultimate-lethal::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 70%;
+  background: var(--crimson-bright);
+  box-shadow: 0 0 8px var(--crimson-bright);
+  border-radius: 0 2px 2px 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ultimate-lethal { animation: none; }
+}

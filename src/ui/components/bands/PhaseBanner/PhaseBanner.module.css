@@ -1,0 +1,109 @@
+.banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  width: 100%;
+  height: 100%;
+  padding: 0 var(--space-6);
+  border-bottom: 1px solid rgba(212, 165, 72, 0.2);
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(212, 165, 72, 0.18),
+    transparent);
+  font-family: var(--font-family-display);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: var(--letter-spacing-cinzel-banner);
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.tone-ember {
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(200, 74, 42, 0.22),
+    transparent);
+  color: var(--ember-bright);
+}
+
+.tone-frost {
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(74, 140, 200, 0.22),
+    transparent);
+  color: var(--frost-bright);
+}
+
+.tone-dawn {
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(251, 191, 36, 0.22),
+    transparent);
+  color: var(--dawn-bright);
+}
+
+.tone-crimson {
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(196, 56, 72, 0.25),
+    transparent);
+  color: var(--crimson-bright);
+}
+
+.tone-green {
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(74, 140, 90, 0.22),
+    transparent);
+  color: var(--green-bright);
+}
+
+.tone-toxic-green {
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(110, 200, 84, 0.22),
+    transparent);
+  color: var(--toxic-green-bright);
+}
+
+.diamond {
+  font-size: 8px;
+  color: var(--gold-dim);
+  user-select: none;
+}
+
+.text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.logTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  color: var(--gold-dim);
+  cursor: pointer;
+  transition: background 200ms ease, color 200ms ease;
+}
+.logTrigger:hover {
+  background: rgba(212, 165, 72, 0.15);
+  color: var(--gold-bright);
+}
+.pulsing {
+  animation: banner-log-pulse 600ms ease-in-out 2;
+}
+
+@keyframes banner-log-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240, 198, 104, 0); transform: scale(1); }
+  50%      { box-shadow: 0 0 6px 2px rgba(240, 198, 104, 0.7); transform: scale(1.15); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulsing { animation: none; }
+}

@@ -1,0 +1,54 @@
+.token {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1.5px solid currentColor;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.frostbite { color: var(--frost-bright); background: linear-gradient(180deg, rgba(108, 176, 232, 0.35), rgba(74, 140, 200, 0.2)); }
+.verdict   { color: var(--dawn-bright);  background: linear-gradient(180deg, rgba(253, 224, 136, 0.35), rgba(212, 165, 72, 0.2)); }
+.cinder    {
+  color: var(--dawn-bright);
+  background: linear-gradient(180deg,
+    rgba(240, 104, 72, 0.55),
+    rgba(200, 74, 42, 0.3));
+  border: 1.5px solid var(--dawn-bright);
+  opacity: 1;
+  box-shadow: 0 0 8px rgba(240, 104, 72, 0.7),
+              0 0 16px rgba(240, 104, 72, 0.35);
+}
+
+.strike {
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  top: 50%;
+  height: 1.5px;
+  background: currentColor;
+  box-shadow: 0 0 4px currentColor;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.burst.cinder::before {
+  content: '';
+  position: absolute;
+  top: -10px; left: 50%;
+  width: 2px; height: 8px;
+  background: linear-gradient(180deg, var(--dawn-bright), transparent);
+  transform: translateX(-50%);
+}
+.burst.cinder::after {
+  content: '';
+  position: absolute;
+  bottom: -10px; left: 50%;
+  width: 2px; height: 8px;
+  background: linear-gradient(0deg, var(--dawn-bright), transparent);
+  transform: translateX(-50%);
+}

@@ -1,0 +1,90 @@
+.die {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1a2840 0%, #0e1828 100%);
+  border: 1.5px solid var(--frost);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(108, 176, 232, 0.25);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 200ms ease,
+    border-color 200ms ease,
+    transform 100ms ease;
+}
+
+.die:disabled { cursor: default; }
+.die:active:not(:disabled) { transform: scale(0.95); }
+
+.die.readonly { cursor: default; }
+
+.die.locked {
+  background: linear-gradient(135deg, #3a2814 0%, #1a1408 100%);
+  border-color: var(--gold);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(240, 198, 104, 0.3),
+    0 0 8px rgba(212, 165, 72, 0.4);
+}
+
+.die.rolling {
+  animation: dice-tumble 600ms ease-in-out infinite;
+}
+
+.number {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  font-family: var(--font-family-tech);
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--bone-dim);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  z-index: 2;
+}
+
+.locked .number {
+  color: var(--gold-bright);
+}
+
+.glyph {
+  font-family: var(--font-family-display);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--frost-bright);
+  text-shadow: 0 0 4px rgba(108, 176, 232, 0.4);
+}
+
+.element-ember .glyph { color: var(--ember-bright); text-shadow: 0 0 4px rgba(240, 104, 72, 0.4); }
+.element-dawn  .glyph { color: var(--dawn-bright);  text-shadow: 0 0 4px rgba(251, 191, 36, 0.4); }
+
+.locked .glyph { color: var(--gold-bright); text-shadow: 0 0 4px rgba(240, 198, 104, 0.5); }
+
+.lockBadge {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--night-deep);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .die.rolling { animation: none; transform: rotate(6deg); }
+  .die:active:not(:disabled) { transform: none; }
+}
