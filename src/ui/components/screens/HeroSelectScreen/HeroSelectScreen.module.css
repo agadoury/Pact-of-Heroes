@@ -1,0 +1,151 @@
+.page {
+  width: 100%;
+  min-height: 100dvh;
+  padding: var(--space-6);
+  overflow-y: auto;
+  background: linear-gradient(180deg,
+    var(--night-stone) 0%,
+    var(--night-deep) 100%);
+  color: var(--bone);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--frame-stroke);
+}
+
+.back {
+  font-family: var(--font-family-tech);
+  font-size: 10px;
+  color: var(--bone-dim);
+  cursor: pointer;
+  padding: var(--space-2) var(--space-4);
+}
+.back:hover { color: var(--gold-bright); }
+
+.title {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-family-display);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  color: var(--gold-bright);
+  text-transform: uppercase;
+}
+
+.section h2 {
+  font-family: var(--font-family-display);
+  font-size: 10px;
+  letter-spacing: 0.4em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: var(--space-3);
+}
+
+.heroRow {
+  display: flex;
+  gap: var(--space-4);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+
+.heroCard {
+  flex-shrink: 0;
+  width: 100px;
+  height: 130px;
+  padding: var(--space-4);
+  border-radius: 6px;
+  border: 2px solid var(--frame-stroke);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 20%, var(--night-stone)),
+    var(--night-mid));
+  color: var(--bone);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: border-color 200ms, transform 150ms;
+}
+.heroCard:hover  { border-color: var(--accent); }
+.selected {
+  border: 3px solid var(--gold);
+  transform: translateY(-2px);
+}
+
+.opponentCard {
+  height: 100px;
+}
+
+.heroName {
+  font-family: var(--font-family-display);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.heroArchetype {
+  font-family: var(--font-family-body);
+  font-size: 10px;
+  font-style: italic;
+  color: var(--bone);
+  text-transform: capitalize;
+}
+
+.heroComplexity {
+  font-family: var(--font-family-display);
+  font-size: 10px;
+  color: var(--gold-bright);
+}
+
+.detail {
+  padding: var(--space-6);
+  border-top: 1px solid var(--frame-stroke);
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+}
+
+.detailQuote {
+  font-family: var(--font-family-body);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--bone-bright);
+  margin-bottom: var(--space-4);
+}
+
+.detailSig {
+  font-family: var(--font-family-body);
+  font-size: 12px;
+  color: var(--bone);
+}
+
+.detailSig strong {
+  color: var(--gold-bright);
+  font-weight: 700;
+}
+
+.detailSigDesc {
+  margin-top: var(--space-2);
+  font-style: italic;
+  color: var(--bone-dim);
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4) 0;
+  margin-top: auto;
+}
+
+.actions button {
+  width: 100%;
+  max-width: 280px;
+  height: 48px;
+}

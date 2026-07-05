@@ -1,26 +1,42 @@
 .band {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-bottom: 1px solid var(--frame-stroke);
   flex-shrink: 0;
-  color: var(--bone-dim);
   position: relative;
+  min-height: 0;
 }
 
-.band[data-band='opp-strip']    { height: var(--band-opponent-strip); background: rgba(200, 74, 42, 0.05); }
-.band[data-band='phase-banner'] { height: var(--band-phase-banner);    background: linear-gradient(90deg, transparent, rgba(212, 165, 72, 0.12), transparent); }
-.band[data-band='dice-tray']    { height: var(--band-dice-tray);       background: radial-gradient(ellipse at center, rgba(74, 140, 200, 0.06), transparent 70%); }
-.band[data-band='middle']       { height: var(--band-middle);          background: radial-gradient(ellipse at 50% 50%, rgba(212, 165, 72, 0.04) 0%, transparent 70%); }
-.band[data-band='self-strip']   { height: var(--band-self-strip);      background: rgba(74, 140, 200, 0.05); }
-.band[data-band='hand']         { height: var(--band-hand);            background: linear-gradient(0deg, rgba(0,0,0,0.5), transparent); }
-.band[data-band='action-bar']   { height: var(--band-action-bar);      background: linear-gradient(0deg, rgba(0,0,0,0.7), rgba(0,0,0,0.4)); border-bottom: 0; }
+.band[data-band='opp-strip']    { height: var(--band-opponent-strip); }
+.band[data-band='phase-banner'] { height: var(--band-phase-banner); }
+.band[data-band='dice-tray']    { height: var(--band-dice-tray); }
+.band[data-band='middle']       { height: var(--band-middle); }
+.band[data-band='self-strip']   { height: var(--band-self-strip); }
+.band[data-band='hand']         { height: var(--band-hand); }
+.band[data-band='action-bar']   { height: var(--band-action-bar); }
 
-.stub {
-  font-family: var(--font-family-tech);
-  font-size: var(--font-tech);
-  font-weight: 600;
-  letter-spacing: var(--letter-spacing-tech-eyebrow);
-  text-transform: uppercase;
-  color: var(--bone-deeper);
+.noMatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: var(--space-10);
+  gap: var(--space-6);
+  color: var(--bone);
+  background: var(--night-deep);
+}
+
+.noMatchTitle {
+  font-family: var(--font-family-display);
+  font-size: 22px;
+  color: var(--gold-bright);
+}
+
+.noMatchButton {
+  padding: var(--space-4) var(--space-10);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold-dim));
+  color: var(--night-deep);
+  font-family: var(--font-family-display);
+  font-weight: 700;
+  cursor: pointer;
 }
