@@ -14,7 +14,9 @@
 import { create } from "zustand";
 import type { Action, CardId, GameEvent, GameState, HeroId, LoadoutSelection, PlayerId } from "@/game/types";
 import { applyAction, makeEmptyState } from "@/game/engine";
-import { enqueueEvents, useChoreoStore } from "./choreoStore";
+// choreoStore was retired with the v0.2 UI rebuild — the new src/ui/ tree
+// consumes lastEvents directly via the FOPScene aggregator. gameStore.dispatch
+// no longer needs to pump into an event queue store; subscribers pull.
 import { loadDeck } from "./deckStorage";
 import { loadLoadout } from "./loadoutStorage";
 
@@ -68,7 +70,6 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       p1Deck: resolvedP1Deck, p2Deck: resolvedP2Deck,
       p1Loadout: resolvedP1Loadout, p2Loadout: resolvedP2Loadout,
     });
-    enqueueEvents(r.events);
     set({
       state: r.state,
       mode,
@@ -82,7 +83,6 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const cur = get().state;
     if (!cur) return;
     const r = applyAction(cur, action);
-    enqueueEvents(r.events);
     set(s => ({
       state: r.state,
       lastEvents: r.events,
@@ -91,15 +91,6 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   },
 
   reset: () => {
-    useChoreoStore.getState().reset();
     set({ state: null, mode: "hot-seat", aiPlayer: null, lastEvents: [], matchLog: [] });
   },
 }));
-
-/** True iff no choreographer beats are pending — UI can accept user input. */
-export function useInputUnlocked(): boolean {
-  const queueLen = useChoreoStore(s => s.queue.length);
-  const playing  = useChoreoStore(s => !!s.playing);
-  const cinematic = useChoreoStore(s => !!s.cinematic);
-  return queueLen === 0 && !playing && !cinematic;
-}

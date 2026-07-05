@@ -16,12 +16,10 @@
   "dependencies": {
     "clsx": "^2.1.1",
     "framer-motion": "^11.5.4",
-    "gsap": "^3.12.5",
     "howler": "^2.2.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2",
-    "tailwind-merge": "^2.5.2",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
@@ -32,7 +30,6 @@
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.45",
-    "tailwindcss": "^3.4.10",
     "tsx": "^4.21.0",
     "typescript": "^5.5.4",
     "vite": "^5.4.3",
