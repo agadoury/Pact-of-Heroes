@@ -1,0 +1,11 @@
+/*
+ * Pact of Heroes — theme entry point.
+ *
+ * Import this once from src/main.tsx to pull in the entire design-token layer.
+ * Order matters: reset first, then tokens, then keyframes.
+ */
+
+@import './reset.css';
+@import './tokens.css';
+@import './fonts.css';
+@import './animations.css';

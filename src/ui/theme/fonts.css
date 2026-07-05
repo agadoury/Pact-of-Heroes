@@ -1,0 +1,21 @@
+/*
+ * Pact of Heroes — webfont loading.
+ *
+ * Three font families cover the entire UI:
+ *   - Cinzel:            headings, ability names, damage numbers, tier badges
+ *   - Cormorant Garamond: body text, ability effect text, italic emphasis
+ *   - JetBrains Mono:    technical data, dice counts, HP/CP numbers, status labels
+ *
+ * Loaded from Google Fonts with `display: swap` so first paint is fast even if
+ * fonts haven't arrived yet.
+ *
+ * The <link> in index.html handles the actual network request with preconnect
+ * hints; this file's role is to declare the family aliases the tokens
+ * reference (see theme/tokens.css --font-family-*).
+ *
+ * Bible reference: Part 1.2.
+ */
+
+/* No @font-face declarations needed — index.html loads Cinzel + Cormorant +
+ * JetBrains via a Google Fonts <link>, and the browser resolves the families
+ * by name. We keep this file as a placeholder for future self-hosted fonts. */

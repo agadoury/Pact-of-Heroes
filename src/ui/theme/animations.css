@@ -1,0 +1,154 @@
+/*
+ * Pact of Heroes — shared @keyframes.
+ *
+ * Every keyframe used by more than one component lives here. Component CSS
+ * modules reference them by name; do not redeclare keyframes locally.
+ *
+ * Reduced-motion behavior: individual components either branch on the
+ * `useReducedMotion()` hook to skip animation, or use the `@media
+ * (prefers-reduced-motion: reduce)` overrides at the bottom of this file
+ * (or in their own module) to pause / replace the animation with a held
+ * peak state.
+ *
+ * Bible reference: Part 1.5.
+ */
+
+/* ============================================================
+ * Cinder threshold pulse — used when stacks >= 5
+ * ============================================================ */
+@keyframes cinder-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 6px rgba(240, 104, 72, 0.5);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 0 14px rgba(255, 200, 100, 0.9);
+  }
+}
+
+/* ============================================================
+ * Lethal state — T4 row when preview damage >= opponent.hp
+ * ============================================================ */
+@keyframes lethal-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 1px var(--crimson-bright), 0 0 22px rgba(196, 56, 72, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 1px var(--crimson-bright), 0 0 32px rgba(196, 56, 72, 0.8);
+  }
+}
+
+/* ============================================================
+ * Radiance pip threshold — when signatureState.radiance = bankCap
+ * ============================================================ */
+@keyframes radiance-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.7; }
+}
+
+/* ============================================================
+ * Dawn pip on near-eligible ability row
+ * ============================================================ */
+@keyframes pip-dawn-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(251, 191, 36, 0.6),
+                inset 0 1px 0 rgba(253, 224, 136, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.85),
+                inset 0 1px 0 rgba(253, 224, 136, 0.4);
+  }
+}
+
+/* ============================================================
+ * Pip pulse — locked die contributing to combo
+ * ============================================================ */
+@keyframes pip-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(212, 165, 72, 0.5),
+                inset 0 1px 0 rgba(240, 198, 104, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(240, 198, 104, 0.9),
+                inset 0 1px 0 rgba(253, 224, 136, 0.5);
+  }
+}
+
+/* ============================================================
+ * Dice tumble — active during roll
+ * ============================================================ */
+@keyframes dice-tumble {
+  0%, 100% { transform: rotate(-8deg) translateY(0); }
+  50%      { transform: rotate(8deg)  translateY(-2px); }
+}
+
+/* ============================================================
+ * Particle drift — ambient FOP motion during hold phase
+ * ============================================================ */
+@keyframes particle-drift {
+  0%   { transform: translateY(0)   scale(1);   opacity: 1; }
+  100% { transform: translateY(-12px) scale(1.2); opacity: 0; }
+}
+
+/* ============================================================
+ * HP bar shimmer — decorative moving highlight along a filled bar
+ * ============================================================ */
+@keyframes hp-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ============================================================
+ * Damage number pop-in — scale + fade with overshoot
+ * ============================================================ */
+@keyframes damage-pop-in {
+  0%   { transform: scale(0);   opacity: 0; }
+  60%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+/* ============================================================
+ * Deck-indicator low-state pulse
+ * ============================================================ */
+@keyframes deck-low-pulse-inline {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(0,0,0,0.3),
+                         0 0 4px rgba(212, 165, 72, 0.4); }
+  50%      { box-shadow: 0 0 0 1px rgba(0,0,0,0.3),
+                         0 0 8px rgba(240, 198, 104, 0.8); }
+}
+
+/* ============================================================
+ * AbilityValueBadge scaling pulse — when T1 preview value updates
+ * ============================================================ */
+@keyframes value-scaling-pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.25); color: var(--dawn-bright); }
+  100% { transform: scale(1); }
+}
+
+/* ============================================================
+ * SignatureGlyph firing flash — brief halo when passive trigger fires
+ * ============================================================ */
+@keyframes glyph-fire-flash {
+  0%, 100% { box-shadow: 0 0 8px rgba(108, 176, 232, 0.6);  transform: scale(1); }
+  40%      { box-shadow: 0 0 18px rgba(108, 176, 232, 1);    transform: scale(1.12); }
+}
+
+/* ============================================================
+ * Global reduced-motion overrides for keyframe animations
+ *
+ * Individual component modules may override further; these are the
+ * baseline for animations declared in this file.
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  /* All threshold pulses replaced with held-peak states. */
+  [class*='cinder']:not([class*='no-reduced']),
+  [class*='lethal']:not([class*='no-reduced']),
+  [class*='radiance']:not([class*='no-reduced']) {
+    animation: none;
+  }
+
+  /* Particle systems disabled entirely (see ParticleField component). */
+  /* Dice tumble replaced with instant rotation (see DiceTray component). */
+}

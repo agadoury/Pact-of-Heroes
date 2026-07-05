@@ -1,0 +1,176 @@
+/*
+ * Pact of Heroes — design tokens.
+ *
+ * All colors, typography, spacing, and z-index values in the new UI reference
+ * these CSS custom properties. No hardcoded colors or magic numbers in
+ * component styles.
+ *
+ * Bible reference: Parts 1.1–1.3.
+ */
+
+:root {
+  /* ============================================================
+   * COLORS — Night palette (backgrounds, surfaces)
+   * ============================================================ */
+  --night-deep:     #0a0a14;
+  --night-mid:      #14142a;
+  --night-stone:    #1a1830;
+  --night-velvet:   #221a3a;
+
+  /* ============================================================
+   * COLORS — Gold palette (accents, eligible halos, gold UI)
+   * ============================================================ */
+  --gold:           #d4a548;
+  --gold-bright:    #f0c668;
+  --gold-glow:      #ffe09a;
+  --gold-dim:       #6e5524;
+  --gold-deep:      #443418;
+
+  /* ============================================================
+   * COLORS — Frost palette (Berserker, defensive, ice)
+   * ============================================================ */
+  --frost:          #4a8cc8;
+  --frost-bright:   #6cb0e8;
+  --frost-deep:     #1a3a5a;
+  --frost-pale:     #a8d0f0;
+
+  /* ============================================================
+   * COLORS — Ember palette (Pyromancer, offense, fire)
+   * ============================================================ */
+  --ember:          #c84a2a;
+  --ember-bright:   #f06848;
+  --ember-deep:     #6e2010;
+  --ember-glow:     #ff8a6a;
+
+  /* ============================================================
+   * COLORS — Dawn palette (Lightbearer, Radiance, dawn-gold)
+   * ============================================================ */
+  --dawn:           #fbbf24;
+  --dawn-bright:    #fde088;
+  --dawn-deep:      #8a6810;
+
+  /* ============================================================
+   * COLORS — Bone palette (text, neutrals)
+   * ============================================================ */
+  --bone:           #d8d4c0;
+  --bone-bright:    #f0ecd8;
+  --bone-dim:       #88826c;
+  --bone-deeper:    #4a4638;
+
+  /* ============================================================
+   * COLORS — Status effect palette
+   * ============================================================ */
+  --green:                  #4a8c5a;
+  --green-bright:           #6cb07a;
+  --green-deep:             #1a3a22;
+  --purple:                 #6a4a9a;
+  --purple-bright:          #8a6abc;
+  --electric-purple:        #a778ff;
+  --electric-purple-bright: #c89bff;
+  --toxic-green:            #6ec854;
+  --toxic-green-bright:     #8ee874;
+  --crimson:                #8a1828;
+  --crimson-bright:         #c43848;
+
+  /* ============================================================
+   * COLORS — Frame and edge accents
+   * ============================================================ */
+  --frame-stroke:   rgba(212, 165, 72, 0.4);
+
+  /* ============================================================
+   * COLORS — Semantic aliases (component-level)
+   * ============================================================ */
+  --color-text:             var(--bone);
+  --color-text-emphasis:    var(--bone-bright);
+  --color-text-muted:       var(--bone-dim);
+  --color-text-disabled:    var(--bone-deeper);
+
+  --color-background:       var(--night-deep);
+  --color-surface:          var(--night-mid);
+  --color-surface-elevated: var(--night-velvet);
+
+  --color-action-primary:   var(--gold);
+  --color-action-hover:     var(--gold-bright);
+  --color-action-active:    var(--gold-glow);
+
+  --color-hero-frost:       var(--frost);
+  --color-hero-ember:       var(--ember);
+  --color-hero-dawn:        var(--dawn);
+
+  --color-damage:           var(--ember-bright);
+  --color-heal:             var(--frost-bright);
+  --color-resource:         var(--dawn-bright);
+  --color-lethal:           var(--crimson-bright);
+
+  /* ============================================================
+   * TYPOGRAPHY — Type scale (bible Part 1.2)
+   * ============================================================ */
+  --font-display:        48px;
+  --font-h1:             26px;
+  --font-h2:             18px;
+  --font-damage:         56px;
+  --font-damage-ult:     84px;
+  --font-damage-small:   18px;
+  --font-ability-name:   11px;
+  --font-ability-text:   11px;
+  --font-fop-ability:    13px;
+  --font-strip-name:     10.5px;
+  --font-body:           14px;
+  --font-button:         9.5px;
+  --font-tech:           9px;
+  --font-tech-small:     8px;
+
+  --letter-spacing-display:         0.06em;
+  --letter-spacing-cinzel-tight:    0.04em;
+  --letter-spacing-cinzel-default:  0.08em;
+  --letter-spacing-cinzel-wide:     0.15em;
+  --letter-spacing-cinzel-eyebrow:  0.25em;
+  --letter-spacing-cinzel-banner:   0.35em;
+  --letter-spacing-tech:            0.1em;
+  --letter-spacing-tech-eyebrow:    0.3em;
+
+  /* ============================================================
+   * TYPOGRAPHY — Family aliases
+   * ============================================================ */
+  --font-family-display: 'Cinzel', 'Times New Roman', serif;
+  --font-family-body:    'Cormorant Garamond', 'Times New Roman', serif;
+  --font-family-tech:    'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+
+  /* ============================================================
+   * SPACING — 4px base scale (bible Part 1.3)
+   * ============================================================ */
+  --space-1:  2px;
+  --space-2:  4px;
+  --space-3:  6px;
+  --space-4:  8px;
+  --space-5:  10px;
+  --space-6:  12px;
+  --space-8:  16px;
+  --space-10: 20px;
+  --space-12: 24px;
+  --space-14: 28px;
+  --space-16: 32px;
+  --space-20: 40px;
+
+  /* ============================================================
+   * BAND HEIGHTS — as percentage of viewport height (bible Part 2.1)
+   * ============================================================ */
+  --band-opponent-strip: 13%;
+  --band-phase-banner:   3.5%;
+  --band-dice-tray:      13%;
+  --band-middle:         28%;
+  --band-self-strip:     12%;
+  --band-hand:           20%;
+  --band-action-bar:     7.5%;
+
+  /* ============================================================
+   * Z-INDEX layers (bible Part 6.4)
+   * ============================================================ */
+  --z-base:              0;
+  --z-fop:               5;
+  --z-modal:             50;
+  --z-skip-confirm:      60;
+  --z-full-screen-modal: 100;
+  --z-toast:             150;
+  --z-tooltip:           200;
+}
