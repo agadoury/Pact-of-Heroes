@@ -10,6 +10,7 @@ import { useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '@/store/gameStore'
 import { useUIStore } from '@/ui/store/uiStore'
+import { clearMatchState } from '@/ui/store/matchPersistence'
 import { Button } from '@/ui/components/atoms/Button'
 import { clsx } from '@/ui/util/clsx'
 import s from './MatchSummary.module.css'
@@ -48,14 +49,17 @@ export function MatchSummary(): JSX.Element {
                             'Both stand, neither yields.'
 
   const goHome = () => {
+    clearMatchState()
     reset()
     navigate('/')
   }
   const rematch = () => {
+    clearMatchState()
     reset()
     navigate('/heroes')
   }
   const newHero = () => {
+    clearMatchState()
     reset()
     navigate('/heroes')
   }

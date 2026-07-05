@@ -8,7 +8,7 @@
  * Bible references: Parts 2, 3, 5, 6, 7.
  */
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { GameState, HeroSnapshot, PlayerId } from '@/game/types'
 import { useGameStore } from '@/store/gameStore'
@@ -35,6 +35,11 @@ import { ExpandedCardView } from '@/ui/components/overlays/ExpandedCardView'
 import { TooltipRenderer } from '@/ui/components/overlays/TooltipRenderer'
 import { ToastQueue, toast } from '@/ui/components/overlays/ToastQueue'
 import { ActivityLog } from '@/ui/components/overlays/ActivityLog'
+import { CardPlayOverlay } from '@/ui/components/overlays/CardPlayOverlay'
+import { OffensivePickPrompt } from '@/ui/components/overlays/OffensivePickPrompt'
+import { InstantPrompt } from '@/ui/components/overlays/InstantPrompt'
+import { MatchIntro } from '@/ui/components/screens/MatchIntro'
+import { useState } from 'react'
 import { derivePhaseDisplay } from '@/ui/selectors/phaseDisplay'
 import { deriveLadder } from '@/ui/selectors/ladder'
 import { deriveStatusTrack } from '@/ui/selectors/statusTrack'
@@ -58,6 +63,13 @@ export function MatchScreen(): JSX.Element {
   const selectDefense      = useUIStore(u => u.selectDefense)
   const focusCard          = useUIStore(u => u.focusCard)
 
+  // Card-play cinematic — the last card the player just committed.
+  const [playedCard, setPlayedCard] = useState<import('@/game/types').Card | null>(null)
+
+  // Match-intro cinematic — plays once per match on first mount with state.
+  const introShownFor = useRef<string | null>(null)
+  const [introActive, setIntroActive] = useState(false)
+
   // Wire event bridge once.
   useEffect(() => {
     const unsub = wireResolutionBridge()
@@ -73,6 +85,17 @@ export function MatchScreen(): JSX.Element {
       navigate('/summary')
     }
   }, [state?.phase, navigate])
+
+  // Play the intro cinematic once per fresh match.
+  useEffect(() => {
+    if (!state) return
+    const key = `${state.players.p1.hero}-vs-${state.players.p2.hero}-t${state.turn}`
+    if (introShownFor.current === key) return
+    if (state.turn === 1 && state.phase !== 'match-end') {
+      introShownFor.current = key
+      setIntroActive(true)
+    }
+  }, [state?.players.p1.hero, state?.players.p2.hero, state?.turn, state?.phase, state])
 
   if (!state) {
     return <NoMatch onGoHome={() => navigate('/')} />
@@ -165,7 +188,27 @@ export function MatchScreen(): JSX.Element {
     if (!focusedCard) return
     setOverlay('none')
     focusCard(null)
+    setPlayedCard(focusedCard)
     dispatch({ kind: 'play-card', card: focusedCard.id, casterPlayer: viewerId })
+  }
+
+  const onOffensivePick = (abilityIndex: number) => {
+    dispatch({ kind: 'select-offensive-ability', abilityIndex })
+  }
+  const onOffensiveDecline = () => {
+    dispatch({ kind: 'select-offensive-ability', abilityIndex: null })
+  }
+
+  const instantCandidates = useMemo(() =>
+    self.hand.filter(c => c.kind === 'instant'),
+    [self.hand],
+  )
+
+  const onInstantPlay = (cardId: string) => {
+    dispatch({ kind: 'respond-to-status-removal', cardId: cardId })
+  }
+  const onInstantDecline = () => {
+    dispatch({ kind: 'respond-to-status-removal', cardId: null })
   }
 
   const onCancelOverlay = () => {
@@ -357,6 +400,36 @@ export function MatchScreen(): JSX.Element {
           bark:         'For the pack.',
           damage:       currentRes?.scene.kind === 'ability' ? (currentRes.scene.data.damage ?? 0) : 0,
         }}
+      />
+
+      <MatchIntro
+        active={introActive}
+        playerHero={state.players[viewerId].hero}
+        opponentHero={state.players[viewerId === 'p1' ? 'p2' : 'p1'].hero}
+        onComplete={() => setIntroActive(false)}
+      />
+
+      <CardPlayOverlay
+        active={!!playedCard}
+        card={playedCard}
+        tone="gold"
+        onComplete={() => setPlayedCard(null)}
+      />
+
+      <OffensivePickPrompt
+        active={!!state.pendingOffensiveChoice && state.pendingOffensiveChoice.attacker === viewerId}
+        matches={state.pendingOffensiveChoice?.matches ?? []}
+        onSelect={onOffensivePick}
+        onDecline={onOffensiveDecline}
+      />
+
+      <InstantPrompt
+        active={!!state.pendingStatusRemoval && state.pendingStatusRemoval.holder === viewerId && instantCandidates.length > 0}
+        title={state.pendingStatusRemoval ? `Prevent ${state.pendingStatusRemoval.status} removal?` : ''}
+        subtitle={state.pendingStatusRemoval ? `${state.pendingStatusRemoval.stacks} stacks would be removed` : undefined}
+        candidates={instantCandidates}
+        onPlay={onInstantPlay}
+        onDecline={onInstantDecline}
       />
 
       <ActivityLog />

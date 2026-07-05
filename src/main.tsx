@@ -5,6 +5,7 @@ import App from "./App";
 import "./styles/globals.css";
 import "./ui/theme/index.css";
 import { migrateLegacyStorage } from "./lib/migrate-storage";
+import { wireMatchPersistence } from "./ui/store/matchPersistence";
 
 // One-shot localStorage migration from the previous `diceborn:*` namespace
 // to `pact-of-heroes:*`. Must run before any module reads its own storage.
@@ -22,6 +23,7 @@ function installAudioUnlock() {
   window.addEventListener("keydown",     unlock, { once: true });
 }
 installAudioUnlock();
+wireMatchPersistence();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

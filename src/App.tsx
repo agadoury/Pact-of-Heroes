@@ -19,6 +19,7 @@ import { HeroSelectScreen } from "./ui/components/screens/HeroSelectScreen";
 import { HeroBookScreen } from "./ui/components/screens/HeroBookScreen";
 import { HeroDetailScreen } from "./ui/components/screens/HeroDetailScreen";
 import { OnboardingFlow } from "./ui/components/screens/OnboardingFlow";
+import { HeroCustomizationScreen } from "./ui/components/screens/HeroCustomizationScreen";
 import { MatchScreen } from "./ui/components/screens/MatchScreen";
 import { MatchSummary } from "./ui/components/screens/MatchSummary";
 import { SettingsScreen } from "./ui/components/screens/SettingsScreen";
@@ -34,8 +35,9 @@ export default function App() {
         <Route path="/summary"        element={<MatchSummary />} />
         <Route path="/settings"       element={<SettingsScreen />} />
         <Route path="/hero-book"      element={<HeroBookScreen />} />
-        <Route path="/heroes/:heroId" element={<HeroDetailScreen />} />
-        <Route path="/onboarding"     element={<OnboardingFlow />} />
+        <Route path="/heroes/:heroId"           element={<HeroDetailScreen />} />
+        <Route path="/heroes/:heroId/customize" element={<HeroCustomizationScreen />} />
+        <Route path="/onboarding"               element={<OnboardingFlow />} />
         <Route path="/ui-preview"     element={<UIPreview />} />
 
         {/* Legacy screens retained under /legacy while the rebuild

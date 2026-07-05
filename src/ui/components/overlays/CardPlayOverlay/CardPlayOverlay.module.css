@@ -1,0 +1,134 @@
+.overlay {
+  position: absolute;
+  inset: 16.5% 0 42.5% 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: card-overlay 1700ms ease-in-out;
+}
+
+.tone-frost   { background: radial-gradient(ellipse at center, rgba(108, 176, 232, 0.35) 0%, rgba(74, 140, 200, 0.12) 40%, transparent 80%); }
+.tone-ember   { background: radial-gradient(ellipse at center, rgba(240, 104, 72, 0.35)  0%, rgba(200, 74, 42, 0.12) 40%, transparent 80%); }
+.tone-dawn    { background: radial-gradient(ellipse at center, rgba(253, 224, 136, 0.35) 0%, rgba(251, 191, 36, 0.12) 40%, transparent 80%); }
+.tone-gold    { background: radial-gradient(ellipse at center, rgba(240, 198, 104, 0.35) 0%, rgba(212, 165, 72, 0.12) 40%, transparent 80%); }
+
+.overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(45deg,
+    transparent, transparent 28px,
+    rgba(212, 165, 72, 0.04) 28px, rgba(212, 165, 72, 0.04) 30px);
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.card {
+  position: relative;
+  width: 168px;
+  height: 230px;
+  padding: 10px;
+  border: 2px solid var(--gold);
+  border-radius: 9px;
+  background: linear-gradient(180deg, #2a2440 0%, #14142a 100%);
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.7),
+    0 0 48px rgba(212, 165, 72, 0.55),
+    inset 0 1px 0 rgba(212, 165, 72, 0.3);
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+  animation: card-scale-in 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+             card-slide-out 500ms ease-in 1000ms both;
+}
+
+.card.tone-frost { border-color: var(--frost-bright); box-shadow: 0 12px 36px rgba(0,0,0,0.7), 0 0 48px rgba(108, 176, 232, 0.55); }
+.card.tone-ember { border-color: var(--ember-bright); box-shadow: 0 12px 36px rgba(0,0,0,0.7), 0 0 48px rgba(240, 104, 72, 0.55); }
+.card.tone-dawn  { border-color: var(--dawn-bright);  box-shadow: 0 12px 36px rgba(0,0,0,0.7), 0 0 48px rgba(253, 224, 136, 0.55); }
+
+.cost {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, var(--gold-glow), var(--gold));
+  color: var(--night-deep);
+  font-family: var(--font-family-display);
+  font-size: 17px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+}
+
+.art {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  margin-bottom: var(--space-3);
+}
+
+.style-attack  .art { background: radial-gradient(circle, rgba(200, 74, 42, 0.35), rgba(110, 32, 16, 0.05)); color: var(--ember-bright); }
+.style-defense .art { background: radial-gradient(circle, rgba(74, 140, 200, 0.35), rgba(26, 58, 90, 0.05)); color: var(--frost-bright); }
+.style-buff    .art { background: radial-gradient(circle, rgba(74, 140, 90, 0.35), rgba(26, 58, 34, 0.05)); color: var(--green-bright); }
+.style-utility .art { background: radial-gradient(circle, rgba(212, 165, 72, 0.35), rgba(110, 85, 36, 0.05)); color: var(--gold-bright); }
+
+.name {
+  font-family: var(--font-family-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold-bright);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-3);
+  text-align: center;
+}
+.card.tone-frost .name { color: var(--frost-bright); }
+.card.tone-ember .name { color: var(--ember-bright); }
+.card.tone-dawn  .name { color: var(--dawn-bright); }
+
+.effect {
+  font-family: var(--font-family-body);
+  font-size: 12px;
+  font-style: italic;
+  color: var(--bone-bright);
+  line-height: 1.35;
+}
+
+.value   { font-family: var(--font-family-tech); font-weight: 700; font-style: normal; color: var(--gold-bright); font-size: 11px; }
+.keyword { font-family: var(--font-family-tech); font-weight: 700; font-style: normal; color: var(--dawn-bright); font-size: 10px; text-transform: uppercase; }
+
+@keyframes card-overlay {
+  0%   { opacity: 0; }
+  12%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes card-scale-in {
+  0%   { transform: scale(0.7); opacity: 0; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes card-slide-out {
+  0%   { transform: scale(1)  translate(0, 0); opacity: 1; }
+  100% { transform: scale(0.6) translate(50vw, 50vh); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card { animation: card-fade-only 1700ms ease-out; }
+  @keyframes card-fade-only {
+    0%   { opacity: 0; }
+    12%  { opacity: 1; }
+    85%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+}

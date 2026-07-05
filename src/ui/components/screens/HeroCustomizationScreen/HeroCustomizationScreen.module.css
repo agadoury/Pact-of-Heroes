@@ -1,0 +1,231 @@
+.page {
+  width: 100%;
+  min-height: 100dvh;
+  padding: var(--space-6);
+  background: var(--night-deep);
+  color: var(--bone);
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--frame-stroke);
+}
+
+.back {
+  font-family: var(--font-family-tech);
+  font-size: 10px;
+  color: var(--bone-dim);
+  cursor: pointer;
+  padding: var(--space-2) var(--space-4);
+}
+
+.title {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-family-display);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  color: var(--gold-bright);
+  text-transform: uppercase;
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--frame-stroke);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  border-radius: 20px;
+  border: 1px solid var(--gold-dim);
+  background: transparent;
+  color: var(--bone-dim);
+  font-family: var(--font-family-display);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.tab.active {
+  background: var(--gold);
+  color: var(--night-deep);
+  border-color: var(--gold);
+}
+
+.badge {
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-family: var(--font-family-tech);
+  font-size: 9px;
+  font-weight: 700;
+}
+.badgeShort { background: rgba(240, 104, 72, 0.25); color: var(--ember-bright); }
+.badgeReady { background: rgba(240, 198, 104, 0.3);  color: var(--gold-glow); }
+
+.section {
+  padding: var(--space-6) 0;
+}
+
+.tierSection {
+  margin-bottom: var(--space-8);
+}
+
+.eyebrow {
+  font-family: var(--font-family-display);
+  font-size: 10px;
+  letter-spacing: 0.4em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: var(--space-3);
+}
+
+.abilityList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.abilityRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: 6px;
+  border: 1px solid var(--frame-stroke);
+  background: rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 200ms, background 200ms;
+}
+.abilityRow:hover { border-color: var(--gold-dim); }
+.abilityRow.pick {
+  border-color: var(--gold-bright);
+  background: linear-gradient(90deg,
+    rgba(60, 44, 12, 0.5),
+    rgba(40, 30, 10, 0.35));
+  box-shadow: 0 0 0 1px var(--gold-bright);
+}
+
+.abilityName {
+  flex: 0 0 40%;
+  font-family: var(--font-family-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--bone-bright);
+  letter-spacing: 0.06em;
+}
+
+.abilityText {
+  flex: 1;
+  font-family: var(--font-family-body);
+  font-size: 12px;
+  font-style: italic;
+  color: var(--bone-dim);
+}
+
+.deckColumns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+
+.deckCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.deckList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--frame-stroke);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.deckRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 3px;
+  background: rgba(20, 20, 42, 0.5);
+}
+
+.cardCost {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, var(--gold-glow), var(--gold));
+  color: var(--night-deep);
+  font-family: var(--font-family-display);
+  font-size: 10px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cardName {
+  flex: 1;
+  font-family: var(--font-family-body);
+  font-size: 12px;
+  color: var(--bone);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.removeBtn, .addBtn {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: rgba(212, 165, 72, 0.2);
+  color: var(--gold-bright);
+  font-family: var(--font-family-display);
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--gold-dim);
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.disabled { opacity: 0.4; cursor: not-allowed; }
+
+.empty {
+  text-align: center;
+  padding: var(--space-6) 0;
+  font-family: var(--font-family-body);
+  font-size: 12px;
+  font-style: italic;
+  color: var(--bone-dim);
+}
+
+.notFound {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  min-height: 100dvh;
+  padding: var(--space-10);
+  color: var(--bone);
+  background: var(--night-deep);
+}
