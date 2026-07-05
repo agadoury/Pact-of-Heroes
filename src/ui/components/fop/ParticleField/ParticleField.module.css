@@ -1,0 +1,24 @@
+.field {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 4px currentColor;
+  animation: particle-drift 1500ms ease-out infinite;
+  will-change: transform, opacity;
+}
+
+.tone-gold    { color: var(--gold-bright); }
+.tone-ember   { color: var(--ember-bright); }
+.tone-frost   { color: var(--frost-bright); }
+.tone-dawn    { color: var(--dawn-bright); }
+.tone-crimson { color: var(--crimson-bright); }
+.tone-detonation { color: var(--dawn-bright); }
+.tone-green   { color: var(--green-bright); }
+.tone-toxic-green { color: var(--toxic-green-bright); }

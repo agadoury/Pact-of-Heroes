@@ -1,0 +1,42 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
+}
+
+.arrow {
+  font-family: var(--font-family-display);
+  color: var(--gold);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.caption {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  font-family: var(--font-family-tech);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+}
+
+.tokenName {
+  color: var(--dawn-bright);
+  font-weight: 700;
+}
+.arrowGlyph {
+  color: var(--gold);
+  font-weight: 700;
+}
+.gain {
+  color: var(--ember-bright);
+  font-weight: 700;
+}

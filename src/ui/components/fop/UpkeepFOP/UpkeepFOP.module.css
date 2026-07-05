@@ -1,0 +1,85 @@
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: upkeep-overlay 700ms ease-out forwards;
+}
+
+.tone-ember       { background: radial-gradient(ellipse at center, rgba(240, 104, 72, 0.22),  transparent 70%); }
+.tone-green       { background: radial-gradient(ellipse at center, rgba(74, 140, 90, 0.22),   transparent 70%); }
+.tone-toxic-green { background: radial-gradient(ellipse at center, rgba(110, 200, 84, 0.22),  transparent 70%); }
+.tone-gold        { background: radial-gradient(ellipse at center, rgba(212, 165, 72, 0.22),  transparent 70%); }
+.tone-frost       { background: radial-gradient(ellipse at center, rgba(108, 176, 232, 0.22), transparent 70%); }
+.tone-crimson     { background: radial-gradient(ellipse at center, rgba(196, 56, 72, 0.22),   transparent 70%); }
+
+.label {
+  font-family: var(--font-family-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: var(--letter-spacing-cinzel-eyebrow);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  animation: upkeep-fade-in 150ms ease-out;
+}
+
+.tone-ember       .label { color: var(--ember-bright); }
+.tone-green       .label { color: var(--green-bright); }
+.tone-toxic-green .label { color: var(--toxic-green-bright); }
+.tone-gold        .label { color: var(--gold-bright); }
+.tone-frost       .label { color: var(--frost-bright); }
+.tone-crimson     .label { color: var(--crimson-bright); }
+
+.value {
+  font-family: var(--font-family-display);
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1;
+  animation: upkeep-value 700ms ease-out;
+}
+
+.tone-ember       .value { color: var(--ember-bright); }
+.tone-green       .value { color: var(--green-bright); }
+.tone-toxic-green .value { color: var(--toxic-green-bright); }
+.tone-gold        .value { color: var(--gold-bright); }
+.tone-frost       .value { color: var(--frost-bright); }
+.tone-crimson     .value { color: var(--crimson-bright); }
+
+.subtext {
+  font-family: var(--font-family-body);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--bone);
+  margin-top: 4px;
+}
+
+@keyframes upkeep-overlay {
+  0%   { opacity: 0; }
+  20%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes upkeep-fade-in {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes upkeep-value {
+  0%    { transform: scale(0.7); opacity: 0; }
+  21%   { transform: scale(1.05); opacity: 1; }
+  86%   { transform: scale(1); }
+  100%  { transform: scale(0.95); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .value { animation: upkeep-fade-only 700ms ease-out; }
+  @keyframes upkeep-fade-only {
+    0%    { opacity: 0; }
+    20%   { opacity: 1; }
+    85%   { opacity: 1; }
+    100%  { opacity: 0; }
+  }
+}

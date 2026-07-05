@@ -1,0 +1,126 @@
+.overlay {
+  position: absolute;
+  inset: 16.5% 0 30.5% 0;
+  z-index: var(--z-modal);
+  padding: 14px 12px 10px;
+  background: linear-gradient(180deg,
+    rgba(30, 26, 14, 0.97),
+    rgba(20, 16, 8, 0.96));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-top: 1px solid var(--dawn);
+  border-bottom: 1px solid var(--dawn);
+  box-shadow:
+    inset 0 0 60px rgba(251, 191, 36, 0.15),
+    0 0 30px rgba(251, 191, 36, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: overlay-fade-in 300ms ease-out;
+}
+
+.title {
+  text-align: center;
+  font-family: var(--font-family-display);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: var(--letter-spacing-cinzel-banner);
+  text-transform: uppercase;
+  color: var(--dawn);
+}
+
+.available {
+  text-align: center;
+  padding: 6px;
+}
+.available .value {
+  font-family: var(--font-family-display);
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--dawn-bright);
+  text-shadow: 0 0 14px rgba(253, 224, 136, 0.7);
+}
+.available .max {
+  font-family: var(--font-family-display);
+  font-size: 14px;
+  color: var(--gold-dim);
+  margin-left: 4px;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px;
+  border-radius: 6px;
+  background: linear-gradient(90deg,
+    rgba(20, 24, 40, 0.85),
+    rgba(26, 30, 48, 0.65));
+  border: 1px solid var(--gold);
+  box-shadow: 0 0 8px rgba(212, 165, 72, 0.3);
+  color: inherit;
+  cursor: pointer;
+  transition: box-shadow 200ms, border-color 200ms;
+  text-align: left;
+}
+
+.option.selected {
+  border-color: var(--dawn);
+  background: linear-gradient(90deg,
+    rgba(60, 44, 12, 0.5),
+    rgba(40, 30, 10, 0.35));
+  box-shadow:
+    0 0 0 1px var(--dawn),
+    0 0 14px rgba(251, 191, 36, 0.4);
+}
+
+.option.unaffordable {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cost {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, var(--dawn-bright), var(--dawn));
+  color: var(--night-deep);
+  font-family: var(--font-family-display);
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.optInfo {
+  flex: 1;
+  min-width: 0;
+}
+.optName {
+  font-family: var(--font-family-display);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--bone);
+}
+.selected .optName { color: var(--dawn-bright); }
+.optEffect {
+  font-family: var(--font-family-body);
+  font-size: 11px;
+  font-style: italic;
+  color: var(--bone-dim);
+}
+.selected .optEffect { color: var(--bone); }
+
+@keyframes overlay-fade-in {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}

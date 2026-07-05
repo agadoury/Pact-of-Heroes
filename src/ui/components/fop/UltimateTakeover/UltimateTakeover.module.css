@@ -1,0 +1,106 @@
+.takeover {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-full-screen-modal);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-8);
+  background:
+    radial-gradient(ellipse at 50% 40%,
+      rgba(251, 191, 36, 0.5) 0%,
+      rgba(212, 165, 72, 0.15) 25%,
+      rgba(0, 0, 0, 0.96) 70%),
+    linear-gradient(180deg, #1a1408 0%, #050510 100%);
+  animation: takeover-fade-in 400ms ease-out;
+}
+
+.rays {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(45deg,
+      transparent, transparent 32px,
+      rgba(251, 191, 36, 0.05) 32px, rgba(251, 191, 36, 0.05) 33px),
+    radial-gradient(circle at 50% 30%,
+      rgba(251, 191, 36, 0.2), transparent 60%);
+  pointer-events: none;
+}
+
+.portrait {
+  width: 160px;
+  height: 200px;
+  border: 3px solid var(--gold);
+  border-radius: 12px;
+  background: radial-gradient(circle at 40% 30%,
+    var(--dawn-bright), var(--dawn), var(--dawn-deep));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    inset 0 0 60px rgba(255, 255, 255, 0.15),
+    0 0 40px rgba(251, 191, 36, 0.7),
+    0 8px 32px rgba(0, 0, 0, 0.8);
+  animation: portrait-scale-in 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.initial {
+  font-family: var(--font-family-display);
+  font-size: 88px;
+  font-weight: 900;
+  color: var(--night-deep);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.name {
+  font-family: var(--font-family-display);
+  font-size: var(--font-h1);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--dawn-bright);
+  text-shadow: 0 0 12px rgba(253, 224, 136, 0.9);
+  animation: fade-in 200ms ease-out 300ms both;
+}
+
+.tier {
+  font-family: var(--font-family-display);
+  font-size: 11px;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: var(--bone);
+  animation: fade-in 150ms ease-out 500ms both;
+}
+
+.bark {
+  font-family: var(--font-family-body);
+  font-size: 18px;
+  font-style: italic;
+  color: var(--bone-bright);
+  max-width: 80%;
+  text-align: center;
+  animation: fade-in-up 200ms ease-out 800ms both;
+}
+
+@keyframes takeover-fade-in {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes portrait-scale-in {
+  0%   { transform: scale(0.5); }
+  100% { transform: scale(1); }
+}
+@keyframes fade-in {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes fade-in-up {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portrait, .name, .tier, .bark { animation: fade-in 400ms ease-out both; }
+}

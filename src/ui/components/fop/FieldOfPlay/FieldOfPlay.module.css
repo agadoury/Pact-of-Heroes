@@ -1,0 +1,48 @@
+.overlay {
+  position: absolute;
+  inset: 16.5% 0 42.5% 0;
+  z-index: var(--z-fop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.overlay.visible { opacity: 1; }
+.overlay.fading  { opacity: 0; }
+
+.overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(45deg,
+    transparent, transparent 28px,
+    rgba(212, 165, 72, 0.04) 28px, rgba(212, 165, 72, 0.04) 30px);
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.tone-gold    { background: radial-gradient(ellipse at center, rgba(240, 198, 104, 0.30) 0%, rgba(212, 165, 72, 0.10) 40%, transparent 80%); }
+.tone-ember   { background: radial-gradient(ellipse at center, rgba(240, 104, 72, 0.35) 0%, rgba(200, 74, 42, 0.12) 40%, transparent 80%); }
+.tone-frost   { background: radial-gradient(ellipse at center, rgba(108, 176, 232, 0.32) 0%, rgba(74, 140, 200, 0.10) 40%, transparent 80%); }
+.tone-dawn    { background: radial-gradient(ellipse at center, rgba(253, 224, 136, 0.35) 0%, rgba(251, 191, 36, 0.12) 40%, transparent 80%); }
+.tone-crimson { background: radial-gradient(ellipse at center, rgba(196, 56, 72, 0.40) 0%, rgba(138, 24, 40, 0.15) 40%, transparent 80%); }
+.tone-detonation {
+  background: radial-gradient(ellipse at center,
+    rgba(255, 200, 100, 0.5)  0%,
+    rgba(240, 104, 72, 0.3)   30%,
+    rgba(110, 32, 16, 0.15)   60%,
+    transparent               90%);
+}
+
+.content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
