@@ -1,0 +1,9 @@
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-family-display);
+  font-weight: 700;
+  user-select: none;
+  vertical-align: middle;
+}

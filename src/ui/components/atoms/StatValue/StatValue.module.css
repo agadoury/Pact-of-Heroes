@@ -1,0 +1,21 @@
+.value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 18px;
+  font-family: var(--font-family-tech);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--bone-bright);
+}
+
+.normal   { color: var(--bone-bright); }
+.critical { color: var(--ember-bright); }
+.resource { color: var(--gold-bright); }
+.capped   {
+  color: var(--dawn-bright);
+  text-shadow: 0 0 4px rgba(253, 224, 136, 0.6);
+}

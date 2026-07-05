@@ -1,0 +1,77 @@
+.page {
+  padding: var(--space-10);
+  min-height: 100dvh;
+  overflow-y: auto;
+  background: var(--night-deep);
+  color: var(--bone);
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-8);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--frame-stroke);
+}
+
+.header h1 {
+  font-family: var(--font-family-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-cinzel-default);
+  color: var(--gold-bright);
+}
+
+.homeLink {
+  font-family: var(--font-family-tech);
+  font-size: var(--font-tech);
+  letter-spacing: var(--letter-spacing-tech);
+  color: var(--bone-dim);
+  text-transform: uppercase;
+}
+.homeLink:hover { color: var(--gold-bright); }
+
+.section {
+  margin-bottom: var(--space-12);
+}
+
+.section h2 {
+  font-family: var(--font-family-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-cinzel-eyebrow);
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: var(--space-4);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-3) 0;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.captionMuted {
+  font-family: var(--font-family-body);
+  font-size: 11px;
+  color: var(--bone-dim);
+  font-style: italic;
+}
+
+.phoneFrame {
+  width: 100%;
+  max-width: 390px;
+  aspect-ratio: 390 / 844;
+  border: 1px solid var(--frame-stroke);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}

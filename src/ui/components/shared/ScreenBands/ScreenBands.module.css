@@ -1,0 +1,11 @@
+.container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg,
+    var(--night-stone) 0%,
+    var(--night-deep)  100%);
+}

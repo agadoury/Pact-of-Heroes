@@ -11,6 +11,7 @@ import Settings from "./components/screens/Settings";
 import DevTokens from "./components/screens/DevTokens";
 import DevComponents from "./components/screens/DevComponents";
 import { Choreographer } from "./components/effects/Choreographer";
+import { UIPreview } from "./ui/components/screens/UIPreview";
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/settings"       element={<Settings />} />
         <Route path="/dev/tokens"     element={<DevTokens />} />
         <Route path="/dev/components" element={<DevComponents />} />
+        <Route path="/ui-preview"     element={<UIPreview />} />
         <Route path="*"               element={<Navigate to="/" replace />} />
       </Routes>
     </Choreographer>

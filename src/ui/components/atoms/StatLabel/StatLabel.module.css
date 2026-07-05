@@ -1,0 +1,13 @@
+.label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 16px;
+  font-family: var(--font-family-tech);
+  font-size: var(--font-tech);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}

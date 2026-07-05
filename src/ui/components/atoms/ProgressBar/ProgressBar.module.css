@@ -1,0 +1,32 @@
+.bar {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(212, 165, 72, 0.15);
+  border-radius: 2px;
+}
+
+.fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--fill-pct, 0%);
+  border-radius: inherit;
+  transition: width 600ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.normal-frost {
+  background: linear-gradient(90deg, #1a4870, var(--frost));
+  box-shadow: 0 0 4px var(--frost);
+}
+
+.normal-ember {
+  background: linear-gradient(90deg, #8a1818, var(--ember));
+  box-shadow: 0 0 4px var(--ember);
+}
+
+.lethal {
+  background: linear-gradient(90deg, #5a0810, var(--crimson));
+  box-shadow: 0 0 4px var(--crimson);
+}

@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./styles/globals.css";
+import "./ui/theme/index.css";
 import { migrateLegacyStorage } from "./lib/migrate-storage";
 
 // One-shot localStorage migration from the previous `diceborn:*` namespace
