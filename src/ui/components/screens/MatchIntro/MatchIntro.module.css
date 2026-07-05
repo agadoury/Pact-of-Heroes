@@ -1,0 +1,87 @@
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-full-screen-modal);
+  background: linear-gradient(180deg,
+    var(--night-stone) 0%,
+    var(--night-deep) 100%);
+  color: var(--bone);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  animation: intro-fade 1800ms ease-out;
+}
+
+.split {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.portrait {
+  width: 80px;
+  height: 100px;
+  border: 2px solid var(--gold);
+  border-radius: 6px;
+  background: radial-gradient(circle at 40% 30%, var(--gold-bright), var(--gold-deep));
+  color: var(--night-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-family-display);
+  font-size: 44px;
+  font-weight: 900;
+}
+
+.name {
+  font-family: var(--font-family-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gold-bright);
+  letter-spacing: 0.1em;
+  text-transform: capitalize;
+}
+
+.separator {
+  font-size: 16px;
+  color: var(--gold);
+}
+
+.beginText {
+  font-family: var(--font-family-display);
+  font-size: 10px;
+  color: var(--gold);
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  animation: intro-begin-fade 300ms ease-out 1500ms both;
+}
+
+@keyframes intro-fade {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes intro-begin-fade {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay { animation: intro-fade-simple 1800ms ease-out; }
+  @keyframes intro-fade-simple {
+    0%, 15%   { opacity: 0; }
+    30%, 70%  { opacity: 1; }
+    100%      { opacity: 0; }
+  }
+}

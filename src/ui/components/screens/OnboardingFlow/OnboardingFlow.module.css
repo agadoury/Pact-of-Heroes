@@ -1,0 +1,72 @@
+.page {
+  width: 100%;
+  min-height: 100dvh;
+  padding: var(--space-10);
+  background: linear-gradient(180deg,
+    var(--night-stone) 0%,
+    var(--night-deep) 100%);
+  color: var(--bone);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.dots {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bone-deeper);
+  transition: background 200ms;
+}
+
+.dot.active {
+  background: var(--gold-bright);
+  box-shadow: 0 0 6px var(--gold-bright);
+}
+
+.card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  max-width: 400px;
+  text-align: center;
+}
+
+.stepTitle {
+  font-family: var(--font-family-display);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--gold-bright);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.stepBody {
+  font-family: var(--font-family-body);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--bone);
+  font-style: italic;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 280px;
+  justify-content: space-between;
+}
+.actions button {
+  height: 44px;
+}
+.actions .ghost { flex: 0 0 auto; }

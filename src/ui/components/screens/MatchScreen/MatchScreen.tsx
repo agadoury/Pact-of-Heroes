@@ -34,6 +34,7 @@ import { ExpandedAbilityView } from '@/ui/components/overlays/ExpandedAbilityVie
 import { ExpandedCardView } from '@/ui/components/overlays/ExpandedCardView'
 import { TooltipRenderer } from '@/ui/components/overlays/TooltipRenderer'
 import { ToastQueue, toast } from '@/ui/components/overlays/ToastQueue'
+import { ActivityLog } from '@/ui/components/overlays/ActivityLog'
 import { derivePhaseDisplay } from '@/ui/selectors/phaseDisplay'
 import { deriveLadder } from '@/ui/selectors/ladder'
 import { deriveStatusTrack } from '@/ui/selectors/statusTrack'
@@ -358,6 +359,7 @@ export function MatchScreen(): JSX.Element {
         }}
       />
 
+      <ActivityLog />
       <TooltipRenderer />
       <ToastQueue />
     </ScreenBands>
