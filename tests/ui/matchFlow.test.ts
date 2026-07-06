@@ -5,7 +5,7 @@
 
 import { describe, expect, it, beforeEach } from 'vitest'
 import { applyAction, makeEmptyState } from '@/game/engine'
-import { nextAiAction } from '@/game/ai'
+import { nextAiAction, pendingActorFor } from '@/game/ai'
 import type { Action, GameState, PlayerId } from '@/game/types'
 
 const HERO_A = 'berserker'
@@ -97,7 +97,8 @@ describe('UI-flow: full match progression', () => {
     // Fast-forward: use the AI to play out to the first defensive prompt.
     let safety = 0
     while (!state.pendingAttack && safety++ < 200 && !state.winner) {
-      const action = nextAiAction(state, state.activePlayer)
+      const action = nextAiAction(state, pendingActorFor(state))
+      if (!action) break
       state = dispatch(state, action)
     }
     if (state.pendingAttack) {
@@ -112,11 +113,46 @@ describe('UI-flow: full match progression', () => {
     let state = newMatch()
     let safety = 0
     while (!state.winner && safety++ < 3000) {
-      const action = nextAiAction(state, state.activePlayer)
+      const action = nextAiAction(state, pendingActorFor(state))
+      expect(action, `AI returned null at phase=${state.phase}`).not.toBeNull()
+      if (!action) break
       state = dispatch(state, action)
     }
     expect(state.winner).toBeDefined()
     expect(safety).toBeLessThan(3000)
+  })
+
+  it('advance-phase never blows past a pending prompt', () => {
+    let state = newMatch()
+    let safety = 0
+    while (!state.pendingAttack && safety++ < 300 && !state.winner) {
+      const action = nextAiAction(state, pendingActorFor(state))
+      if (!action) break
+      state = dispatch(state, action)
+    }
+    if (state.pendingAttack) {
+      const defender = state.pendingAttack.defender
+      const phaseBefore = state.phase
+      // A stray advance-phase (mis-timed driver tick) must be a no-op.
+      state = dispatch(state, { kind: 'advance-phase' })
+      expect(state.pendingAttack).toBeDefined()
+      expect(state.pendingAttack!.defender).toBe(defender)
+      expect(state.phase).toBe(phaseBefore)
+    }
+  })
+
+  it('committing without ever rolling cannot fire an ability', () => {
+    let state = newMatch()
+    state = runToInteractive(state)
+    expect(state.phase).toBe('main-pre')
+    // Skip into the roll phase without rolling, then commit.
+    state = dispatch(state, { kind: 'advance-phase' })
+    expect(state.phase).toBe('offensive-roll')
+    state = dispatch(state, { kind: 'advance-phase' })
+    // Resting dice must never produce a match — no picker, no attack.
+    expect(state.pendingOffensiveChoice).toBeUndefined()
+    expect(state.pendingAttack).toBeUndefined()
+    expect(state.phase).toBe('main-post')
   })
 })
 
@@ -144,7 +180,8 @@ describe('UI-flow: hand cards', () => {
     // Fast-forward viewer past their offensive turn.
     let safety = 0
     while (state.activePlayer === 'p1' && state.phase !== 'main-post' && safety++ < 50 && !state.winner) {
-      const action = nextAiAction(state, state.activePlayer)
+      const action = nextAiAction(state, pendingActorFor(state))
+      if (!action) break
       state = dispatch(state, action)
     }
     if (state.phase === 'main-post' && state.activePlayer === 'p1') {

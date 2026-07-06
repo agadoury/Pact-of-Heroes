@@ -23,6 +23,9 @@ export interface DefensiveOverlayProps {
   options:     DefensiveOption[]
   selectedId?: string | null
   onSelect:    (id: string) => void
+  /** True when the incoming damage type cannot be defended against —
+   *  the ladder is replaced by a brace notice (Instants still playable). */
+  undefendable?: boolean
   className?:  string
 }
 
@@ -32,6 +35,7 @@ export function DefensiveOverlay({
   options,
   selectedId,
   onSelect,
+  undefendable = false,
   className,
 }: DefensiveOverlayProps): JSX.Element | null {
   if (!active) return null
@@ -42,11 +46,20 @@ export function DefensiveOverlay({
         <div className={s.damage}>{incoming.damage}</div>
         <div className={s.source}>{incoming.sourceLabel}</div>
       </div>
-      <DefensiveLadder
-        defenses={options}
-        selectedId={selectedId ?? null}
-        onSelect={onSelect}
-      />
+      {undefendable ? (
+        <div className={s.undefendable}>
+          <div className={s.undefendableTitle}>UNDEFENDABLE</div>
+          <div className={s.undefendableHint}>
+            No defense can answer this. Play an Instant from your hand — or brace for impact.
+          </div>
+        </div>
+      ) : (
+        <DefensiveLadder
+          defenses={options}
+          selectedId={selectedId ?? null}
+          onSelect={onSelect}
+        />
+      )}
     </div>
   )
 }

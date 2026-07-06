@@ -193,36 +193,12 @@ export function aggregateEvents(
         break
       }
 
-      case 'card-drawn': {
-        emitted.push({
-          kind: 'sub-event',
-          data: {
-            eventKind:      'draw',
-            label:          'Draw',
-            value:          '+',
-            subtext:        ev.cardId,
-            tone:           'gold',
-            affectedPlayer: ev.player,
-          } satisfies SubEventData,
-        })
-        break
-      }
-
+      case 'card-drawn':
       case 'cp-changed': {
-        // Only surface positive CP changes at upkeep as sub-events. Spend-driven
-        // CP loss is subsumed by the parent action's cinematic.
-        if (ev.delta > 0) {
-          emitted.push({
-            kind: 'sub-event',
-            data: {
-              eventKind:      'cp-gain',
-              label:          `+${ev.delta} CP`,
-              value:          `+${ev.delta}`,
-              tone:           'gold',
-              affectedPlayer: ev.player,
-            } satisfies SubEventData,
-          })
-        }
+        // Deliberately NOT queued as scenes: draws visibly land in the hand
+        // and CP gains float over the strip (DamageFloaters). Queuing a
+        // 700ms cinematic for each added 1.5s+ of dead time to every turn
+        // and double-signaled routine income.
         break
       }
 

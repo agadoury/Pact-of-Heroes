@@ -237,6 +237,14 @@ export function beginOffensivePick(state: GameState): GameEvent[] {
   const opponent = state.players[other(state.activePlayer)];
   const hero = getHero(active.hero);
 
+  // Firing requires having actually rolled this turn. Without this guard a
+  // player who skips straight past the roll phase would evaluate combos
+  // against resting dice (all showing face 0 — five of a kind), firing
+  // abilities they never earned. `forcedFaceValue` (Last Stand) counts as
+  // a legitimate dice state even without a roll.
+  const hasRolled = active.rollAttemptsRemaining < ROLL_ATTEMPTS || active.forcedFaceValue != null;
+  if (!hasRolled) return events;
+
   const faces = effectiveFiringFaces(active, hero);
 
   // Collect all matching abilities, sorted highest-tier-first then

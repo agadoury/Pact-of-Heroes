@@ -14,6 +14,7 @@ import { AmbientBackdrop } from '@/ui/components/shared/AmbientBackdrop'
 import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
 import { hasResumableMatch, loadMatchState, clearMatchState } from '@/ui/store/matchPersistence'
 import { useGameStore } from '@/store/gameStore'
+import { useUIStore } from '@/ui/store/uiStore'
 import s from './HomeScreen.module.css'
 
 export function HomeScreen(): JSX.Element {
@@ -25,6 +26,7 @@ export function HomeScreen(): JSX.Element {
   const resume = () => {
     const state = loadMatchState()
     if (!state) return
+    useUIStore.getState().resetForMatch()
     useGameStore.setState({ state, mode: 'vs-ai', aiPlayer: 'p2', lastEvents: [], matchLog: [] })
     navigate('/play')
   }

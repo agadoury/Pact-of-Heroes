@@ -21,8 +21,26 @@ import { evaluateLadder, pickKeepMask, symbolsOnDice, comboMatchesFaces } from "
 import { stacksOf, getStatusDef } from "./status";
 import { canPlay, resolveAbilityFor } from "./cards";
 
+// ── Pending-prompt routing ───────────────────────────────────────────────────
+/** Which player must act next? Pending prompts pre-empt the active player's
+ *  normal phase flow — the engine is halted until the prompt's holder
+ *  answers through its dedicated action. Drivers (UI + simulator) use this
+ *  to ask the right brain for the next action instead of assuming the
+ *  active player always moves. */
+export function pendingActorFor(state: GameState): PlayerId {
+  if (state.pendingBankSpend)      return state.pendingBankSpend.holder;
+  if (state.pendingStatusRemoval)  return state.pendingStatusRemoval.holder;
+  if (state.pendingCounter)        return state.pendingCounter.holder;
+  if (state.pendingOffensiveChoice) return state.pendingOffensiveChoice.attacker;
+  if (state.pendingAttack)         return state.pendingAttack.defender;
+  return state.activePlayer;
+}
+
 // ── Top-level driver: returns the next action the AI wants to take. ─────────
-export function nextAiAction(state: GameState, ai: PlayerId): Action {
+/** Decide the AI's next action. Returns `null` when the AI has nothing to
+ *  do right now (not its turn and no prompt targets it) — callers must not
+ *  dispatch in that case. */
+export function nextAiAction(state: GameState, ai: PlayerId): Action | null {
   // §Lightbearer: bankable spend prompt. Offensive-resolution: spend
   // generously when the attack is likely to land (we already committed
   // to firing) — every token banks +2 dmg / +1 heal. Defensive: spend
@@ -43,6 +61,27 @@ export function nextAiAction(state: GameState, ai: PlayerId): Action {
       return { kind: "spend-bank", amount: want };
     }
     return { kind: "decline-bank-spend" };
+  }
+  // §Instant window: the opponent is trying to strip a status off us.
+  // Play a matching preventive Instant when we hold one and the stacks are
+  // worth protecting; otherwise let the removal complete.
+  if (state.pendingStatusRemoval && state.pendingStatusRemoval.holder === ai) {
+    const psr = state.pendingStatusRemoval;
+    const me = state.players[ai];
+    const preventive = me.hand.find(c =>
+      c.kind === "instant"
+      && c.trigger.kind === "opponent-attempts-remove-status"
+      && c.trigger.status === psr.status
+      && me.cp >= c.cost,
+    );
+    if (preventive && psr.stacks >= 2) {
+      return { kind: "respond-to-status-removal", cardId: preventive.id };
+    }
+    return { kind: "respond-to-status-removal", cardId: null };
+  }
+  // Counter-prompt — can target the off-turn holder at any point.
+  if (state.pendingCounter && state.pendingCounter.holder === ai) {
+    return { kind: "respond-to-counter", accept: shouldAcceptCounter(state, ai) };
   }
   // On-turn: respond to the offensive picker prompt before anything else.
   if (state.pendingOffensiveChoice && state.pendingOffensiveChoice.attacker === ai) {
@@ -74,11 +113,14 @@ export function nextAiAction(state: GameState, ai: PlayerId): Action {
     return { kind: "select-defense", abilityIndex: idx };
   }
   if (state.activePlayer !== ai) {
-    if (state.pendingCounter && state.pendingCounter.holder === ai) {
-      return { kind: "respond-to-counter", accept: shouldAcceptCounter(state, ai) };
-    }
-    return { kind: "advance-phase" };
+    // Not our turn and no prompt targets us — nothing to do. Returning an
+    // action here (the old advance-phase fallthrough) would mutate the
+    // opponent's turn flow mid-thought.
+    return null;
   }
+  // A pending prompt held by the opponent (their defense pick against our
+  // attack, their instant window) freezes our own flow — wait for them.
+  if (pendingActorFor(state) !== ai) return null;
   switch (state.phase) {
     case "pre-match":      return { kind: "advance-phase" };
     case "upkeep":
@@ -88,7 +130,7 @@ export function nextAiAction(state: GameState, ai: PlayerId): Action {
     case "defensive-roll": return { kind: "advance-phase" };
     case "main-post":      return decideMainPost(state, ai);
     case "discard":        return { kind: "advance-phase" };
-    case "match-end":      return { kind: "advance-phase" };
+    case "match-end":      return null;
   }
 }
 

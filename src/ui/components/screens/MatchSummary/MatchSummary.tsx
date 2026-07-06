@@ -92,6 +92,7 @@ export function MatchSummary(): JSX.Element {
   const goHome = () => {
     clearMatchState()
     reset()
+    useUIStore.getState().resetForMatch()
     heroPair.current = null
     navigate('/')
   }
@@ -100,6 +101,7 @@ export function MatchSummary(): JSX.Element {
     if (!pair) { goHome(); return }
     clearMatchState()
     reset()
+    useUIStore.getState().resetForMatch()
     heroPair.current = null
     startMatch({ p1: pair.p1, p2: pair.p2, mode: 'vs-ai' })
     navigate('/play')
@@ -107,6 +109,7 @@ export function MatchSummary(): JSX.Element {
   const newHero = () => {
     clearMatchState()
     reset()
+    useUIStore.getState().resetForMatch()
     heroPair.current = null
     navigate('/heroes')
   }

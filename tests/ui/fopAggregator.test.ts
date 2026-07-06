@@ -65,17 +65,17 @@ describe('fopAggregator', () => {
     }
   })
 
-  it('emits sub-event scenes for status ticks and card draws', () => {
+  it('emits sub-event scenes for status ticks but not routine draw/CP income', () => {
     const events: GameEvent[] = [
       { t: 'status-ticked', status: 'burn',  holder: 'p1', effect: 'damage', amount: 2, stacksRemaining: 1 },
       { t: 'card-drawn',    player: 'p1', cardId: 'generic/quick-draw' },
       { t: 'cp-changed',    player: 'p1', delta: 1, total: 3 },
     ]
     const r = aggregateEvents(initialAggregatorState, events)
-    expect(r.emitted.length).toBe(3)
+    // Draws land in the hand and CP floats over the strip — only the
+    // status tick warrants a Field-of-Play beat.
+    expect(r.emitted.length).toBe(1)
     expect(r.emitted[0]!.kind).toBe('sub-event')
-    expect(r.emitted[1]!.kind).toBe('sub-event')
-    expect(r.emitted[2]!.kind).toBe('sub-event')
   })
 
   it('flushes on match-won', () => {

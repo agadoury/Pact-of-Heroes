@@ -172,6 +172,22 @@ function makeDice(hero: HeroDefinition, _seed: number): Die[] {
 
 // ── advance-phase / auto progression ────────────────────────────────────────
 function advancePhase(state: GameState): GameEvent[] {
+  // A pending prompt must be answered through its dedicated action
+  // (select-defense, select-offensive-ability, spend-bank, respond-to-*).
+  // A stray advance-phase — a mis-timed AI tick, a double-tap, a replayed
+  // action — must never blow past an engine pause: doing so desyncs the
+  // turn flow (e.g. the defender's pick resolving a turn late and eating
+  // their own roll phase).
+  if (
+    state.pendingAttack
+    || state.pendingOffensiveChoice
+    || state.pendingBankSpend
+    || state.pendingStatusRemoval
+    || state.pendingCounter
+    || state.pendingOffensiveCommit
+  ) {
+    return [];
+  }
   const events: GameEvent[] = [];
   switch (state.phase) {
     case "main-pre":

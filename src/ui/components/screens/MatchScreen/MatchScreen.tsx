@@ -5,12 +5,16 @@
  * overlays against gameStore and uiStore. Dispatches engine actions
  * on user input via the action selectors.
  *
+ * All hooks run unconditionally BEFORE the no-match early return —
+ * conditional hooks crash React the moment `state` flips null ↔ set
+ * while mounted (rematch / resume flows).
+ *
  * Bible references: Parts 2, 3, 5, 6, 7.
  */
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { GameState, HeroSnapshot, PlayerId } from '@/game/types'
+import type { GameState, HeroId, HeroSnapshot, PlayerId } from '@/game/types'
 import { useGameStore } from '@/store/gameStore'
 import { useUIStore, wireResolutionBridge } from '@/ui/store/uiStore'
 import { useResolutionDriver } from '@/ui/hooks/useResolutionDriver'
@@ -36,6 +40,7 @@ import { FieldOfPlay } from '@/ui/components/fop/FieldOfPlay'
 import { UltimateTakeover } from '@/ui/components/fop/UltimateTakeover'
 import { DefensiveOverlay } from '@/ui/components/overlays/DefensiveOverlay'
 import { SpendOverlay } from '@/ui/components/overlays/SpendOverlay'
+import type { SpendYield } from '@/ui/components/overlays/SpendOverlay'
 import { ExpandedAbilityView } from '@/ui/components/overlays/ExpandedAbilityView'
 import { ExpandedCardView } from '@/ui/components/overlays/ExpandedCardView'
 import { TooltipRenderer } from '@/ui/components/overlays/TooltipRenderer'
@@ -45,13 +50,19 @@ import { CardPlayOverlay } from '@/ui/components/overlays/CardPlayOverlay'
 import { OffensivePickPrompt } from '@/ui/components/overlays/OffensivePickPrompt'
 import { InstantPrompt } from '@/ui/components/overlays/InstantPrompt'
 import { MatchIntro } from '@/ui/components/screens/MatchIntro'
-import { useState } from 'react'
+import { getHero } from '@/content'
 import { derivePhaseDisplay } from '@/ui/selectors/phaseDisplay'
 import { deriveLadder } from '@/ui/selectors/ladder'
 import { deriveStatusTrack } from '@/ui/selectors/statusTrack'
 import { deriveActionBar } from '@/ui/selectors/actionBar'
 import { withRollingFlag, type UiDie } from '@/ui/selectors/derivePips'
 import s from './MatchScreen.module.css'
+
+const ULT_BARKS: Record<HeroId, string> = {
+  berserker:   'For the pack.',
+  pyromancer:  'The mountain remembers.',
+  lightbearer: 'Dawn breaks always.',
+}
 
 export function MatchScreen(): JSX.Element {
   const navigate = useNavigate()
@@ -90,6 +101,18 @@ export function MatchScreen(): JSX.Element {
   // this one so the player's chosen ability wins without a second modal.
   const preferredAbilityIdx = useRef<number | null>(null)
 
+  // Two-tap Skip Turn protection — first tap arms, second tap (within the
+  // window) executes the full pass. The arm auto-expires.
+  const [skipArmed, setSkipArmed] = useState(false)
+  useEffect(() => {
+    if (!skipArmed) return
+    const t = window.setTimeout(() => setSkipArmed(false), 3000)
+    return () => window.clearTimeout(t)
+  }, [skipArmed])
+
+  // Bank-spend amount for the SpendOverlay stepper.
+  const [spendAmount, setSpendAmount] = useState(0)
+
   // Subscribe to gameStore matchLog for dice-rolled events → trigger tumble.
   useEffect(() => {
     const unsub = useGameStore.subscribe((s) => {
@@ -127,9 +150,6 @@ export function MatchScreen(): JSX.Element {
         if (ev?.t === 'card-played') {
           const caster = s.state?.players[ev.player]
           if (!caster) continue
-          // Look for the card in the caster's hand + deck + discard (already
-          // moved). Fall back to a placeholder if unknown — the overlay's
-          // effect-parser will still render something readable.
           const found =
             caster.hand.find(c => c.id === ev.cardId)
             ?? caster.deck.find(c => c.id === ev.cardId)
@@ -166,12 +186,15 @@ export function MatchScreen(): JSX.Element {
   const hitFlashPlayer = useJuiceStore(j => j.hitFlashPlayer)
   const hitFlashAt     = useJuiceStore(j => j.hitFlashAt)
 
-  // Redirect to summary when match ends.
+  // Redirect to summary when match ends — after the last cinematic drains
+  // so lethal hits land on screen before the cut.
+  const resolutionsIdle = !currentRes
   useEffect(() => {
-    if (state?.phase === 'match-end') {
-      navigate('/summary')
+    if (state?.phase === 'match-end' && resolutionsIdle) {
+      const t = window.setTimeout(() => navigate('/summary'), 600)
+      return () => window.clearTimeout(t)
     }
-  }, [state?.phase, navigate])
+  }, [state?.phase, resolutionsIdle, navigate])
 
   // Play the intro cinematic once per fresh match.
   useEffect(() => {
@@ -183,6 +206,95 @@ export function MatchScreen(): JSX.Element {
       setIntroActive(true)
     }
   }, [state?.players.p1.hero, state?.players.p2.hero, state?.turn, state?.phase, state])
+
+  // Offensive pick auto-answer: the player's remembered Activate choice
+  // wins; otherwise a single eligible match commits itself (the Fire tap
+  // was the commitment — a one-option picker is dead weight).
+  useEffect(() => {
+    const poc = state?.pendingOffensiveChoice
+    if (!poc || poc.attacker !== viewerId) return
+    const pref = preferredAbilityIdx.current
+    if (pref != null) {
+      preferredAbilityIdx.current = null
+      const chosen = poc.matches.find(m => m.abilityIndex === pref)
+      if (chosen) {
+        dispatch({ kind: 'select-offensive-ability', abilityIndex: chosen.abilityIndex })
+        return
+      }
+      // Preferred choice didn't survive engine eligibility — fall through.
+    }
+    if (poc.matches.length === 1) {
+      dispatch({ kind: 'select-offensive-ability', abilityIndex: poc.matches[0]!.abilityIndex })
+    }
+  }, [state?.pendingOffensiveChoice, viewerId, dispatch])
+
+  // When a bank-spend prompt opens for the viewer, default the stepper to
+  // "spend everything" — one tap commits the pile, steppable down.
+  const viewerBankSpend = state?.pendingBankSpend?.holder === viewerId ? state.pendingBankSpend : null
+  useEffect(() => {
+    if (viewerBankSpend) setSpendAmount(viewerBankSpend.available)
+  }, [viewerBankSpend?.holder, viewerBankSpend?.context, viewerBankSpend?.available])
+
+  // Instant window: only cards whose trigger actually answers the pending
+  // status-removal qualify — offering unrelated Instants would burn the
+  // prompt without preventing anything.
+  const pendingRemoval = state?.pendingStatusRemoval
+  const viewerHand = state?.players[viewerId]?.hand
+  const viewerCp = state?.players[viewerId]?.cp ?? 0
+  const instantCandidates = useMemo(() => {
+    if (!pendingRemoval || pendingRemoval.holder !== viewerId || !viewerHand) return []
+    return viewerHand.filter(c =>
+      c.kind === 'instant'
+      && c.trigger.kind === 'opponent-attempts-remove-status'
+      && c.trigger.status === pendingRemoval.status
+      && viewerCp >= c.cost,
+    )
+  }, [pendingRemoval, viewerHand, viewerCp, viewerId])
+
+  // Safety valve: if the engine is waiting on the viewer's instant window
+  // but no playable candidate exists (CP drained since the prompt opened,
+  // resumed save, etc.), auto-decline rather than deadlock the match.
+  useEffect(() => {
+    if (!pendingRemoval || pendingRemoval.holder !== viewerId) return
+    if (instantCandidates.length === 0) {
+      dispatch({ kind: 'respond-to-status-removal', cardId: null })
+    }
+  }, [pendingRemoval, instantCandidates.length, viewerId, dispatch])
+
+  // Derived overlay props ------------------------------------------------
+
+  const defensiveOptions = useMemo(() => {
+    if (!state?.pendingAttack || state.pendingAttack.defender !== viewerId) return []
+    const self = state.players[viewerId]
+    return self.activeDefense.map((d) => ({
+      id:         d.name,
+      name:       d.name,
+      effectText: d.shortText,
+      descriptor: { kind: 'sigil' as const, symbols: comboSymbolList(d.combo) },
+      comboState: { status: 'ineligible' as const, pips: comboOutlinedPips(d.combo) },
+      diceCount:  d.defenseDiceCount ?? 3,
+    }))
+  }, [state?.pendingAttack, state?.players, viewerId])
+
+  const spendYields = useMemo<SpendYield[]>(() => {
+    if (!viewerBankSpend || !state) return []
+    const heroDef = getHero(state.players[viewerId].hero)
+    const opts = (heroDef.signatureMechanic.implementation.spendOptions ?? [])
+      .filter(o => o.context === viewerBankSpend.context)
+    return opts.map((o, i) => {
+      const eff = o.effect as { kind: string; perUnit?: number }
+      const per = eff.perUnit ?? 0
+      const total = per * spendAmount
+      switch (eff.kind) {
+        case 'damage-bonus':    return { id: `y${i}`, value: `+${total}`, label: 'Bonus damage on this attack' }
+        case 'heal-self':       return { id: `y${i}`, value: `+${total}`, label: 'HP restored' }
+        case 'reduce-incoming': return { id: `y${i}`, value: `−${total}`, label: 'Incoming damage prevented' }
+        default:                return { id: `y${i}`, value: `${total}`, label: eff.kind }
+      }
+    })
+  }, [viewerBankSpend, state, viewerId, spendAmount])
+
+  // ── No-match early return (all hooks above this line) ─────────────────
 
   if (!state) {
     return <NoMatch onGoHome={() => navigate('/')} />
@@ -205,16 +317,23 @@ export function MatchScreen(): JSX.Element {
   })
 
   const isViewerTurn   = state.activePlayer === viewerId
-  const resolutionActive = uiOverlay === 'ultimate' || currentRes?.scene.kind === 'ability'
+  const resolutionActive = uiOverlay === 'ultimate' || currentRes != null
   const actionBar = deriveActionBar({
     state,
     viewerId,
     activeOverlay: uiOverlay,
     resolutionActive,
+    selectedDefenseId,
+    skipArmed,
   })
 
   const selectedAbility = ladder.find(a => a.id === selectedAbilityId) ?? null
   const focusedCard = self.hand.find(c => c.id === focusedCardId) ?? null
+
+  const pendingAttackOnViewer = state.pendingAttack?.defender === viewerId ? state.pendingAttack : null
+  const attackDefendable = pendingAttackOnViewer
+    ? pendingAttackOnViewer.damageType === 'normal' || pendingAttackOnViewer.damageType === 'collateral'
+    : true
 
   // Handlers -------------------------------------------------------------
 
@@ -222,16 +341,26 @@ export function MatchScreen(): JSX.Element {
 
   const onDieTap = (index: number) => {
     if (!canRoll) return
-    // Only unlocked dice from the current roll can be locked; can't toggle
-    // during the tumble animation. Engine rejects invalid inputs anyway.
     dispatch({ kind: 'toggle-die-lock', die: index as 0|1|2|3|4 })
   }
 
+  const executeFullSkip = () => {
+    // Full pass: fizzle past the roll phase (engine's never-rolled guard
+    // keeps resting dice from firing anything) and end the turn.
+    setSkipArmed(false)
+    if (state.phase === 'main-pre') {
+      dispatch({ kind: 'advance-phase' })   // → offensive-roll
+      dispatch({ kind: 'advance-phase' })   // → fizzle → main-post
+      dispatch({ kind: 'end-turn' })
+    } else if (state.phase === 'main-post') {
+      dispatch({ kind: 'end-turn' })
+    }
+  }
+
   const onActionTap = (id: string) => {
+    if (id !== 'skip-turn') setSkipArmed(false)
     switch (id) {
       case 'roll':
-        // roll-dice from main-pre auto-enters offensive-roll and consumes
-        // one attempt. From offensive-roll it consumes another attempt.
         return dispatch({ kind: 'roll-dice' })
       case 'commit':
         // End rolling; engine's beginOffensivePick decides. Auto-commits
@@ -240,24 +369,36 @@ export function MatchScreen(): JSX.Element {
       case 'end-turn':
         return dispatch({ kind: 'end-turn' })
       case 'skip-turn':
-        // Skip during main-pre / offensive-roll = fizzle + advance to
-        // main-post. During main-post it's an end-turn.
         if (state.phase === 'main-post') {
           return dispatch({ kind: 'end-turn' })
         }
-        // From other viewer phases: advance-phase walks to main-post,
-        // then a follow-up end-turn dispatch would be needed. Simpler:
-        // just advance-phase; player can hit End Turn from main-post.
-        return dispatch({ kind: 'advance-phase' })
+        if (state.phase !== 'main-pre') return
+        if (!skipArmed) { setSkipArmed(true); return }
+        return executeFullSkip()
+      case 'take-hit':
+        if (state.pendingAttack) {
+          dispatch({ kind: 'select-defense', abilityIndex: null })
+          selectDefense(null)
+        }
+        return
       case 'confirm-defense':
         if (state.pendingAttack) {
+          if (!attackDefendable) {
+            dispatch({ kind: 'select-defense', abilityIndex: null })
+            selectDefense(null)
+            return
+          }
           const idx = self.activeDefense.findIndex(a => a.name === selectedDefenseId)
-          dispatch({ kind: 'select-defense', abilityIndex: idx >= 0 ? idx : null })
+          if (idx < 0) return   // nothing picked — bar shows disabled state
+          dispatch({ kind: 'select-defense', abilityIndex: idx })
           selectDefense(null)
         }
         return
       case 'confirm-spend':
-        dispatch({ kind: 'spend-bank', amount: 1 })
+        if (state.pendingBankSpend) {
+          if (spendAmount <= 0) dispatch({ kind: 'decline-bank-spend' })
+          else dispatch({ kind: 'spend-bank', amount: spendAmount })
+        }
         return
       case 'skip-spend':
         dispatch({ kind: 'decline-bank-spend' })
@@ -289,37 +430,13 @@ export function MatchScreen(): JSX.Element {
     selectAbility(null)
     // Remember the choice for auto-selection if the picker fires.
     preferredAbilityIdx.current = idx
-    // Advance the phase — engine will either auto-commit this ability
-    // (if it's the only eligible one) or emit pendingOffensiveChoice
-    // (which our useEffect below auto-answers with preferredAbilityIdx).
     dispatch({ kind: 'advance-phase' })
   }
-
-  // If pendingOffensiveChoice fires AND we remembered a preferred ability,
-  // auto-select it so the player doesn't see a redundant picker.
-  useEffect(() => {
-    if (!state?.pendingOffensiveChoice) return
-    if (state.pendingOffensiveChoice.attacker !== viewerId) return
-    const pref = preferredAbilityIdx.current
-    if (pref == null) return
-    const matches = state.pendingOffensiveChoice.matches
-    const chosen = matches.find(m => m.abilityIndex === pref)
-    if (chosen) {
-      preferredAbilityIdx.current = null
-      dispatch({ kind: 'select-offensive-ability', abilityIndex: chosen.abilityIndex })
-    } else {
-      // Preferred choice didn't survive engine eligibility — clear and
-      // let the manual picker overlay handle it.
-      preferredAbilityIdx.current = null
-    }
-  }, [state?.pendingOffensiveChoice, viewerId, dispatch])
 
   const onPlayCard = () => {
     if (!focusedCard) return
     setOverlay('none')
     focusCard(null)
-    // Card overlay pops from the matchLog subscription — we don't
-    // pre-render it here to avoid double-firing.
     dispatch({ kind: 'play-card', card: focusedCard.id, casterPlayer: viewerId })
   }
 
@@ -329,11 +446,6 @@ export function MatchScreen(): JSX.Element {
   const onOffensiveDecline = () => {
     dispatch({ kind: 'select-offensive-ability', abilityIndex: null })
   }
-
-  const instantCandidates = useMemo(() =>
-    self.hand.filter(c => c.kind === 'instant'),
-    [self.hand],
-  )
 
   const onInstantPlay = (cardId: string) => {
     dispatch({ kind: 'respond-to-status-removal', cardId: cardId })
@@ -347,29 +459,6 @@ export function MatchScreen(): JSX.Element {
     selectAbility(null)
     focusCard(null)
   }
-
-  // Derived overlay props ------------------------------------------------
-
-  const defensiveOptions = useMemo(() => {
-    if (!state.pendingAttack || state.pendingAttack.defender !== viewerId) return []
-    return self.activeDefense.map((d) => ({
-      id:         d.name,
-      name:       d.name,
-      effectText: d.shortText,
-      descriptor: { kind: 'sigil' as const, symbols: comboSymbolList(d.combo) },
-      comboState: { status: 'ineligible' as const, pips: comboOutlinedPips(d.combo) },
-      diceCount:  d.defenseDiceCount ?? 3,
-    }))
-  }, [state.pendingAttack, self.activeDefense, viewerId])
-
-  const spendOptions = useMemo(() => {
-    if (!state.pendingBankSpend) return []
-    return [
-      { id: 'damage-bonus',    cost: 1, name: 'Empower attack',   effect: '+2 damage per token',    affordable: state.pendingBankSpend.available >= 1 },
-      { id: 'heal-self',       cost: 1, name: 'Heal self',        effect: '+1 HP per token',        affordable: state.pendingBankSpend.available >= 1 },
-      { id: 'reduce-incoming', cost: 1, name: 'Reduce incoming',  effect: '-2 damage per token',    affordable: state.pendingBankSpend.available >= 1 },
-    ]
-  }, [state.pendingBankSpend])
 
   // Render ---------------------------------------------------------------
 
@@ -452,7 +541,9 @@ export function MatchScreen(): JSX.Element {
 
       <div className={s.band} data-band="hand">
         <Hand>
-          {self.hand.map((card, idx) => (
+          {self.hand.length === 0 ? (
+            <div className={s.emptyHand}>No cards in hand</div>
+          ) : self.hand.map((card, idx) => (
             <HandCard
               key={card.id + '-' + idx}
               card={card}
@@ -477,7 +568,7 @@ export function MatchScreen(): JSX.Element {
       {/* Overlays --------------------------------------------------- */}
 
       <DefensiveOverlay
-        active={uiOverlay !== 'ability' && !!state.pendingAttack && state.pendingAttack.defender === viewerId}
+        active={uiOverlay !== 'ability' && !!pendingAttackOnViewer}
         incoming={{
           damage:      state.pendingAttack?.incomingAmount ?? 0,
           sourceLabel: `${state.pendingAttack?.abilityName ?? ''} · T${state.pendingAttack?.tier ?? ''}`,
@@ -485,15 +576,22 @@ export function MatchScreen(): JSX.Element {
         options={defensiveOptions}
         selectedId={selectedDefenseId}
         onSelect={selectDefense}
+        undefendable={!attackDefendable}
       />
 
       <SpendOverlay
-        active={!!state.pendingBankSpend && state.pendingBankSpend.holder === viewerId}
+        active={!!viewerBankSpend}
         resourceName="Radiance"
-        available={state.pendingBankSpend?.available ?? 0}
+        available={viewerBankSpend?.available ?? 0}
         max={6}
-        options={spendOptions}
-        onSelect={(id) => { void id }}
+        amount={spendAmount}
+        yields={spendYields}
+        contextLabel={
+          viewerBankSpend?.context === 'offensive-resolution'
+            ? 'Empower the attack you are about to land'
+            : 'Blunt the attack coming at you'
+        }
+        onAmountChange={setSpendAmount}
       />
 
       <ExpandedAbilityView
@@ -539,7 +637,7 @@ export function MatchScreen(): JSX.Element {
           heroId:       activeSnapshot.hero,
           ultimateName: currentRes?.scene.kind === 'ability' ? currentRes.scene.data.abilityName : '',
           tierLabel:    'T4 · Ultimate',
-          bark:         'For the pack.',
+          bark:         ULT_BARKS[activeSnapshot.hero] ?? 'The pact holds.',
           damage:       currentRes?.scene.kind === 'ability' ? (currentRes.scene.data.damage ?? 0) : 0,
         }}
       />
@@ -559,16 +657,20 @@ export function MatchScreen(): JSX.Element {
       />
 
       <OffensivePickPrompt
-        active={!!state.pendingOffensiveChoice && state.pendingOffensiveChoice.attacker === viewerId}
+        active={
+          !!state.pendingOffensiveChoice
+          && state.pendingOffensiveChoice.attacker === viewerId
+          && state.pendingOffensiveChoice.matches.length > 1
+        }
         matches={state.pendingOffensiveChoice?.matches ?? []}
         onSelect={onOffensivePick}
         onDecline={onOffensiveDecline}
       />
 
       <InstantPrompt
-        active={!!state.pendingStatusRemoval && state.pendingStatusRemoval.holder === viewerId && instantCandidates.length > 0}
-        title={state.pendingStatusRemoval ? `Prevent ${state.pendingStatusRemoval.status} removal?` : ''}
-        subtitle={state.pendingStatusRemoval ? `${state.pendingStatusRemoval.stacks} stacks would be removed` : undefined}
+        active={!!pendingRemoval && pendingRemoval.holder === viewerId && instantCandidates.length > 0}
+        title={pendingRemoval ? `Prevent ${pendingRemoval.status} removal?` : ''}
+        subtitle={pendingRemoval ? `${pendingRemoval.stacks} stacks would be removed` : undefined}
         candidates={instantCandidates}
         onPlay={onInstantPlay}
         onDecline={onInstantDecline}

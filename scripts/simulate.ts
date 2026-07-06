@@ -11,7 +11,7 @@
  */
 
 import { applyAction, makeEmptyState } from "../src/game/engine";
-import { nextAiAction } from "../src/game/ai";
+import { nextAiAction, pendingActorFor } from "../src/game/ai";
 import { simulateLandingRate } from "../src/game/dice";
 import { HEROES } from "../src/content";
 import type { Action, GameEvent, GameState, HeroId, PlayerId } from "../src/game/types";
@@ -47,7 +47,15 @@ function runMatch(seed: number, verbose: boolean, p1: HeroId, p2: HeroId): { win
 
   let safety = 0;
   while (!state.winner && safety++ < 4000) {
-    const action: Action = nextAiAction(state, state.activePlayer);
+    // Pending prompts (defense picks, spend windows, instant windows) may
+    // target the NON-active player — route the decision to whoever the
+    // engine is actually waiting on.
+    const actor = pendingActorFor(state);
+    const action: Action | null = nextAiAction(state, actor);
+    if (!action) {
+      console.error(`[simulate] AI for ${actor} returned no action at phase=${state.phase} — aborting match`);
+      break;
+    }
     const r = applyAction(state, action);
     state = r.state;
     if (verbose) for (const ev of r.events) logEvent(ev);

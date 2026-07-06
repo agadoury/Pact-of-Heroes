@@ -26,6 +26,20 @@ function installAudioUnlock() {
 installAudioUnlock();
 wireMatchPersistence();
 
+// Dev-only debug handle — lets automated playtests and the console inspect
+// live store state. Stripped from production builds by the DEV guard.
+if (import.meta.env.DEV) {
+  void Promise.all([
+    import("./store/gameStore"),
+    import("./ui/store/uiStore"),
+  ]).then(([g, u]) => {
+    (window as unknown as Record<string, unknown>).__poh = {
+      game: g.useGameStore,
+      ui: u.useUIStore,
+    };
+  });
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>

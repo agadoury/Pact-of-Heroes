@@ -19,6 +19,10 @@ export interface DeriveActionBarInput {
   viewerId:      PlayerId
   activeOverlay: string
   resolutionActive: boolean
+  /** Name of the defense the viewer has highlighted (null = none yet). */
+  selectedDefenseId?: string | null
+  /** Two-tap skip protection: true once the first Skip tap armed it. */
+  skipArmed?: boolean
 }
 
 const ROLL_ATTEMPTS_TOTAL = 3
@@ -40,12 +44,23 @@ export function deriveActionBar(input: DeriveActionBarInput): ActionButton[] {
 
   // Pending prompts take precedence over phase-based context.
   if (state.pendingAttack?.defender === viewerId) {
+    const pa = state.pendingAttack
+    const defendable = pa.damageType === 'normal' || pa.damageType === 'collateral'
+    if (!defendable) {
+      // Pure / undefendable / ultimate — no defense roll possible; the
+      // only response is to brace (Instants can still be played from hand).
+      return [
+        skipTurnDisabled,
+        { id: 'take-hit', label: 'Brace for Impact', variant: 'primary', iconRight: 'chevron-right' },
+      ]
+    }
+    const hasSelection = !!input.selectedDefenseId
     return [
-      skipTurnDisabled,
+      { id: 'take-hit', label: 'Take Hit', variant: 'default' },
       {
         id:        'confirm-defense',
-        label:     'Confirm Pick',
-        variant:   'primary',
+        label:     hasSelection ? 'Confirm Defense' : 'Pick a Defense',
+        variant:   hasSelection ? 'primary' : 'disabled',
         iconRight: 'chevron-right',
       },
     ]
@@ -98,7 +113,7 @@ export function deriveActionBar(input: DeriveActionBarInput): ActionButton[] {
   void ROLL_ATTEMPTS_TOTAL
 
   const skipTurn: ActionButton = (state.phase === 'main-post' || state.phase === 'main-pre')
-    ? { id: 'skip-turn', label: 'Skip Turn', variant: 'skip' }
+    ? { id: 'skip-turn', label: input.skipArmed ? 'Confirm Skip?' : 'Skip Turn', variant: 'skip' }
     : { id: 'skip-turn', label: 'Skip Turn', variant: 'disabled' }
 
   if (state.phase === 'main-pre') {

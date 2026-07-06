@@ -35,6 +35,7 @@ export function HeroSelectScreen(): JSX.Element {
   const begin = () => {
     if (!selectedId || !opponentId) return
     setViewer('p1')
+    useUIStore.getState().resetForMatch()
     startMatch({ p1: selectedId, p2: opponentId, mode: 'vs-ai' })
     navigate('/play')
   }

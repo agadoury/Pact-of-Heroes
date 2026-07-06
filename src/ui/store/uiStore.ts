@@ -85,6 +85,12 @@ export interface UIState {
   openActivityLog: () => void
   closeActivityLog: () => void
   reset: () => void
+  /** Clear all per-match transient state (resolution pipeline, aggregator,
+   *  overlays, selections) while preserving viewer preferences. MUST be
+   *  called whenever a new match starts or a match is abandoned — stale
+   *  `currentResolution` from a previous match permanently blocks the AI
+   *  driver (it waits for the queue to drain). */
+  resetForMatch: () => void
 }
 
 const INITIAL: Omit<UIState, keyof UIStoreActions> = {
@@ -106,6 +112,7 @@ const INITIAL: Omit<UIState, keyof UIStoreActions> = {
 }
 
 type UIStoreActions = {
+  resetForMatch:            UIState['resetForMatch']
   setViewer:                UIState['setViewer']
   setResolutionPhase:       UIState['setResolutionPhase']
   advanceResolutionQueue:   UIState['advanceResolutionQueue']
@@ -160,6 +167,21 @@ export const useUIStore = create<UIState>((set) => ({
   closeActivityLog: () => set({ activityLogOpen: false }),
 
   reset: () => set({ ...INITIAL }),
+
+  resetForMatch: () => set({
+    resolutionPhase:       'idle',
+    resolutionQueue:       [],
+    currentResolution:     null,
+    aggregatorState:       initialAggregatorState,
+    activeOverlay:         'none',
+    tooltipTarget:         null,
+    selectedAbilityId:     null,
+    hoveredAbilityId:      null,
+    selectedDefenseId:     null,
+    selectedSpendOptionId: null,
+    focusedCardId:         null,
+    activityLogOpen:       false,
+  }),
 }))
 
 // ---------------------------------------------------------------------------
