@@ -164,6 +164,18 @@ function instantMatchesPendingAttack(card: import("./types").Card, state: GameSt
   return false;
 }
 
+/** First face-symbol-bend leaf in the effect tree, if any. */
+function findSymbolBend(effect: import("./types").AbilityEffect): { from: string; to: string } | null {
+  if (effect.kind === "face-symbol-bend") return { from: effect.from_symbol, to: effect.to_symbol };
+  if (effect.kind === "compound") {
+    for (const e of effect.effects) {
+      const b = findSymbolBend(e);
+      if (b) return b;
+    }
+  }
+  return null;
+}
+
 /** Does the effect tree contain a set-die-face with a player-chosen face? */
 function hasPlayerFaceSetter(effect: import("./types").AbilityEffect): boolean {
   if (effect.kind === "set-die-face") return effect.target.kind === "face" && effect.target.faceValue == null;
@@ -316,6 +328,19 @@ function decideOffensiveRoll(state: GameState, ai: PlayerId): Action {
             const face = hero.diceIdentity.faces.find(f => f.symbol === targetCombo.symbol);
             if (setter && face) {
               return { kind: "play-card", card: setter.id, casterPlayer: ai, targetFaceValue: face.faceValue };
+            }
+          }
+          // A symbol-bend card (Pelt of the Wolf, Faith) completes the combo
+          // when bent dice make up the shortfall.
+          if (have < targetCombo.count) {
+            for (const card of me.hand) {
+              if (card.kind !== "roll-phase" && card.kind !== "roll-action") continue;
+              const bend = findSymbolBend(card.effect);
+              if (!bend || bend.to !== targetCombo.symbol) continue;
+              const donors = symbols.filter(sym => sym === bend.from).length;
+              if (have + donors < targetCombo.count) continue;
+              if (!canPlay(state, me, opponent, card)) continue;
+              return { kind: "play-card", card: card.id, casterPlayer: ai };
             }
           }
         }
