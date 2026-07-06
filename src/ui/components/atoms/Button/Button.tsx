@@ -14,10 +14,11 @@
  * Bible reference: Part 2.8.
  */
 
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, MouseEvent, ReactNode } from 'react'
 import { clsx } from '@/ui/util/clsx'
 import { Icon } from '../Icon'
 import type { IconName } from '@/ui/types/icon'
+import { audio } from '@/audio/manager'
 import s from './Button.module.css'
 
 export type ButtonVariant =
@@ -54,15 +55,24 @@ export function Button({
   weight,
   className,
   children,
+  onClick,
   ...rest
 }: ButtonProps): JSX.Element {
   const isDisabled = variant === 'disabled'
   const flexWeight = weight ?? WEIGHT_BY_VARIANT[variant]
 
+  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+    if (isDisabled) return
+    // Contextual click SFX — primary/crimson feel weightier than default.
+    audio.play(variant === 'primary' || variant === 'crimson' ? 'card-thud' : 'ui-tap')
+    onClick?.(e)
+  }
+
   return (
     <button
       type="button"
       disabled={isDisabled}
+      onClick={handleClick}
       className={clsx(s.button, s[variant], className)}
       style={flexWeight === 0 ? undefined : { flex: flexWeight }}
       {...rest}

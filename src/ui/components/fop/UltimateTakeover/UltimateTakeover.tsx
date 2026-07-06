@@ -12,6 +12,7 @@ import { clsx } from '@/ui/util/clsx'
 import type { HeroId } from '@/game/types'
 import { DURATION } from '@/ui/util/duration'
 import { DamageNumber } from '../DamageNumber'
+import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
 import s from './UltimateTakeover.module.css'
 
 export interface UltimateTakeoverData {
@@ -48,7 +49,7 @@ export function UltimateTakeover({
     <div className={clsx(s.takeover, className)}>
       <div className={s.rays} aria-hidden="true" />
       <div className={s.portrait} aria-hidden="true">
-        <span className={s.initial}>{data.heroId.charAt(0).toUpperCase()}</span>
+        <HeroSilhouette heroId={data.heroId} size={140} variant="portrait" />
       </div>
       <div className={s.name}>{data.ultimateName}</div>
       <div className={s.tier}>{data.tierLabel}</div>

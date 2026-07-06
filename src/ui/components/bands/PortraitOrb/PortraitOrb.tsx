@@ -11,6 +11,7 @@
 import { clsx } from '@/ui/util/clsx'
 import type { HeroId, PlayerId } from '@/ui/types/ui'
 import { HERO_ELEMENT } from '@/ui/types/ui'
+import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
 import s from './PortraitOrb.module.css'
 
 export type PortraitHighlight = 'damage' | 'heal' | 'resource' | 'trigger' | null
@@ -47,7 +48,7 @@ export function PortraitOrb({
       data-perspective={perspective}
       data-element={element}
     >
-      <span className={s.initial}>{heroId.charAt(0).toUpperCase()}</span>
+      <HeroSilhouette heroId={heroId} size={perspective === 'self' ? 36 : 32} variant="crest" />
     </div>
   )
 }

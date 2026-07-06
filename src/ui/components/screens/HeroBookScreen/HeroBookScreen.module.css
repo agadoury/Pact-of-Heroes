@@ -1,11 +1,13 @@
 .page {
+  position: relative;
   width: 100%;
   min-height: 100dvh;
   padding: var(--space-6);
-  background: var(--night-deep);
+  background: linear-gradient(180deg, var(--night-stone), var(--night-deep));
   color: var(--bone);
   overflow-y: auto;
 }
+.page > *:not(:first-child) { position: relative; z-index: 1; }
 
 .header {
   display: flex;

@@ -9,6 +9,8 @@
 import { useNavigate } from 'react-router-dom'
 import { getHero, getRegisteredHeroIds } from '@/content'
 import { clsx } from '@/ui/util/clsx'
+import { AmbientBackdrop } from '@/ui/components/shared/AmbientBackdrop'
+import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
 import s from './HeroBookScreen.module.css'
 
 export function HeroBookScreen(): JSX.Element {
@@ -16,6 +18,7 @@ export function HeroBookScreen(): JSX.Element {
   const heroes = getRegisteredHeroIds().map(id => getHero(id))
   return (
     <div className={s.page}>
+      <AmbientBackdrop tone="gold" intensity="low" />
       <header className={s.header}>
         <button className={s.back} onClick={() => navigate('/')}>‹ Back</button>
         <div className={s.title}>Hero Book</div>
@@ -29,7 +32,7 @@ export function HeroBookScreen(): JSX.Element {
             onClick={() => navigate(`/heroes/${h.id}`)}
           >
             <div className={s.portrait}>
-              <span className={s.initial}>{h.id.charAt(0).toUpperCase()}</span>
+              <HeroSilhouette heroId={h.id} size={54} variant="crest" />
             </div>
             <div className={s.info}>
               <div className={s.name}>{h.name}</div>

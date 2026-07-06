@@ -1,7 +1,8 @@
 /**
  * <HomeScreen>
  *
- * Landing screen. Title + button stack.
+ * Landing screen — atmospheric backdrop + hero silhouette parade + button
+ * stack. Reads persistence for the Resume Match button.
  *
  * Bible reference: Part 8.2.
  */
@@ -9,6 +10,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/ui/components/atoms/Button'
+import { AmbientBackdrop } from '@/ui/components/shared/AmbientBackdrop'
+import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
 import { hasResumableMatch, loadMatchState, clearMatchState } from '@/ui/store/matchPersistence'
 import { useGameStore } from '@/store/gameStore'
 import s from './HomeScreen.module.css'
@@ -22,7 +25,6 @@ export function HomeScreen(): JSX.Element {
   const resume = () => {
     const state = loadMatchState()
     if (!state) return
-    // Directly seed the game store with the restored state.
     useGameStore.setState({ state, mode: 'vs-ai', aiPlayer: 'p2', lastEvents: [], matchLog: [] })
     navigate('/play')
   }
@@ -34,10 +36,18 @@ export function HomeScreen(): JSX.Element {
 
   return (
     <div className={s.page}>
-      <div className={s.center}>
+      <AmbientBackdrop tone="gold" intensity="standard" />
+      <div className={s.centerFrame}>
+        <div className={s.parade} aria-hidden="true">
+          <HeroSilhouette heroId="berserker" size={68} variant="crest" />
+          <HeroSilhouette heroId="pyromancer" size={68} variant="crest" />
+          <HeroSilhouette heroId="lightbearer" size={68} variant="crest" />
+        </div>
+
         <h1 className={s.title}>Pact of Heroes</h1>
-        <div className={s.subtitle}>Three Heroes, One Pact</div>
-        <div className={s.crest}>◆</div>
+        <div className={s.subtitle}>Three Heroes. One Pact.</div>
+        <div className={s.crest} aria-hidden="true">◆</div>
+
         <div className={s.buttons}>
           {canResume ? (
             <Button variant="primary" onClick={resume} weight={0}>
@@ -52,17 +62,17 @@ export function HomeScreen(): JSX.Element {
             {canResume ? 'New Match (discard)' : 'New Match'}
           </Button>
           <Button variant="default" onClick={() => navigate('/hero-book')} weight={0}>
-            Heroes
+            Hero Book
           </Button>
           <Button variant="default" onClick={() => navigate('/settings')} weight={0}>
             Settings
           </Button>
-          <Button variant="ghost" onClick={() => navigate('/ui-preview')} weight={0}>
-            UI Preview
+          <Button variant="ghost" onClick={() => navigate('/onboarding')} weight={0}>
+            How to Play
           </Button>
         </div>
       </div>
-      <div className={s.version}>v0.2 · 2026</div>
+      <div className={s.version}>v0.3 · 2026</div>
     </div>
   )
 }

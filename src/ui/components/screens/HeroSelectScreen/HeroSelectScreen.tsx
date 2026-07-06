@@ -14,6 +14,10 @@ import { getHero, getRegisteredHeroIds } from '@/content'
 import { useGameStore } from '@/store/gameStore'
 import { useUIStore } from '@/ui/store/uiStore'
 import { Button } from '@/ui/components/atoms/Button'
+import { AmbientBackdrop } from '@/ui/components/shared/AmbientBackdrop'
+import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
+import { HERO_ELEMENT } from '@/ui/types/ui'
+import type { BackdropTone } from '@/ui/components/shared/AmbientBackdrop'
 import { clsx } from '@/ui/util/clsx'
 import s from './HeroSelectScreen.module.css'
 
@@ -35,8 +39,14 @@ export function HeroSelectScreen(): JSX.Element {
     navigate('/play')
   }
 
+  const backdropTone: BackdropTone = selected
+    ? (HERO_ELEMENT[selected.id] === 'frost' ? 'frost'
+      : HERO_ELEMENT[selected.id] === 'ember' ? 'ember' : 'dawn')
+    : 'gold'
+
   return (
     <div className={s.page}>
+      <AmbientBackdrop tone={backdropTone} intensity="low" />
       <header className={s.header}>
         <button className={s.back} onClick={() => navigate('/')}>‹ Back</button>
         <div className={s.title}>Choose Your Hero</div>
@@ -52,6 +62,7 @@ export function HeroSelectScreen(): JSX.Element {
               onClick={() => setSelectedId(h.id)}
               style={{ ['--accent' as string]: h.accentColor }}
             >
+              <HeroSilhouette heroId={h.id} size={44} variant="crest" />
               <div className={s.heroName}>{h.name}</div>
               <div className={s.heroArchetype}>{h.archetype}</div>
               <div className={s.heroComplexity}>
@@ -73,6 +84,7 @@ export function HeroSelectScreen(): JSX.Element {
               onClick={() => setOpponentId(h.id)}
               style={{ ['--accent' as string]: h.accentColor }}
             >
+              <HeroSilhouette heroId={h.id} size={32} variant="crest" />
               <div className={s.heroName}>{h.name}</div>
               <div className={s.heroArchetype}>{h.archetype}</div>
             </div>

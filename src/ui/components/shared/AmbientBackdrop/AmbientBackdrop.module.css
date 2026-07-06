@@ -1,0 +1,53 @@
+.backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Aurora gradient — slow radial pulse */
+.aurora {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(ellipse at 30% 20%,
+    color-mix(in oklab, currentColor 12%, transparent) 0%,
+    transparent 45%),
+    radial-gradient(ellipse at 70% 80%,
+    color-mix(in oklab, currentColor 8%, transparent) 0%,
+    transparent 50%);
+  animation: aurora-drift 24s ease-in-out infinite alternate;
+  filter: blur(60px);
+}
+
+.gold    { color: var(--gold-bright); }
+.frost   { color: var(--frost-bright); }
+.ember   { color: var(--ember-bright); }
+.dawn    { color: var(--dawn-bright); }
+.crimson { color: var(--crimson-bright); }
+
+.mote {
+  position: absolute;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor, 0 0 12px currentColor;
+  animation: mote-float linear infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes aurora-drift {
+  0%   { transform: translate3d(0, 0, 0)   rotate(0deg); }
+  50%  { transform: translate3d(3%, 2%, 0) rotate(2deg); }
+  100% { transform: translate3d(-2%, -3%, 0) rotate(-2deg); }
+}
+
+@keyframes mote-float {
+  0%   { transform: translate3d(0, 0, 0) scale(1); opacity: var(--opacity, 0.5); }
+  50%  { transform: translate3d(6px, -22px, 0) scale(1.15); }
+  100% { transform: translate3d(-4px, -60px, 0) scale(0.7); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora { animation: none; }
+  .mote   { animation: none; }
+}

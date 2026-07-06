@@ -13,6 +13,8 @@ import { useGameStore } from '@/store/gameStore'
 import { useUIStore } from '@/ui/store/uiStore'
 import { clearMatchState } from '@/ui/store/matchPersistence'
 import { Button } from '@/ui/components/atoms/Button'
+import { AmbientBackdrop } from '@/ui/components/shared/AmbientBackdrop'
+import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
 import { clsx } from '@/ui/util/clsx'
 import { HERO_ELEMENT } from '@/ui/types/ui'
 import s from './MatchSummary.module.css'
@@ -109,9 +111,19 @@ export function MatchSummary(): JSX.Element {
     navigate('/heroes')
   }
 
+  const myHero = state.players[viewerId].hero
+  const backdropTone = outcome === 'victory' ? 'gold' : outcome === 'defeat' ? 'crimson' : 'frost'
+
   return (
     <div className={s.container}>
+      <AmbientBackdrop
+        tone={backdropTone}
+        intensity={outcome === 'victory' ? 'high' : 'low'}
+      />
       <div className={s.eyebrow}>— Match Resolved —</div>
+      <div className={s.heroPodium}>
+        <HeroSilhouette heroId={myHero} size={92} variant="portrait" />
+      </div>
       <div className={clsx(s.result, s[outcome])}>
         {outcome === 'victory' ? 'VICTORY' : outcome === 'defeat' ? 'DEFEAT' : 'DRAW'}
       </div>

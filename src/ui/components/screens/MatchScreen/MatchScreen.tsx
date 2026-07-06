@@ -15,6 +15,9 @@ import { useGameStore } from '@/store/gameStore'
 import { useUIStore, wireResolutionBridge } from '@/ui/store/uiStore'
 import { useResolutionDriver } from '@/ui/hooks/useResolutionDriver'
 import { useAiDriver } from '@/ui/hooks/useAiDriver'
+import { useAudioDriver } from '@/ui/hooks/useAudioDriver'
+import { useJuice, useJuiceStore } from '@/ui/hooks/useJuice'
+import { ScreenShake } from '@/ui/components/shared/ScreenShake'
 import { ScreenBands } from '@/ui/components/shared/ScreenBands'
 import { HeroStrip } from '@/ui/components/bands/HeroStrip'
 import { PhaseBanner } from '@/ui/components/bands/PhaseBanner'
@@ -71,6 +74,11 @@ export function MatchScreen(): JSX.Element {
   const [playedByOpp, setPlayedByOpp] = useState(false)
   const lastCardEventIdx = useRef(0)
 
+  // Dice tumble — clock a short "isRolling" burst whenever roll-dice fires.
+  const [rollingUntil, setRollingUntil] = useState(0)
+  const isRolling = performance.now() < rollingUntil
+  const lastDiceEventIdx = useRef(0)
+
   // Match-intro cinematic — plays once per match on first mount with state.
   const introShownFor = useRef<string | null>(null)
   const [introActive, setIntroActive] = useState(false)
@@ -79,6 +87,31 @@ export function MatchScreen(): JSX.Element {
   // If the ensuing advance-phase triggers a multi-ability picker, we auto-pick
   // this one so the player's chosen ability wins without a second modal.
   const preferredAbilityIdx = useRef<number | null>(null)
+
+  // Subscribe to gameStore matchLog for dice-rolled events → trigger tumble.
+  useEffect(() => {
+    const unsub = useGameStore.subscribe((s) => {
+      const log = s.matchLog
+      if (log.length <= lastDiceEventIdx.current) return
+      for (let i = lastDiceEventIdx.current; i < log.length; i++) {
+        const ev = log[i]
+        if (ev?.t === 'dice-rolled') {
+          setRollingUntil(performance.now() + 600)
+        }
+      }
+      lastDiceEventIdx.current = log.length
+    })
+    return unsub
+  }, [])
+
+  // Tick to force isRolling to update after the timeout expires.
+  useEffect(() => {
+    if (rollingUntil === 0) return
+    const remaining = rollingUntil - performance.now()
+    if (remaining <= 0) return
+    const t = window.setTimeout(() => setRollingUntil(0), remaining + 50)
+    return () => window.clearTimeout(t)
+  }, [rollingUntil])
 
   // Subscribe to gameStore matchLog to pop CardPlayOverlay on the latest
   // card-played event (viewer or opponent). Look up the card object via
@@ -122,6 +155,14 @@ export function MatchScreen(): JSX.Element {
   // Drive the AI opponent (p2 in single-player vs AI mode).
   const aiPlayer = useGameStore(g => g.aiPlayer)
   useAiDriver(aiPlayer)
+
+  // Audio + juice (screen shake, hit flash).
+  useAudioDriver()
+  useJuice()
+
+  // Read hit-flash target so strips flash when they take damage.
+  const hitFlashPlayer = useJuiceStore(j => j.hitFlashPlayer)
+  const hitFlashAt     = useJuiceStore(j => j.hitFlashAt)
 
   // Redirect to summary when match ends.
   useEffect(() => {
@@ -330,13 +371,18 @@ export function MatchScreen(): JSX.Element {
 
   // Render ---------------------------------------------------------------
 
+  const opponentFlashActive = hitFlashPlayer === opponentId && performance.now() - hitFlashAt < 500
+  const selfFlashActive     = hitFlashPlayer === viewerId    && performance.now() - hitFlashAt < 500
+
   return (
+    <ScreenShake>
     <ScreenBands>
       <div className={s.band} data-band="opp-strip">
         <HeroStrip
           playerId={opponentId}
           viewerId={viewerId}
           snapshot={opponent}
+          recentDamageTaken={opponentFlashActive ? 1 : null}
           nameRowRight={
             <>
               <OpponentHandIndicator count={opponent.hand.length} />
@@ -361,8 +407,8 @@ export function MatchScreen(): JSX.Element {
       <div className={s.band} data-band="dice-tray">
         <DiceTray
           dice={activeSnapshot.dice}
-          isRolling={false}
-          interactable={canRoll}
+          isRolling={isRolling}
+          interactable={canRoll && !isRolling}
           heroId={activeSnapshot.hero}
           onDieTap={onDieTap}
         />
@@ -389,6 +435,7 @@ export function MatchScreen(): JSX.Element {
           playerId={viewerId}
           viewerId={viewerId}
           snapshot={self}
+          recentDamageTaken={selfFlashActive ? 1 : null}
           nameRowRight={<DeckIndicator count={self.deck.length} />}
           statusTrackSlot={
             <StatusTrack
@@ -529,6 +576,7 @@ export function MatchScreen(): JSX.Element {
       <TooltipRenderer />
       <ToastQueue />
     </ScreenBands>
+    </ScreenShake>
   )
 }
 

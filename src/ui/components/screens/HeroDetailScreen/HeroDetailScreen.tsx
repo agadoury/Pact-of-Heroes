@@ -11,6 +11,10 @@ import { getHero } from '@/content'
 import type { HeroId, AbilityDef } from '@/game/types'
 import { Button } from '@/ui/components/atoms/Button'
 import { TierBadge } from '@/ui/components/ladder/TierBadge'
+import { AmbientBackdrop } from '@/ui/components/shared/AmbientBackdrop'
+import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
+import { HERO_ELEMENT } from '@/ui/types/ui'
+import type { BackdropTone } from '@/ui/components/shared/AmbientBackdrop'
 import s from './HeroDetailScreen.module.css'
 
 export function HeroDetailScreen(): JSX.Element {
@@ -27,8 +31,16 @@ export function HeroDetailScreen(): JSX.Element {
     }
   }
 
+  const backdropTone: BackdropTone = (() => {
+    const el = HERO_ELEMENT[hero.id]
+    if (el === 'frost') return 'frost'
+    if (el === 'ember') return 'ember'
+    return 'dawn'
+  })()
+
   return (
     <div className={s.page} style={{ ['--accent' as string]: hero.accentColor }}>
+      <AmbientBackdrop tone={backdropTone} intensity="low" />
       <header className={s.header}>
         <button className={s.back} onClick={() => navigate('/heroes')}>‹ Back</button>
         <div className={s.title}>{hero.name}</div>
@@ -36,7 +48,7 @@ export function HeroDetailScreen(): JSX.Element {
 
       <section className={s.hero}>
         <div className={s.portrait}>
-          <span className={s.initial}>{hero.id.charAt(0).toUpperCase()}</span>
+          <HeroSilhouette heroId={hero.id} size={72} variant="portrait" />
         </div>
         <div className={s.heroInfo}>
           <div className={s.archetype}>{hero.archetype} · Complexity {hero.complexity}</div>

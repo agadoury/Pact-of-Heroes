@@ -1,0 +1,19 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+.crest {
+  /* used inline in ladder + strip contexts */
+}
+
+.portrait {
+  padding: 4px;
+  border-radius: 8px;
+  background: radial-gradient(circle at 30% 30%,
+    rgba(255, 255, 255, 0.05),
+    rgba(0, 0, 0, 0.6));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
