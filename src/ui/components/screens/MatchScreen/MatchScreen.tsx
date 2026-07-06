@@ -18,6 +18,8 @@ import { useAiDriver } from '@/ui/hooks/useAiDriver'
 import { useAudioDriver } from '@/ui/hooks/useAudioDriver'
 import { useJuice, useJuiceStore } from '@/ui/hooks/useJuice'
 import { ScreenShake } from '@/ui/components/shared/ScreenShake'
+import { TurnBanner } from '@/ui/components/shared/TurnBanner'
+import { DamageFloaters } from '@/ui/components/shared/DamageFloaters'
 import { ScreenBands } from '@/ui/components/shared/ScreenBands'
 import { HeroStrip } from '@/ui/components/bands/HeroStrip'
 import { PhaseBanner } from '@/ui/components/bands/PhaseBanner'
@@ -573,6 +575,8 @@ export function MatchScreen(): JSX.Element {
       />
 
       <ActivityLog />
+      <TurnBanner />
+      <DamageFloaters />
       <TooltipRenderer />
       <ToastQueue />
     </ScreenBands>

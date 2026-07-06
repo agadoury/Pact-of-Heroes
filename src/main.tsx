@@ -6,6 +6,7 @@ import "./styles/globals.css";
 import "./ui/theme/index.css";
 import { migrateLegacyStorage } from "./lib/migrate-storage";
 import { wireMatchPersistence } from "./ui/store/matchPersistence";
+import "./ui/util/ambientMusic";
 
 // One-shot localStorage migration from the previous `diceborn:*` namespace
 // to `pact-of-heroes:*`. Must run before any module reads its own storage.

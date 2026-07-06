@@ -70,8 +70,11 @@ export function HandCard({
           <IllustrationGlyph style={style} tiny />
         </span>
         <span className={s.name}>{card.name}</span>
-        {card.kind === 'instant' ? <span className={s.instantTag} title="Instant">⚡</span> : null}
+        {card.kind === 'instant' ? (
+          <span className={s.instantTag} title="Instant" aria-label="Instant card">⚡</span>
+        ) : null}
       </div>
+      {card.kind === 'instant' ? <span className={s.instantBadge} aria-hidden="true">INSTANT</span> : null}
       <div className={s.effect}>
         <RenderSegments segments={segments} />
       </div>

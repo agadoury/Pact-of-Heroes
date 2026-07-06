@@ -1,0 +1,66 @@
+.overlay {
+  position: absolute;
+  inset: 30% 0 auto 0;
+  z-index: var(--z-toast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: banner-flash 1400ms ease-out;
+}
+
+.card {
+  padding: var(--space-6) var(--space-16);
+  border: 1px solid currentColor;
+  background: linear-gradient(180deg,
+    rgba(0, 0, 0, 0.8),
+    rgba(0, 0, 0, 0.6));
+  box-shadow:
+    0 0 40px currentColor,
+    inset 0 0 40px currentColor;
+  text-align: center;
+  transform: skewX(-8deg);
+}
+
+.you       { color: var(--gold-bright); }
+.opponent  { color: var(--ember-bright); }
+
+.eyebrow {
+  font-family: var(--font-family-display);
+  font-size: 9px;
+  letter-spacing: 0.4em;
+  color: currentColor;
+  opacity: 0.7;
+  text-transform: uppercase;
+  margin-bottom: var(--space-2);
+  transform: skewX(8deg);
+}
+
+.text {
+  font-family: var(--font-family-display);
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: currentColor;
+  text-shadow: 0 0 20px currentColor;
+  transform: skewX(8deg);
+}
+
+@keyframes banner-flash {
+  0%   { opacity: 0; transform: translateX(-30px); }
+  15%  { opacity: 1; transform: translateX(0); }
+  75%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(30px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay {
+    animation: banner-fade 1400ms ease-out;
+  }
+  @keyframes banner-fade {
+    0%, 10%   { opacity: 0; }
+    20%, 80%  { opacity: 1; }
+    100%      { opacity: 0; }
+  }
+}

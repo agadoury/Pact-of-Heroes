@@ -116,9 +116,36 @@
 }
 
 .instantTag {
-  font-size: 8px;
+  font-size: 10px;
   color: var(--dawn-bright);
+  text-shadow: 0 0 6px var(--dawn-bright);
   flex-shrink: 0;
+  animation: instant-tag-pulse 2.4s ease-in-out infinite;
+}
+
+.instantBadge {
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--dawn-bright), var(--dawn));
+  color: var(--night-deep);
+  font-family: var(--font-family-tech);
+  font-size: 6.5px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  box-shadow: 0 0 8px rgba(253, 224, 136, 0.6);
+  pointer-events: none;
+}
+
+@keyframes instant-tag-pulse {
+  0%, 100% { opacity: 0.75; text-shadow: 0 0 4px var(--dawn-bright); }
+  50%      { opacity: 1;    text-shadow: 0 0 10px var(--dawn-bright); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .instantTag { animation: none; }
 }
 
 .effect {
