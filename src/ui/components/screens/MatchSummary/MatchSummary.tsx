@@ -9,6 +9,8 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { HeroId } from '@/game/types'
+import { STARTING_HP } from '@/game/types'
+import { buildMatchSummary } from '@/game/match-summary'
 import { useGameStore } from '@/store/gameStore'
 import { useUIStore } from '@/ui/store/uiStore'
 import { clearMatchState } from '@/ui/store/matchPersistence'
@@ -16,7 +18,6 @@ import { Button } from '@/ui/components/atoms/Button'
 import { AmbientBackdrop } from '@/ui/components/shared/AmbientBackdrop'
 import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
 import { clsx } from '@/ui/util/clsx'
-import { HERO_ELEMENT } from '@/ui/types/ui'
 import s from './MatchSummary.module.css'
 
 const VICTORY_BARKS: Record<HeroId, string[]> = {
@@ -34,9 +35,21 @@ const DEFEAT_BARKS = [
 export function MatchSummary(): JSX.Element {
   const navigate = useNavigate()
   const state    = useGameStore(g => g.state)
+  const matchLog = useGameStore(g => g.matchLog)
   const viewerId = useUIStore(u => u.viewerId)
   const reset    = useGameStore(g => g.reset)
   const startMatch = useGameStore(g => g.startMatch)
+
+  // Rich stats + the §10 descriptor (CLUTCH / FLAWLESS / COMEBACK / …)
+  // computed from the full event log.
+  const summary = useMemo(() => {
+    if (!state?.winner) return null
+    return buildMatchSummary(matchLog, {
+      winner:     state.winner,
+      turns:      state.turn,
+      startingHp: STARTING_HP,
+    })
+  }, [matchLog, state?.winner, state?.turn])
 
   // Snapshot the hero pair BEFORE the match state is reset by Rematch/New Hero.
   const heroPair = useRef<{ p1: HeroId; p2: HeroId } | null>(null)
@@ -56,19 +69,25 @@ export function MatchSummary(): JSX.Element {
   }, [state?.winner, viewerId])
 
   const bark = useMemo(() => {
-    if (!heroPair.current) return 'Both stand.'
-    const myHero = viewerId === 'p1' ? heroPair.current.p1 : heroPair.current.p2
-    const opHero = viewerId === 'p1' ? heroPair.current.p2 : heroPair.current.p1
+    // Read the hero from live state first — the heroPair ref fills in a
+    // useEffect (after this memo's first run) and mutating a ref never
+    // re-renders, so relying on it alone froze the fallback bark.
+    const myHero = state
+      ? state.players[viewerId].hero
+      : viewerId === 'p1' ? heroPair.current?.p1 : heroPair.current?.p2
+    if (!myHero) return 'Both stand.'
     if (outcome === 'victory') {
+      // The descriptor blurb ("That was close." / "Untouchable.") beats a
+      // random bark when we earned a named finish.
+      if (summary && summary.descriptor !== 'VICTORY') return summary.descriptorBlurb
       const pool = VICTORY_BARKS[myHero] ?? ['Victory.']
       return pool[state?.turn ? state.turn % pool.length : 0]!
     }
     if (outcome === 'defeat') {
-      void opHero
       return DEFEAT_BARKS[state?.turn ? state.turn % DEFEAT_BARKS.length : 0]!
     }
     return 'Both stand, neither yields.'
-  }, [outcome, viewerId, state?.turn])
+  }, [outcome, viewerId, state, summary])
 
   useEffect(() => {
     if (!state || state.phase !== 'match-end') {
@@ -79,15 +98,22 @@ export function MatchSummary(): JSX.Element {
   if (!state) return <div className={s.container} />
 
   const myHp   = state.players[viewerId].hp
-  const oppHp  = state.players[viewerId === 'p1' ? 'p2' : 'p1'].hp
-  const stats = [
-    { label: 'Turns',           value: String(state.turn),                                 highlight: false },
-    { label: 'Your HP',         value: `${Math.max(0, myHp)}`,                             highlight: outcome === 'victory' },
-    { label: 'Opponent HP',     value: `${Math.max(0, oppHp)}`,                            highlight: outcome === 'defeat' },
-    { label: 'Your Hero',       value: humanizeHero(state.players[viewerId].hero),         highlight: false },
-    { label: 'Opponent Hero',   value: humanizeHero(state.players[viewerId === 'p1' ? 'p2' : 'p1'].hero), highlight: false },
-    { label: 'Element',         value: capitalize(HERO_ELEMENT[state.players[viewerId].hero] ?? '—'), highlight: false },
-  ]
+  const oppId  = viewerId === 'p1' ? 'p2' as const : 'p1' as const
+  const oppHp  = state.players[oppId].hp
+  const stats = summary
+    ? [
+        { label: 'Turns',        value: String(summary.turns),                       highlight: false },
+        { label: 'Damage Dealt', value: String(summary.totalDamage[viewerId]),       highlight: summary.totalDamage[viewerId] >= summary.totalDamage[oppId] },
+        { label: 'Damage Taken', value: String(summary.totalDamage[oppId]),          highlight: false },
+        { label: 'Biggest Hit',  value: String(summary.biggestHit[viewerId]),        highlight: summary.biggestHit[viewerId] >= 10 },
+        { label: 'Ultimates',    value: String(summary.ultimatesFired[viewerId]),    highlight: summary.ultimatesFired[viewerId] > 0 },
+        { label: 'Dice Rolled',  value: String(summary.diceRolled[viewerId]),        highlight: false },
+      ]
+    : [
+        { label: 'Turns',        value: String(state.turn),        highlight: false },
+        { label: 'Your HP',      value: `${Math.max(0, myHp)}`,    highlight: outcome === 'victory' },
+        { label: 'Opponent HP',  value: `${Math.max(0, oppHp)}`,   highlight: outcome === 'defeat' },
+      ]
 
   const goHome = () => {
     clearMatchState()
@@ -128,7 +154,9 @@ export function MatchSummary(): JSX.Element {
         <HeroSilhouette heroId={myHero} size={92} variant="portrait" />
       </div>
       <div className={clsx(s.result, s[outcome])}>
-        {outcome === 'victory' ? 'VICTORY' : outcome === 'defeat' ? 'DEFEAT' : 'DRAW'}
+        {outcome === 'victory'
+          ? (summary?.descriptor ?? 'VICTORY')
+          : outcome === 'defeat' ? 'DEFEAT' : 'DRAW'}
       </div>
       <div className={s.divider} />
       <div className={s.bark}>&ldquo;{bark}&rdquo;</div>
@@ -147,13 +175,6 @@ export function MatchSummary(): JSX.Element {
       </div>
     </div>
   )
-}
-
-function humanizeHero(id: HeroId): string {
-  return id.charAt(0).toUpperCase() + id.slice(1)
-}
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 export default MatchSummary

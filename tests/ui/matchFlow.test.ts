@@ -141,6 +141,16 @@ describe('UI-flow: full match progression', () => {
     }
   })
 
+  it('any action ends the match when a hero sits at 0 HP (lethality sweep)', () => {
+    let state = newMatch()
+    state = runToInteractive(state)
+    // Simulate an HP-mutating path that forgot its own lethal check.
+    state.players.p2.hp = 0
+    state = dispatch(state, { kind: 'advance-phase' })
+    expect(state.winner).toBe('p1')
+    expect(state.phase).toBe('match-end')
+  })
+
   it('committing without ever rolling cannot fire an ability', () => {
     let state = newMatch()
     state = runToInteractive(state)

@@ -65,6 +65,19 @@ export function applyAction(state: GameState, action: Action): ApplyResult {
     case "concede":         events.push(...endMatch(next, other(action.player))); break;
   }
 
+  // Centralized lethality sweep. Hot paths (attack resolution, upkeep
+  // ticks) end the match inline, but HP is also mutated by card effects,
+  // ability self-costs, holder-action HP payments, and detonations — and
+  // not every one of those checks its own result. Whatever path drove a
+  // hero to 0, the match ends here.
+  if (!next.winner && next.players.p1 && next.players.p2) {
+    const p1Dead = next.players.p1.hp <= 0;
+    const p2Dead = next.players.p2.hp <= 0;
+    if (p1Dead || p2Dead) {
+      events.push(...endMatch(next, p1Dead && p2Dead ? "draw" : p1Dead ? "p2" : "p1"));
+    }
+  }
+
   return { state: next, events };
 }
 
