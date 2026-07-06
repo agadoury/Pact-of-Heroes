@@ -302,6 +302,24 @@ Hooks:
 
 ---
 
+## Art layer (visual identity)
+
+`src/ui/art/` is the visual identity layer — all hand-built vector art,
+zero binary assets:
+
+- `heroArt.tsx` — painted-style layered SVG bust portraits per hero
+  (+ HERO_PALETTE, the concrete hex palette the whole art layer shares).
+  Rendered through `HeroSilhouette variant="portrait"` (all 8 call sites)
+  and circle-cropped in `PortraitOrb`. The geometric crest variant remains
+  for chips/tiny sizes.
+- `cardArt.tsx` — one illustrated 96×64 scene per card id (all 46 cards),
+  palette-washed by hero. Wired into HandCard, ExpandedCardView, and
+  CardPlayOverlay (each keeps a fallback if an id is missing).
+- `/art-preview` — internal gallery route for visual QA of the whole set.
+
+Adding a card? Add a motif to `cardArt.tsx` under the card's id — the
+gallery + `CARD_ART_IDS` make missing art obvious.
+
 ## Overhaul session (multi-agent audit + fixes)
 
 An 8-dimension multi-agent audit (engine cards/phases, MatchScreen wiring,

@@ -11,6 +11,7 @@ import { MatchScreen }               from "./ui/components/screens/MatchScreen";
 import { MatchSummary }              from "./ui/components/screens/MatchSummary";
 import { SettingsScreen }            from "./ui/components/screens/SettingsScreen";
 import { UIPreview }                 from "./ui/components/screens/UIPreview";
+import { ArtPreview }                from "./ui/components/screens/ArtPreview/ArtPreview";
 import { RouteTransition }           from "./ui/components/shared/RouteTransition";
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
       <Route path="/summary"                  element={<MatchSummary />} />
       <Route path="/settings"                 element={<SettingsScreen />} />
       <Route path="/ui-preview"               element={<UIPreview />} />
+      <Route path="/art-preview"              element={<ArtPreview />} />
       <Route path="*"                         element={<Navigate to="/" replace />} />
     </Routes>
     </RouteTransition>

@@ -12,9 +12,9 @@ import { clsx } from '@/ui/util/clsx'
 import type { Card } from '@/game/types'
 import type { EffectSegment } from '@/ui/types/card'
 import { KEYWORD_REGISTRY } from '@/ui/types/card'
-import { Icon } from '@/ui/components/atoms/Icon'
 import { parseEffectText } from '@/ui/util/parseEffect'
 import { deriveCardVisualStyle } from '@/ui/selectors/cardVisual'
+import { CardArt } from '@/ui/art/cardArt'
 import s from './CardPlayOverlay.module.css'
 
 export type CardPlayTone = 'frost' | 'ember' | 'dawn' | 'gold'
@@ -58,10 +58,7 @@ export function CardPlayOverlay({
       <div className={clsx(s.card, s[`style-${style}`], s[`tone-${tone}`])}>
         <span className={s.cost}>{card.cost}</span>
         <div className={s.art}>
-          {style === 'attack'  ? <Icon name="flame"       size={56} /> :
-           style === 'defense' ? <Icon name="shield"      size={56} /> :
-           style === 'buff'    ? <Icon name="trending-up" size={56} /> :
-                                 <Icon name="diamond"     size={56} />}
+          <CardArt cardId={card.id} />
         </div>
         <div className={s.name}>{card.name}</div>
         <div className={s.effect}>

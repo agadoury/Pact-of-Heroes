@@ -10,6 +10,7 @@
 import { clsx } from '@/ui/util/clsx'
 import type { HeroId } from '@/game/types'
 import { HERO_ELEMENT, ELEMENT_COLOR_BRIGHT_VAR } from '@/ui/types/ui'
+import { HeroPortraitArt } from '@/ui/art/heroArt'
 import s from './HeroSilhouette.module.css'
 
 export interface HeroSilhouetteProps {
@@ -59,6 +60,22 @@ export function HeroSilhouette({
   const element = HERO_ELEMENT[heroId] ?? 'ember'
   const colorVar = ELEMENT_COLOR_BRIGHT_VAR[element]
   const path = PATHS[heroId] ?? PATHS.berserker
+
+  // Portrait variant renders the full painted bust from the art layer;
+  // crest keeps the geometric emblem (chips, parade rows, tiny sizes).
+  if (variant === 'portrait') {
+    return (
+      <span
+        className={clsx(s.wrap, s.portrait, className)}
+        style={{ width: size, height: size }}
+        aria-label={`${heroId} portrait`}
+        role="img"
+      >
+        <HeroPortraitArt heroId={heroId} size={size} />
+      </span>
+    )
+  }
+
   return (
     <span
       className={clsx(s.wrap, s[variant], className)}

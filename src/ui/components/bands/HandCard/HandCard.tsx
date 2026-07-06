@@ -13,6 +13,7 @@ import { Icon } from '@/ui/components/atoms/Icon'
 import type { EffectSegment } from '@/ui/types/card'
 import { KEYWORD_REGISTRY } from '@/ui/types/card'
 import { deriveCardVisualStyle } from '@/ui/selectors/cardVisual'
+import { CardArt } from '@/ui/art/cardArt'
 import { parseEffectText, truncateSegments } from '@/ui/util/parseEffect'
 import s from './HandCard.module.css'
 
@@ -63,7 +64,7 @@ export function HandCard({
         {card.cost}
       </span>
       <div className={s.illustration}>
-        <IllustrationGlyph style={style} />
+        <CardArt cardId={card.id} /> 
       </div>
       <div className={s.nameStrip}>
         <span className={s.categoryIcon} aria-hidden="true">

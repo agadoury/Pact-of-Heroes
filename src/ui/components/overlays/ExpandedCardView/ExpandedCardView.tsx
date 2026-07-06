@@ -14,6 +14,7 @@ import { Button } from '@/ui/components/atoms/Button'
 import { Icon } from '@/ui/components/atoms/Icon'
 import { Sigil } from '@/ui/components/atoms/Sigil'
 import { parseEffectText } from '@/ui/util/parseEffect'
+import { CardArt } from '@/ui/art/cardArt'
 import { deriveCardVisualStyle } from '@/ui/selectors/cardVisual'
 import s from './ExpandedCardView.module.css'
 
@@ -85,10 +86,7 @@ export function ExpandedCardView({
       <div className={clsx(s.card, s[`style-${style}`])}>
         <span className={clsx(s.costPip, !affordable && s.unaffordable)}>{card.cost}</span>
         <div className={s.illustration}>
-          {style === 'attack'  ? <Icon name="flame"       size={32} /> :
-           style === 'defense' ? <Icon name="shield"      size={32} /> :
-           style === 'buff'    ? <Icon name="trending-up" size={32} /> :
-                                 <Icon name="diamond"     size={32} />}
+          <CardArt cardId={card.id} />
         </div>
         <div className={s.name}>{card.name}</div>
         <div className={s.categoryLine}>
