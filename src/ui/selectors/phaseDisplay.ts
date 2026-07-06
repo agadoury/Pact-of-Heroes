@@ -61,7 +61,9 @@ export function derivePhaseDisplay(
     case 'main-pre':
     case 'offensive-roll': {
       const rollsLeft = active.rollAttemptsRemaining
-      const current   = ROLL_ATTEMPTS_TOTAL - rollsLeft + 1
+      // Clamp: after the third roll (0 attempts left, still awaiting Fire)
+      // the naive formula reads "Roll · 4 of 3".
+      const current   = Math.min(ROLL_ATTEMPTS_TOTAL, ROLL_ATTEMPTS_TOTAL - rollsLeft + 1)
       if (isViewer) {
         return { kind: 'roll', current, total: ROLL_ATTEMPTS_TOTAL }
       }

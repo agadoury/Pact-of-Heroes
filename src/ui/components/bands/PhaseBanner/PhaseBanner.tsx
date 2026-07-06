@@ -17,6 +17,7 @@ import s from './PhaseBanner.module.css'
 export interface PhaseBannerProps {
   phase:            PhaseDisplay
   onOpenLog?:       () => void
+  onOpenMenu?:      () => void
   activityPulse?:   boolean
   className?:       string
 }
@@ -24,13 +25,25 @@ export interface PhaseBannerProps {
 export function PhaseBanner({
   phase,
   onOpenLog,
+  onOpenMenu,
   activityPulse,
   className,
 }: PhaseBannerProps): JSX.Element {
   const { text, tone } = describe(phase)
   return (
     <div className={clsx(s.banner, s[`tone-${tone}`], className)}>
-      <span className={s.diamond} aria-hidden="true">◆</span>
+      {onOpenMenu ? (
+        <button
+          type="button"
+          className={s.logTrigger}
+          onClick={onOpenMenu}
+          aria-label="Open match menu"
+        >
+          <Icon name="menu" size={12} />
+        </button>
+      ) : (
+        <span className={s.diamond} aria-hidden="true">◆</span>
+      )}
       <span className={s.text}>{text}</span>
       {onOpenLog ? (
         <button

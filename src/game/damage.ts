@@ -77,13 +77,16 @@ export function dealDamage(
       }
     }
 
-    // Defensive-roll reduction: provided by caller for normal/ultimate damage.
-    if ((type === "normal" || type === "ultimate" || type === "collateral") && defensiveReduction > 0) {
+    // External reduction: callers decide POLICY (defense rolls only apply
+    // to defendable types; Instant-injected negation applies to anything
+    // but pure) and pass the applicable amount. Applying it here for every
+    // non-pure type lets Phoenix Veil negate undefendable attacks — the
+    // exact case the engine halts the attack on pendingAttack for.
+    if (defensiveReduction > 0) {
       const reduce = Math.min(working, defensiveReduction);
       working   -= reduce;
       mitigated += reduce;
     }
-    // Undefendable: skip defensive-roll reduction; Shield + Protect already applied.
   }
 
   const finalDamage = Math.max(0, Math.floor(working));

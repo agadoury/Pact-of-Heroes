@@ -9,7 +9,7 @@
  * pending state that the UI must resolve.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { clsx } from '@/ui/util/clsx'
 import type { GameState } from '@/game/types'
 import { Button } from '@/ui/components/atoms/Button'
@@ -32,10 +32,20 @@ export function OffensivePickPrompt({
   className,
 }: OffensivePickPromptProps): JSX.Element | null {
   const [selected, setSelected] = useState<number | null>(null)
+
+  // Reset the highlight whenever a new prompt opens — a stale index from a
+  // previous turn can point at an ability the engine no longer offers, and
+  // committing it makes the attack silently fizzle.
+  useEffect(() => {
+    if (active) setSelected(null)
+  }, [active])
+
   if (!active || matches.length === 0) return null
 
+  const selectedValid = selected != null && matches.some(m => m.abilityIndex === selected)
+
   const commit = () => {
-    if (selected == null) return
+    if (!selectedValid || selected == null) return
     onSelect(selected)
   }
 
@@ -73,7 +83,7 @@ export function OffensivePickPrompt({
       <div className={s.actions}>
         <Button variant="default" onClick={onDecline} weight={1}>Fizzle</Button>
         <Button
-          variant={selected != null ? 'primary' : 'disabled'}
+          variant={selectedValid ? 'primary' : 'disabled'}
           iconRight="chevron-right"
           onClick={commit}
           weight={1.5}

@@ -35,9 +35,18 @@ export function HeroCustomizationScreen(): JSX.Element {
     (loadDeck(heroId) ?? hero.recommendedDeck) as CardId[],
   )
 
-  // Persist on every change.
-  useEffect(() => { saveLoadout(heroId, loadout) },       [heroId, loadout])
-  useEffect(() => { saveDeck(heroId, deck) },             [heroId, deck])
+  // Persist only VALID selections — a half-edited state (1 defense,
+  // 8-card deck) would either be silently discarded by the engine or, for
+  // decks, played as-is. Invalid intermediate states live only in local
+  // component state until completed.
+  useEffect(() => {
+    if (loadout.offense.length === 4 && loadout.defense.length === 2) {
+      saveLoadout(heroId, loadout)
+    }
+  }, [heroId, loadout])
+  useEffect(() => {
+    if (deck.length === DECK_SIZE) saveDeck(heroId, deck)
+  }, [heroId, deck])
 
   const catalogByTier = useMemo(() => {
     const acc: Partial<Record<AbilityTier, AbilityDef[]>> = {}
@@ -95,9 +104,18 @@ export function HeroCustomizationScreen(): JSX.Element {
   const fillDefaults = () => {
     const needed = DECK_SIZE - deck.length
     if (needed <= 0) return
-    const fill = hero.recommendedDeck.filter(id =>
-      (cardCounts[id] ?? 0) < MAX_COPIES,
-    ).slice(0, needed) as CardId[]
+    // Pool: recommended deck first, then the full catalog — the recommended
+    // list alone can run dry when its ids are already at the copy cap,
+    // leaving the deck short with no feedback.
+    const counts = { ...cardCounts }
+    const fill: CardId[] = []
+    const pool = [...hero.recommendedDeck, ...cardCatalog.map(c => c.id)] as CardId[]
+    for (const id of pool) {
+      if (fill.length >= needed) break
+      if ((counts[id] ?? 0) >= MAX_COPIES) continue
+      counts[id] = (counts[id] ?? 0) + 1
+      fill.push(id)
+    }
     setDeck(prev => [...prev, ...fill])
   }
 

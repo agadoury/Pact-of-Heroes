@@ -5,7 +5,7 @@
  * Bible reference: Part 7.10.
  */
 
-import type { GameState } from '@/game/types'
+import type { GameEvent, GameState } from '@/game/types'
 import { useGameStore } from '@/store/gameStore'
 
 const STORAGE_KEY = 'pact-of-heroes:match:v1'
@@ -15,21 +15,25 @@ const MAX_AGE_MS  = 7 * 24 * 60 * 60 * 1000  // 7 days
 interface SavedMatch {
   savedAt: number
   state:   GameState
+  /** Full event log — resumed matches need it so the post-match summary
+   *  (damage totals, descriptor) covers the WHOLE match, not just the
+   *  post-resume slice. Optional for pre-existing saves. */
+  matchLog?: GameEvent[]
 }
 
 let debounceTimer: number | null = null
 let bridgeUnsub: (() => void) | null = null
 
-export function saveMatchState(state: GameState): void {
+export function saveMatchState(state: GameState, matchLog: readonly GameEvent[] = []): void {
   try {
-    const payload: SavedMatch = { savedAt: Date.now(), state }
+    const payload: SavedMatch = { savedAt: Date.now(), state, matchLog: matchLog.slice() }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
   } catch {
     // Storage full / disabled — silent no-op; the match continues in memory.
   }
 }
 
-export function loadMatchState(): GameState | null {
+export function loadMatchState(): { state: GameState; matchLog: GameEvent[] } | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
@@ -43,7 +47,7 @@ export function loadMatchState(): GameState | null {
       clearMatchState()
       return null
     }
-    return parsed.state
+    return { state: parsed.state, matchLog: parsed.matchLog ?? [] }
   } catch {
     return null
   }
@@ -69,8 +73,8 @@ export function wireMatchPersistence(): () => void {
     if (!s.state) return
     if (debounceTimer != null) window.clearTimeout(debounceTimer)
     debounceTimer = window.setTimeout(() => {
-      const cur = useGameStore.getState().state
-      if (cur) saveMatchState(cur)
+      const g = useGameStore.getState()
+      if (g.state) saveMatchState(g.state, g.matchLog)
     }, DEBOUNCE_MS)
   })
   return bridgeUnsub

@@ -12,9 +12,22 @@ import type { EffectSegment } from '@/ui/types/card'
 import { KEYWORD_REGISTRY } from '@/ui/types/card'
 import { Button } from '@/ui/components/atoms/Button'
 import { Icon } from '@/ui/components/atoms/Icon'
+import { Sigil } from '@/ui/components/atoms/Sigil'
 import { parseEffectText } from '@/ui/util/parseEffect'
 import { deriveCardVisualStyle } from '@/ui/selectors/cardVisual'
 import s from './ExpandedCardView.module.css'
+
+export interface FacePickerOption {
+  value:  1 | 2 | 3 | 4 | 5 | 6
+  symbol: string
+  label:  string
+}
+
+export interface FacePickerProps {
+  options:  FacePickerOption[]
+  selected: number | null
+  onSelect: (value: 1 | 2 | 3 | 4 | 5 | 6) => void
+}
 
 export interface ExpandedCardViewProps {
   active:      boolean
@@ -25,6 +38,9 @@ export interface ExpandedCardViewProps {
   mode?:       'in-match' | 'inspection'
   /** True when the card can be sold this phase (main phase, viewer's turn). */
   sellable?:   boolean
+  /** Face-value chooser for set-die-face / force-face-value cards whose
+   *  effect leaves the face up to the player (Iron Focus, Last Stand). */
+  facePicker?: FacePickerProps | null
   onCancel:    () => void
   onPlay?:     () => void
   onSell?:     () => void
@@ -39,6 +55,7 @@ export function ExpandedCardView({
   unplayableReason,
   mode = 'in-match',
   sellable = false,
+  facePicker = null,
   onCancel,
   onPlay,
   onSell,
@@ -81,6 +98,26 @@ export function ExpandedCardView({
           <RenderSegments segments={segments} />
         </div>
       </div>
+
+      {facePicker ? (
+        <div className={s.facePicker}>
+          <div className={s.facePickerLabel}>— Choose a Face —</div>
+          <div className={s.faceRow}>
+            {facePicker.options.map(opt => (
+              <button
+                type="button"
+                key={opt.value}
+                className={clsx(s.faceOption, facePicker.selected === opt.value && s.faceSelected)}
+                onClick={() => facePicker.onSelect(opt.value)}
+                aria-label={`Face ${opt.value} — ${opt.label}`}
+              >
+                <span className={s.faceNum}>{opt.value}</span>
+                <Sigil symbol={opt.symbol} size={16} />
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className={s.actions}>
         <Button variant="default" onClick={onCancel} weight={1}>

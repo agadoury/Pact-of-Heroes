@@ -839,6 +839,9 @@ export interface PendingAttack {
    *  notably Phoenix-Veil-style Instants. Added to the final defensive
    *  reduction in `resolveDefenseChoice`. */
   injectedReduction?: number;
+    /** Guard so the defender's bankable-spend prompt fires at most once
+     *  per attack — set when the prompt opens, checked on resume. */
+    defensiveSpendOffered?: boolean;
 }
 
 export interface GameState {
@@ -905,6 +908,15 @@ export interface GameState {
   pendingOffensiveCommit?: {
     attacker: PlayerId;
     abilityIndex: number;
+  };
+  /** Halted defense-resolution awaiting a `spend-bank` decision — the
+   *  mirror of `pendingOffensiveCommit` for the DEFENDER's bankable spend
+   *  (Lightbearer's Radiance offers -2 incoming per token at
+   *  defensive-resolution). When the spend resolves, the engine resumes by
+   *  calling `resolveDefenseChoice` with this ability index. */
+  pendingDefenseCommit?: {
+    defender: PlayerId;
+    abilityIndex: number | null;
   };
   log: LogEntry[];
   winner?: PlayerId | "draw";

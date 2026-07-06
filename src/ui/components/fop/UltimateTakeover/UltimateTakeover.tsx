@@ -7,7 +7,7 @@
  * Bible reference: Part 5.8.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { clsx } from '@/ui/util/clsx'
 import type { HeroId } from '@/game/types'
 import { DURATION } from '@/ui/util/duration'
@@ -36,13 +36,17 @@ export function UltimateTakeover({
   onComplete,
   className,
 }: UltimateTakeoverProps): JSX.Element | null {
+  // Timer keys on `active` only — inline onComplete closures from parents
+  // change identity every render and would restart the timer forever.
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
   useEffect(() => {
-    if (!active || !onComplete) return
-    const t = window.setTimeout(onComplete,
+    if (!active) return
+    const t = window.setTimeout(() => onCompleteRef.current?.(),
       DURATION.ultimateTakeoverIn + DURATION.ultimateHold + DURATION.ultimateTakeoverOut,
     )
     return () => window.clearTimeout(t)
-  }, [active, onComplete])
+  }, [active])
 
   if (!active) return null
   return (

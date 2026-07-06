@@ -107,6 +107,12 @@ export function HeroSelectScreen(): JSX.Element {
 
       <div className={s.actions}>
         <Button
+          variant="ghost"
+          onClick={() => selectedId && navigate(`/heroes/${selectedId}/customize`)}
+        >
+          Customize
+        </Button>
+        <Button
           variant={selectedId && opponentId ? 'primary' : 'disabled'}
           onClick={begin}
           iconRight="chevron-right"

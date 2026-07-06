@@ -75,9 +75,18 @@ export function deriveStatusTrack(
     }
   }
 
-  // 3. Overflow computation
+  // 3. Overflow: the component renders EVERY token it's given, so the
+  //    selector must actually truncate — otherwise 6+ statuses render all
+  //    chips AND a bogus "+N" badge. Trim the longer bucket first.
   const total = positive.length + negative.length
   const overflowCount = Math.max(0, total - maxVisible)
+  let toTrim = overflowCount
+  while (toTrim > 0) {
+    if (negative.length >= positive.length && negative.length > 0) negative.pop()
+    else if (positive.length > 0) positive.pop()
+    else break
+    toTrim--
+  }
 
   return { positive, negative, signatures, overflowCount }
 }

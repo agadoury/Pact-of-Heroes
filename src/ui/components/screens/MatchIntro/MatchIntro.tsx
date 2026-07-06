@@ -7,7 +7,7 @@
  * Bible reference: Part 7.2.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { clsx } from '@/ui/util/clsx'
 import type { HeroId } from '@/game/types'
 import { DURATION } from '@/ui/util/duration'
@@ -29,11 +29,18 @@ export function MatchIntro({
   onComplete,
   className,
 }: MatchIntroProps): JSX.Element | null {
+  // Timer keys on `active` only. Parents pass inline onComplete closures
+  // (fresh identity every render) and MatchScreen re-renders constantly
+  // while the AI opens the match — keying on onComplete restarted the
+  // timer forever, so the full-screen intro sat on top of the AI's whole
+  // first turn (including the viewer's own defense prompt) until tapped.
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
   useEffect(() => {
-    if (!active || !onComplete) return
-    const t = window.setTimeout(onComplete, DURATION.matchIntro)
+    if (!active) return
+    const t = window.setTimeout(() => onCompleteRef.current?.(), DURATION.matchIntro)
     return () => window.clearTimeout(t)
-  }, [active, onComplete])
+  }, [active])
 
   if (!active) return null
 

@@ -39,7 +39,8 @@ registerStatus({
     trigger: "on-offensive-ability",
     field: "damage",
     valuePerStack: -1,
-    cap: { min: 0 },
+    // No cap: the damage pipeline already floors final damage at 0 —
+    // a {min:0} clamp HERE nullified the entire per-stack debuff.
   },
   visualTreatment: { icon: "frostbite", color: "#9CC8E0", pulse: true, particle: "ice-shards" },
 });

@@ -109,9 +109,11 @@ export function SettingsScreen(): JSX.Element {
       </section>
 
       <div className={s.actions}>
+        {import.meta.env.DEV ? (
         <Button variant="default" onClick={() => navigate('/ui-preview')}>
           UI Preview
         </Button>
+        ) : null}
       </div>
     </div>
   )

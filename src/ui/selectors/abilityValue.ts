@@ -13,8 +13,9 @@
  * Bible reference: Part 3.3.
  */
 
-import type { AbilityEffect, Die, SymbolId } from '@/game/types'
+import type { AbilityEffect, DiceCombo, Die, SymbolId } from '@/game/types'
 import type { AbilityValue, ScalingPreview, UtilityGlyph } from '@/ui/types/ability'
+import { computeComboExtras } from '@/game/dice'
 
 /** Walk into `compound` effects; every other effect is a leaf. */
 function flatten(effect: AbilityEffect): AbilityEffect[] {
@@ -28,6 +29,9 @@ export interface DeriveValueInput {
   effect:            AbilityEffect
   dice:              readonly Die[]
   scalingSymbol?:    SymbolId       // symbol that scaling-damage scales on (from combo)
+  /** The ability's (effective) combo — when provided the scaling preview
+   *  uses the engine's own computeComboExtras for exact parity. */
+  combo?:            DiceCombo
 }
 
 export interface DeriveValueResult {
@@ -35,13 +39,13 @@ export interface DeriveValueResult {
   scaling?: ScalingPreview
 }
 
-export function deriveAbilityValue({ effect, dice, scalingSymbol }: DeriveValueInput): DeriveValueResult {
+export function deriveAbilityValue({ effect, dice, scalingSymbol, combo }: DeriveValueInput): DeriveValueResult {
   const leaves = flatten(effect)
 
   // First: scaling-damage — needs the current-dice projection
   for (const leaf of leaves) {
     if (leaf.kind === 'scaling-damage') {
-      const scaling = computeScaling(leaf, dice, scalingSymbol)
+      const scaling = computeScaling(leaf, dice, scalingSymbol, combo)
       return {
         value:   { kind: 'damage', amount: scaling.currentDamage },
         scaling,
@@ -88,41 +92,35 @@ function leafToUtilityGlyph(leaf: AbilityEffect): UtilityGlyph | null {
   }
 }
 
-/** Compute current / max scaling damage against the current dice. */
+/** Compute current / max scaling damage against the current dice —
+ *  EXACTLY as the engine will (computeComboExtras over the shown faces,
+ *  minus the combo's own minimum). The old locked-dice heuristic showed
+ *  8 for hits that dealt 4 and 4 for hits that dealt 8. */
 function computeScaling(
   leaf: Extract<AbilityEffect, { kind: 'scaling-damage' }>,
   dice: readonly Die[],
   scalingSymbol: SymbolId | undefined,
+  combo: DiceCombo | undefined,
 ): ScalingPreview {
   const { baseAmount, perExtra, maxExtra } = leaf
 
-  // If we don't know which symbol scales, we can't do a live preview —
-  // fall back to base.
-  if (!scalingSymbol) {
+  if (combo) {
+    const faces = dice.map(d => d.faces[d.current]!)
+    const extras = Math.min(computeComboExtras(combo, faces), maxExtra)
     return {
       baseDamage:    baseAmount,
-      currentDamage: baseAmount,
+      currentDamage: baseAmount + extras * perExtra,
       maxDamage:     baseAmount + maxExtra * perExtra,
-      maxedOut:      maxExtra === 0,
+      maxedOut:      extras === maxExtra,
     }
   }
 
-  // Count locked dice showing the scaling symbol (only locked count for
-  // scaling — an unlocked die could reroll away).
-  const lockedShowing = dice.filter(d =>
-    d.locked && d.faces[d.current]!.symbol === scalingSymbol,
-  ).length
-
-  // Every locked die beyond the combo's own minimum count contributes an
-  // extra. We don't know the combo's minimum from the effect alone; assume
-  // the combo already spent its minimum share (a conservative preview —
-  // the ExpandedAbilityView shows the exact math).
-  const extras = Math.min(Math.max(0, lockedShowing - 0), maxExtra)
-
+  // No combo available (legacy callers) — conservative base-only preview.
+  void scalingSymbol
   return {
     baseDamage:    baseAmount,
-    currentDamage: baseAmount + extras * perExtra,
+    currentDamage: baseAmount,
     maxDamage:     baseAmount + maxExtra * perExtra,
-    maxedOut:      extras === maxExtra,
+    maxedOut:      maxExtra === 0,
   }
 }

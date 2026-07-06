@@ -8,6 +8,9 @@
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   animation: card-overlay 1700ms ease-in-out;
+  /* Purely presentational — must never eat taps meant for the dice tray
+     or ladder underneath. */
+  pointer-events: none;
 }
 
 .tone-frost   { background: radial-gradient(ellipse at center, rgba(108, 176, 232, 0.35) 0%, rgba(74, 140, 200, 0.12) 40%, transparent 80%); }

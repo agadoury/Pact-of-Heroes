@@ -47,7 +47,12 @@ export function getDeckCards(id: HeroId, savedDeckIds?: ReadonlyArray<CardId>): 
   const catalog = getCardCatalog(id);
   const byId = new Map(catalog.map(c => [c.id, c]));
   const hero = getHero(id);
-  const deckIds = savedDeckIds ?? hero.recommendedDeck;
+  // Wholesale fallback for mis-sized saved decks (the deck editor persists
+  // on every change, so an abandoned edit can leave 0-11 cards) — playing
+  // an undersized deck silently deletes the card system for that hero.
+  const deckIds = savedDeckIds && savedDeckIds.length === hero.recommendedDeck.length
+    ? savedDeckIds
+    : hero.recommendedDeck;
   const cards: Card[] = [];
   for (const cardId of deckIds) {
     const card = byId.get(cardId);

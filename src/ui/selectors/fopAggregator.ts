@@ -51,7 +51,13 @@ interface CardPlayPending {
   cardId:   string
 }
 
-type PendingScene = AbilityPending | CardPlayPending | null
+interface DetonationPending {
+  kind:           'detonation'
+  stacksConsumed: number
+  damage:         number
+}
+
+type PendingScene = AbilityPending | CardPlayPending | DetonationPending | null
 
 export interface AggregatorState {
   pending: PendingScene
@@ -83,6 +89,19 @@ export function aggregateEvents(
 
   const flush = () => {
     if (!pending) return
+    if (pending.kind === 'detonation') {
+      emitted.push({
+        kind: 'detonation',
+        data: {
+          triggerKind:    'cinder',
+          damage:         pending.damage,
+          stacksConsumed: pending.stacksConsumed,
+          aoe:            true,
+        } satisfies DetonationData,
+      })
+      pending = null
+      return
+    }
     if (pending.kind === 'ability') {
       const scene: FOPScene = {
         kind: 'ability',
@@ -132,22 +151,26 @@ export function aggregateEvents(
 
       case 'status-detonated': {
         // Detonation always closes any pending ability first so the two
-        // cinematics play in sequence, not merged.
+        // cinematics play in sequence, not merged. The detonation itself
+        // stays PENDING so the follow-up damage-dealt fills its number —
+        // emitting immediately showed "Cinder x5 -> 0 damage" every time.
         flush()
-        const scene: FOPScene = {
-          kind: 'detonation',
-          data: {
-            triggerKind:    'cinder',
-            damage:         0,          // filled by the follow-up damage-dealt
-            stacksConsumed: ev.threshold,
-            aoe:            true,
-          } satisfies DetonationData,
+        pending = {
+          kind:           'detonation',
+          stacksConsumed: ev.threshold,
+          damage:         0,
         }
-        emitted.push(scene)
         break
       }
 
       case 'damage-dealt': {
+        if (pending?.kind === 'detonation') {
+          pending.damage += Math.max(0, ev.amount)
+          // The detonation's damage arrives in the same batch right after
+          // the trigger — close it as soon as the number lands.
+          flush()
+          break
+        }
         if (pending?.kind === 'ability') {
           pending.damage = (pending.damage ?? 0) + Math.max(0, ev.amount)
           pending.effects.push({

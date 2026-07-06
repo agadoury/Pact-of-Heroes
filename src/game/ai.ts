@@ -401,11 +401,16 @@ function pickHolderRemovalAction(holder: import("./types").HeroSnapshot): { stat
     if (!def || !actions || actions.length === 0) continue;
 
     // "Worth it" threshold: smallest threshold among stateThresholdEffects,
-    // or 75% of stackLimit when no thresholds are declared.
+    // or 75% of stackLimit when no thresholds are declared. Statuses that
+    // sap our damage every attack (Verdict) are worth clearing from 2
+    // stacks — waiting for the card-bind threshold bleeds whole turns.
+    const damageSapping = (def.passiveModifier?.valuePerStack ?? 0) < 0
+      && def.passiveModifier?.field === "damage";
     const lowestThreshold = def.stateThresholdEffects?.length
       ? Math.min(...def.stateThresholdEffects.map(s => s.threshold))
       : Math.ceil(def.stackLimit * 0.75);
-    if (inst.stacks < lowestThreshold) continue;
+    const worthAt = damageSapping ? Math.min(2, lowestThreshold) : lowestThreshold;
+    if (inst.stacks < worthAt) continue;
 
     for (let i = 0; i < actions.length; i++) {
       const action = actions[i];

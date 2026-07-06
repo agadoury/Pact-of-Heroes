@@ -7,7 +7,7 @@
  * Bible reference: Part 6.6.5.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { clsx } from '@/ui/util/clsx'
 import type { Card } from '@/game/types'
 import type { EffectSegment } from '@/ui/types/card'
@@ -36,11 +36,18 @@ export function CardPlayOverlay({
   onComplete,
   className,
 }: CardPlayOverlayProps): JSX.Element | null {
+  // The dismiss timer keys on activation + card identity ONLY. Parents pass
+  // inline onComplete closures (new identity every render), and MatchScreen
+  // re-renders every few hundred ms during resolution sequences — keying the
+  // effect on onComplete restarted the timer forever, leaving an invisible
+  // tap-eating layer over the dice tray for the whole resolution run.
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
   useEffect(() => {
-    if (!active || !onComplete) return
-    const t = window.setTimeout(onComplete, BEAT_MS)
+    if (!active) return
+    const t = window.setTimeout(() => onCompleteRef.current?.(), BEAT_MS)
     return () => window.clearTimeout(t)
-  }, [active, onComplete])
+  }, [active, card?.id])
 
   if (!active || !card) return null
   const style    = deriveCardVisualStyle(card)

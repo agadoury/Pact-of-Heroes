@@ -49,6 +49,7 @@ import { ActivityLog } from '@/ui/components/overlays/ActivityLog'
 import { CardPlayOverlay } from '@/ui/components/overlays/CardPlayOverlay'
 import { OffensivePickPrompt } from '@/ui/components/overlays/OffensivePickPrompt'
 import { InstantPrompt } from '@/ui/components/overlays/InstantPrompt'
+import { MatchMenu } from '@/ui/components/overlays/MatchMenu'
 import { MatchIntro } from '@/ui/components/screens/MatchIntro'
 import { getHero } from '@/content'
 import { canPlay } from '@/game/cards'
@@ -122,8 +123,15 @@ export function MatchScreen(): JSX.Element {
   // Bank-spend amount for the SpendOverlay stepper.
   const [spendAmount, setSpendAmount] = useState(0)
 
+  // Face pick for set-die-face / force-face-value cards (Iron Focus,
+  // Last Stand). Without a chosen face those effects are engine no-ops
+  // that still consume CP + the card.
+  const [pickedFace, setPickedFace] = useState<1|2|3|4|5|6 | null>(null)
+  useEffect(() => { setPickedFace(null) }, [focusedCardId])
+
   // Subscribe to gameStore matchLog for dice-rolled events → trigger tumble.
   useEffect(() => {
+    lastDiceEventIdx.current = useGameStore.getState().matchLog.length
     const unsub = useGameStore.subscribe((s) => {
       const log = s.matchLog
       if (log.length < lastDiceEventIdx.current) lastDiceEventIdx.current = 0
@@ -152,6 +160,7 @@ export function MatchScreen(): JSX.Element {
   // card-played event (viewer or opponent). Look up the card object via
   // the caster's catalog.
   useEffect(() => {
+    lastCardEventIdx.current = useGameStore.getState().matchLog.length
     const unsub = useGameStore.subscribe((s) => {
       const log = s.matchLog
       if (log.length < lastCardEventIdx.current) lastCardEventIdx.current = 0
@@ -207,16 +216,22 @@ export function MatchScreen(): JSX.Element {
     }
   }, [state?.phase, resolutionsIdle, navigate])
 
-  // Play the intro cinematic once per fresh match.
+  // Play the intro cinematic once per fresh match. The shown-marker
+  // persists (keyed by match seed) so a turn-1 match resumed after a
+  // reload doesn't replay the full-screen VS cinematic mid-action.
   useEffect(() => {
     if (!state) return
-    const key = `${state.players.p1.hero}-vs-${state.players.p2.hero}-t${state.turn}`
-    if (introShownFor.current === key) return
-    if (state.turn === 1 && state.phase !== 'match-end') {
-      introShownFor.current = key
-      setIntroActive(true)
-    }
-  }, [state?.players.p1.hero, state?.players.p2.hero, state?.turn, state?.phase, state])
+    if (state.turn !== 1 || state.phase === 'match-end') return
+    const marker = String(state.rngSeed)
+    if (introShownFor.current === marker) return
+    introShownFor.current = marker
+    try {
+      const KEY = 'pact-of-heroes:intro-shown'
+      if (localStorage.getItem(KEY) === marker) return
+      localStorage.setItem(KEY, marker)
+    } catch { /* storage unavailable — play it */ }
+    setIntroActive(true)
+  }, [state?.rngSeed, state?.turn, state?.phase, state])
 
   // Offensive pick auto-answer: the player's remembered Activate choice
   // wins; otherwise a single eligible match commits itself (the Fire tap
@@ -261,6 +276,28 @@ export function MatchScreen(): JSX.Element {
       && viewerCp >= c.cost,
     )
   }, [pendingRemoval, viewerHand, viewerCp, viewerId])
+
+  // If an inspection modal's subject vanishes from under it, the modal
+  // unmounts but activeOverlay stays set — wedging the action bar on
+  // "Inspecting…". Two vanish paths: the turn flips (the ladder re-derives
+  // for the other hero, so the inspected ability id no longer resolves)
+  // and a focused card leaving the hand (auto-discard over hand cap).
+  const activePlayerNow = state?.activePlayer
+  useEffect(() => {
+    const us = useUIStore.getState()
+    if (us.activeOverlay === 'ability') {
+      us.setOverlay('none')
+      us.selectAbility(null)
+    }
+  }, [activePlayerNow])
+  const focusedCardStillHeld =
+    focusedCardId == null || !!state?.players[viewerId]?.hand.some(c => c.id === focusedCardId)
+  useEffect(() => {
+    if (focusedCardStillHeld) return
+    const us = useUIStore.getState()
+    if (us.activeOverlay === 'card') us.setOverlay('none')
+    us.focusCard(null)
+  }, [focusedCardStillHeld])
 
   // Safety valve: if the engine is waiting on the viewer's instant window
   // but no playable candidate exists (CP drained since the prompt opened,
@@ -348,8 +385,24 @@ export function MatchScreen(): JSX.Element {
     focusedCard != null
     && (isViewerTurn || focusedCard.kind === 'instant')
     && canPlay(state, self, opponent, focusedCard)
+  const focusedCardNeedsFace = focusedCard != null && effectNeedsFaceValue(focusedCard.effect)
+  const facePicker =
+    focusedCardNeedsFace
+      ? {
+          options: self.dice[0]!.faces.map(f => ({
+            value: f.faceValue,
+            symbol: f.symbol,
+            label: f.label,
+          })),
+          selected: pickedFace,
+          onSelect: setPickedFace,
+        }
+      : null
+
   const focusedCardBlockReason = ((): string | undefined => {
-    if (!focusedCard || focusedCardPlayable) return undefined
+    if (!focusedCard) return undefined
+    if (focusedCardPlayable && focusedCardNeedsFace && pickedFace == null) return 'CHOOSE A FACE VALUE'
+    if (focusedCardPlayable) return undefined
     if (self.cp < focusedCard.cost) return `NEED ${focusedCard.cost} CP (HAVE ${self.cp})`
     if (!isViewerTurn && focusedCard.kind !== 'instant') return 'NOT YOUR TURN'
     if (focusedCard.oncePerMatch && self.consumedOncePerMatchCards.includes(focusedCard.id)) return 'ALREADY USED THIS MATCH'
@@ -372,10 +425,13 @@ export function MatchScreen(): JSX.Element {
 
   // Handlers -------------------------------------------------------------
 
-  const canRoll = isViewerTurn && (state.phase === 'main-pre' || state.phase === 'offensive-roll')
+  // Locks only mean something during the roll phase — the engine rejects
+  // toggle-die-lock anywhere else, so the tray must not invite dead taps
+  // in main-pre (pre-roll faces are stale anyway).
+  const diceInteractable = isViewerTurn && state.phase === 'offensive-roll'
 
   const onDieTap = (index: number) => {
-    if (!canRoll) return
+    if (!diceInteractable) return
     dispatch({ kind: 'toggle-die-lock', die: index as 0|1|2|3|4 })
   }
 
@@ -394,13 +450,28 @@ export function MatchScreen(): JSX.Element {
 
   const onActionTap = (id: string) => {
     if (id !== 'skip-turn') setSkipArmed(false)
+    // Holder-paid status removal — id encodes `atone:<statusId>:<idx>`.
+    // Status ids are themselves namespaced with ':' (lightbearer:verdict),
+    // so re-join everything between the prefix and the trailing index.
+    if (id.startsWith('atone:')) {
+      const parts = id.split(':')
+      const actionIndex = Number(parts[parts.length - 1])
+      const status = parts.slice(1, -1).join(':')
+      dispatch({ kind: 'status-holder-action', status, actionIndex })
+      return
+    }
     switch (id) {
       case 'roll':
         return dispatch({ kind: 'roll-dice' })
-      case 'commit':
+      case 'commit': {
         // End rolling; engine's beginOffensivePick decides. Auto-commits
         // if one match, fizzles if none, opens picker if multiple.
+        // Live-phase guard: a double-tap after a fizzle would otherwise
+        // land a second advance-phase in main-post — ending the turn.
+        const live = useGameStore.getState().state
+        if (live?.phase !== 'offensive-roll') return
         return dispatch({ kind: 'advance-phase' })
+      }
       case 'end-turn':
         return dispatch({ kind: 'end-turn' })
       case 'skip-turn':
@@ -456,13 +527,20 @@ export function MatchScreen(): JSX.Element {
 
   const onActivateAbility = () => {
     if (!selectedAbility) return
-    const idx = self.activeOffense.findIndex(a => a.name === selectedAbility.id)
+    // Positional lookup: ladder rows map 1:1 onto activeOffense, and the
+    // ladder shows RESOLVED names (mastery replacements) that don't exist
+    // in the raw loadout — a name lookup would miss upgraded abilities.
+    const idx = ladder.findIndex(a => a.id === selectedAbility.id)
     if (idx < 0) {
       toast('warn', 'Ability not on the ladder')
       return
     }
     setOverlay('none')
     selectAbility(null)
+    // Live-phase guard mirrors the Fire button — never advance from a
+    // phase where advance-phase means something else (main-post = end turn).
+    const live = useGameStore.getState().state
+    if (live?.phase !== 'offensive-roll') return
     // Remember the choice for auto-selection if the picker fires.
     preferredAbilityIdx.current = idx
     dispatch({ kind: 'advance-phase' })
@@ -470,9 +548,15 @@ export function MatchScreen(): JSX.Element {
 
   const onPlayCard = () => {
     if (!focusedCard) return
+    if (focusedCardNeedsFace && pickedFace == null) return
     setOverlay('none')
     focusCard(null)
-    dispatch({ kind: 'play-card', card: focusedCard.id, casterPlayer: viewerId })
+    dispatch({
+      kind: 'play-card',
+      card: focusedCard.id,
+      casterPlayer: viewerId,
+      targetFaceValue: focusedCardNeedsFace ? pickedFace ?? undefined : undefined,
+    })
   }
 
   const cardSellable =
@@ -540,14 +624,18 @@ export function MatchScreen(): JSX.Element {
       </div>
 
       <div className={s.band} data-band="phase-banner">
-        <PhaseBanner phase={phaseDisplay} onOpenLog={() => setOverlay('log')} />
+        <PhaseBanner
+          phase={phaseDisplay}
+          onOpenLog={() => setOverlay('log')}
+          onOpenMenu={() => setOverlay('menu')}
+        />
       </div>
 
       <div className={s.band} data-band="dice-tray">
         <DiceTray
           dice={activeSnapshot.dice}
           isRolling={isRolling}
-          interactable={canRoll && !isRolling}
+          interactable={diceInteractable && !isRolling}
           heroId={activeSnapshot.hero}
           onDieTap={onDieTap}
         />
@@ -616,9 +704,14 @@ export function MatchScreen(): JSX.Element {
       {/* Overlays --------------------------------------------------- */}
 
       <DefensiveOverlay
-        active={uiOverlay !== 'ability' && !!pendingAttackOnViewer}
+        active={uiOverlay !== 'ability' && !!pendingAttackOnViewer && !viewerBankSpend}
         incoming={{
-          damage:      state.pendingAttack?.incomingAmount ?? 0,
+          // Show what's actually still coming — Instants played from hand
+          // (Phoenix Veil, Aegis of Dawn) inject their reduction live.
+          damage: Math.max(
+            0,
+            (state.pendingAttack?.incomingAmount ?? 0) - (state.pendingAttack?.injectedReduction ?? 0),
+          ),
           sourceLabel: `${state.pendingAttack?.abilityName ?? ''} · T${state.pendingAttack?.tier ?? ''}`,
         }}
         options={defensiveOptions}
@@ -667,8 +760,9 @@ export function MatchScreen(): JSX.Element {
         active={uiOverlay === 'card' && !!focusedCard}
         card={focusedCard}
         affordable={focusedCard != null && self.cp >= focusedCard.cost}
-        playable={focusedCardPlayable}
+        playable={focusedCardPlayable && (!focusedCardNeedsFace || pickedFace != null)}
         unplayableReason={focusedCardBlockReason}
+        facePicker={facePicker}
         sellable={cardSellable}
         onCancel={onCancelOverlay}
         onPlay={onPlayCard}
@@ -676,7 +770,12 @@ export function MatchScreen(): JSX.Element {
       />
 
       <UltimateTakeover
-        active={uiOverlay === 'ultimate' && !!currentRes}
+        active={
+          currentRes?.scene.kind === 'ability'
+          && currentRes.scene.data.tier === 4
+          && resolutionPhase !== 'idle'
+          && resolutionPhase !== 'preconfirm'
+        }
         data={{
           heroId:       activeSnapshot.hero,
           ultimateName: currentRes?.scene.kind === 'ability' ? currentRes.scene.data.abilityName : '',
@@ -720,6 +819,21 @@ export function MatchScreen(): JSX.Element {
         onDecline={onInstantDecline}
       />
 
+      <MatchMenu
+        active={uiOverlay === 'menu'}
+        onResume={() => setOverlay('none')}
+        onConcede={() => {
+          setOverlay('none')
+          dispatch({ kind: 'concede', player: viewerId })
+        }}
+        onGoHome={() => {
+          // The debounced persistence already saved the match — it shows
+          // up as Resume Match on the home screen.
+          setOverlay('none')
+          navigate('/')
+        }}
+      />
+
       <ActivityLog />
       <TurnBanner />
       <DamageFloaters />
@@ -751,6 +865,20 @@ function cardPlayableState(
   // whose Play the engine rejects is a dead tap.
   if (!canPlay(state, self, opponent, card)) return 'wrong-timing-modal'
   return 'playable'
+}
+
+/** Does the card's effect tree need a player-chosen face value? */
+function effectNeedsFaceValue(effect: import('@/game/types').AbilityEffect): boolean {
+  if (effect.kind === 'set-die-face') {
+    return effect.target.kind === 'face' && effect.target.faceValue == null
+  }
+  if (effect.kind === 'force-face-value') {
+    return effect.faceValue == null
+  }
+  if (effect.kind === 'compound') {
+    return effect.effects.some(effectNeedsFaceValue)
+  }
+  return false
 }
 
 function comboSymbolList(combo: any): string[] {

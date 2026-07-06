@@ -198,6 +198,7 @@ function advancePhase(state: GameState): GameEvent[] {
     || state.pendingStatusRemoval
     || state.pendingCounter
     || state.pendingOffensiveCommit
+    || state.pendingDefenseCommit
   ) {
     return [];
   }
@@ -333,6 +334,14 @@ function passTurn(state: GameState): GameEvent[] {
   // Forced face-value overrides (Last Stand) are also turn-scoped.
   state.players.p1.forcedFaceValue = undefined;
   state.players.p2.forcedFaceValue = undefined;
+  // Turn/roll-scoped symbol bends expire with the turn. Without this,
+  // "until end of turn, fur counts as axe" was silently permanent for the
+  // whole match. Status-bound bends persist until their status resolves.
+  for (const pid of ["p1", "p2"] as const) {
+    state.players[pid].symbolBends = state.players[pid].symbolBends.filter(
+      b => b.expires.kind === "until-status",
+    );
+  }
   const events: GameEvent[] = [
     ...turnEvents,
     { t: "turn-started", player: state.activePlayer, turn: state.turn },
@@ -471,11 +480,51 @@ function selectOffensiveAbility(state: GameState, abilityIndex: number | null): 
   return events;
 }
 
-/** Defender's response to a `pendingAttack`. Rolls the defense dice
- *  inline (or skips when abilityIndex is null), applies damage, then
- *  proceeds to main-post. */
+/** Defender's response to a `pendingAttack`. Halts for the defender's
+ *  bankable spend first (Lightbearer's defensive Radiance: -2 incoming
+ *  per token), then rolls the defense dice inline (or skips when
+ *  abilityIndex is null), applies damage, and proceeds to main-post. */
 function selectDefense(state: GameState, abilityIndex: number | null): GameEvent[] {
-  if (!state.pendingAttack) return [];
+  const pa = state.pendingAttack;
+  if (!pa) return [];
+  const events: GameEvent[] = [];
+
+  // §Lightbearer: defensive-resolution bankable spend. Prompt at most
+  // once per attack, before the defense roll, so the spent tokens inject
+  // their reduction into this resolution.
+  const defender = state.players[pa.defender];
+  const defenderHero = getHero(defender.hero);
+  const spendKey = defenderHero.signatureMechanic.implementation.passiveKey;
+  const defensiveOpts = (defenderHero.signatureMechanic.implementation.spendOptions ?? [])
+    .filter(o => o.context === "defensive-resolution");
+  const banked = spendKey ? (defender.signatureState[spendKey] ?? 0) : 0;
+  if (spendKey && defensiveOpts.length > 0 && banked > 0 && !pa.defensiveSpendOffered) {
+    pa.defensiveSpendOffered = true;
+    state.pendingDefenseCommit = { defender: pa.defender, abilityIndex };
+    state.pendingBankSpend = {
+      holder: pa.defender,
+      passiveKey: spendKey,
+      available: banked,
+      context: "defensive-resolution",
+      optionIndex: 0,
+    };
+    events.push({
+      t: "bank-spend-prompt",
+      holder: pa.defender,
+      passiveKey: spendKey,
+      available: banked,
+      context: "defensive-resolution",
+    });
+    return events;
+  }
+
+  return finishDefenseResolution(state, abilityIndex);
+}
+
+/** Shared tail of the defense flow — resolve the pick, then advance the
+ *  attacker's turn to main-post. Used by both the direct path and the
+ *  post-bank-spend resume. */
+function finishDefenseResolution(state: GameState, abilityIndex: number | null): GameEvent[] {
   const events: GameEvent[] = [];
   events.push(...resolveDefenseChoice(state, abilityIndex));
   if (state.winner) return events;
@@ -542,6 +591,13 @@ function resolveBankSpend(state: GameState, amount: number): GameEvent[] {
     state.pendingOffensiveCommit = undefined;
     events.push(...commitOffensiveAbility(state, poc.abilityIndex));
   }
+  // Resume a halted defense resolution — the defender's reduce-incoming
+  // spend has already been injected into pendingAttack.injectedReduction.
+  const pdc = state.pendingDefenseCommit;
+  if (pdc && pdc.defender === pbs.holder) {
+    state.pendingDefenseCommit = undefined;
+    events.push(...finishDefenseResolution(state, pdc.abilityIndex));
+  }
   return events;
 }
 
@@ -589,6 +645,10 @@ function respondToStatusRemoval(state: GameState, cardId: import("./types").Card
     const originalApplier = stripped?.appliedBy;
     const r = stripStatus(holderSnap, psr.status);
     events.push(...r.events);
+    // Applier-side ledger for reactive instants (see cards.ts remove-status).
+    if (originalApplier && originalApplier !== holderSnap.player && stripCount > 0) {
+      state.players[originalApplier].lastStripped[psr.status] = stripCount;
+    }
     if (originalApplier && originalApplier !== psr.applier && stripCount > 0) {
       const applierSnap = state.players[originalApplier];
       const heroDef = getHero(applierSnap.hero);
@@ -663,6 +723,10 @@ function resolveStatusHolderAction(
   }
 
   // Strip the configured stacks. "all" → full strip; numeric → up to N.
+  // Applier-side ledger for reactive instants (see cards.ts remove-status).
+  if (inst.appliedBy !== holder.player && inst.stacks > 0) {
+    state.players[inst.appliedBy].lastStripped[statusId] = inst.stacks;
+  }
   const before = inst.stacks;
   const stripCount = action.effect.stacksRemoved === "all" ? before : Math.min(before, action.effect.stacksRemoved);
   const stripResult = action.effect.stacksRemoved === "all"
@@ -730,6 +794,7 @@ function cloneState(state: GameState): GameState {
     pendingBankSpend: state.pendingBankSpend ? { ...state.pendingBankSpend } : undefined,
     pendingStatusRemoval: state.pendingStatusRemoval ? { ...state.pendingStatusRemoval } : undefined,
     pendingOffensiveCommit: state.pendingOffensiveCommit ? { ...state.pendingOffensiveCommit } : undefined,
+    pendingDefenseCommit: state.pendingDefenseCommit ? { ...state.pendingDefenseCommit } : undefined,
   };
 }
 function clonePlayer(p: HeroSnapshot | undefined): HeroSnapshot {

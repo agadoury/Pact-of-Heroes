@@ -25,6 +25,10 @@ export function TurnBanner(): JSX.Element | null {
   const timer = useRef<number | null>(null)
 
   useEffect(() => {
+    // Skip the pre-mount backlog: startMatch fires ~15 events before this
+    // screen mounts (and a resumed match restores hundreds) — replaying
+    // them causes an SFX/banner burst on the first post-mount dispatch.
+    lastIdx.current = useGameStore.getState().matchLog.length
     const unsub = useGameStore.subscribe((s) => {
       const log = s.matchLog
       if (log.length < lastIdx.current) lastIdx.current = 0

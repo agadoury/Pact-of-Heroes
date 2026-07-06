@@ -24,10 +24,18 @@ export function HomeScreen(): JSX.Element {
   useEffect(() => { setCanResume(hasResumableMatch()) }, [])
 
   const resume = () => {
-    const state = loadMatchState()
-    if (!state) return
+    const saved = loadMatchState()
+    if (!saved) return
     useUIStore.getState().resetForMatch()
-    useGameStore.setState({ state, mode: 'vs-ai', aiPlayer: 'p2', lastEvents: [], matchLog: [] })
+    // Restore the event log too — the post-match summary is computed from
+    // it, and a wiped log made resumed matches report only the tail slice.
+    useGameStore.setState({
+      state: saved.state,
+      mode: 'vs-ai',
+      aiPlayer: 'p2',
+      lastEvents: [],
+      matchLog: saved.matchLog,
+    })
     navigate('/play')
   }
 

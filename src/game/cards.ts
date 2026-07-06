@@ -112,7 +112,7 @@ export function resolveEffect(effect: AbilityEffect, ctx: ResolveCtx): GameEvent
       let amount = effect.amount;
       if (
         effect.conditional_bonus &&
-        checkState(ctx.state, ctx.caster, ctx.opponent, effect.conditional_bonus.condition)
+        checkState(ctx.state, ctx.caster, ctx.opponent, effect.conditional_bonus.condition, ctx.firingFaces)
       ) {
         amount += computeConditionalBonus(ctx.caster, ctx.opponent, effect.conditional_bonus);
       }
@@ -142,7 +142,7 @@ export function resolveEffect(effect: AbilityEffect, ctx: ResolveCtx): GameEvent
         let stacks = ata.stacks;
         if (
           ata.conditional_bonus &&
-          checkState(ctx.state, ctx.caster, ctx.opponent, ata.conditional_bonus.condition)
+          checkState(ctx.state, ctx.caster, ctx.opponent, ata.conditional_bonus.condition, ctx.firingFaces)
         ) {
           stacks += computeConditionalBonus(ctx.caster, ctx.opponent, ata.conditional_bonus);
         }
@@ -157,7 +157,7 @@ export function resolveEffect(effect: AbilityEffect, ctx: ResolveCtx): GameEvent
       let stacks = effect.stacks;
       if (
         effect.conditional_bonus &&
-        checkState(ctx.state, ctx.caster, ctx.opponent, effect.conditional_bonus.condition)
+        checkState(ctx.state, ctx.caster, ctx.opponent, effect.conditional_bonus.condition, ctx.firingFaces)
       ) {
         stacks += computeConditionalBonus(ctx.caster, ctx.opponent, effect.conditional_bonus);
       }
@@ -215,6 +215,12 @@ export function resolveEffect(effect: AbilityEffect, ctx: ResolveCtx): GameEvent
       if (applierId && applierId !== ctx.caster.player && stripCount > 0) {
         events.push(...dispatchOpponentRemovedSelfStatusTrigger(ctx.state, applierId, statusToStrip, stripCount));
       }
+      // Stamp the APPLIER's lastStripped too — reactive instants ("when the
+      // opponent removes your Cinder") read the applier's ledger, not the
+      // holder's, since the status sat on the opponent.
+      if (applierId && applierId !== target.player && stripCount > 0) {
+        ctx.state.players[applierId].lastStripped[statusToStrip] = stripCount;
+      }
       return events;
     }
     case "heal": {
@@ -222,7 +228,7 @@ export function resolveEffect(effect: AbilityEffect, ctx: ResolveCtx): GameEvent
       let amount = effect.amount;
       if (
         effect.conditional_bonus &&
-        checkState(ctx.state, ctx.caster, ctx.opponent, effect.conditional_bonus.condition)
+        checkState(ctx.state, ctx.caster, ctx.opponent, effect.conditional_bonus.condition, ctx.firingFaces)
       ) {
         amount += computeConditionalBonus(ctx.caster, ctx.opponent, effect.conditional_bonus);
       }
@@ -337,11 +343,6 @@ function setDieFace(
       if (face.faceValue === effect.filter.faceValue) eligibleIdx.push(i);
     }
   }
-  // If a specific die was indicated and it's eligible, prefer it.
-  const ordered = targetDie != null && eligibleIdx.includes(targetDie)
-    ? [targetDie, ...eligibleIdx.filter(i => i !== targetDie)]
-    : eligibleIdx;
-
   // Resolve the target face — when the effect leaves faceValue unspecified,
   // fall back to the action's `targetFaceValue`. If neither is set, the
   // effect is a no-op (no face to point at).
@@ -356,6 +357,21 @@ function setDieFace(
     resolvedTarget = null;
   }
   if (!resolvedTarget) return events;
+
+  // Die selection order: an explicit targetDie wins; otherwise prefer dice
+  // NOT already showing the target (changing a matching die wastes the
+  // card), unlocked before locked (locked dice were kept on purpose).
+  const alreadyAtTarget = (i: number) => {
+    const f = dice[i].faces[dice[i].current];
+    return resolvedTarget!.kind === "face"
+      ? f.faceValue === resolvedTarget!.faceValue
+      : f.symbol === resolvedTarget!.symbol;
+  };
+  const rank = (i: number) => (alreadyAtTarget(i) ? 2 : 0) + (dice[i].locked ? 1 : 0);
+  const sorted = [...eligibleIdx].sort((a, b) => rank(a) - rank(b));
+  const ordered = targetDie != null && eligibleIdx.includes(targetDie)
+    ? [targetDie, ...sorted.filter(i => i !== targetDie)]
+    : sorted;
 
   let setCount = 0;
   for (const idx of ordered) {
@@ -1255,6 +1271,11 @@ export function canPlay(state: GameState, hero: HeroSnapshot, opponent: HeroSnap
       }
       break;
   }
+  // `on_attempt: "not-final"` reroll cards are unusable once the final
+  // roll attempt is spent — the card text forbids it and rerolling after
+  // the last attempt would be pure CP loss anyway.
+  if (hasNotFinalReroll(card.effect) && hero.rollAttemptsRemaining === 0) return false;
+
   // State-threshold blocks: walk the holder's active statuses and reject if
   // any threshold-effect blocks this card kind.
   for (const inst of hero.statuses) {
@@ -1266,6 +1287,13 @@ export function canPlay(state: GameState, hero: HeroSnapshot, opponent: HeroSnap
     }
   }
   return true;
+}
+
+/** Does the effect tree contain a reroll restricted to non-final attempts? */
+function hasNotFinalReroll(effect: AbilityEffect): boolean {
+  if (effect.kind === "reroll-dice") return effect.on_attempt === "not-final";
+  if (effect.kind === "compound") return effect.effects.some(hasNotFinalReroll);
+  return false;
 }
 
 /** Is the Instant's trigger window currently open? Mirrors the trigger

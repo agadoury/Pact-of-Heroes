@@ -44,7 +44,11 @@ registerStatus({
     trigger: "on-offensive-ability",
     field: "damage",
     valuePerStack: -2,
-    cap: { min: 0 },
+    // Total debuff capped at -4 (two stacks' worth): with the debuff
+    // actually functional, an uncapped -8 at full stacks made the
+    // Lightbearer win ~85% of AI-mirror matches. The cap keeps Verdict
+    // threatening without deleting the opponent's offense.
+    cap: { min: -4 },
   },
   stateThresholdEffects: [
     {
@@ -115,7 +119,10 @@ export const LIGHTBEARER: HeroDefinition = {
         {
           context: "offensive-resolution",
           costPerUnit: 1,
-          effect: { kind: "damage-bonus", perUnit: 2 },
+          // Tuned 2 -> 1: at +2/token the AI's 4-token dumps added ~18
+          // damage per match — Lightbearer out-damaged everyone ~2:1 and
+          // won ~80% of AI-mirror matches.
+          effect: { kind: "damage-bonus", perUnit: 1 },
           canSpendPartial: true,
         },
         // Paired heal-on-spend for offensive-resolution. The current engine
@@ -130,7 +137,10 @@ export const LIGHTBEARER: HeroDefinition = {
         {
           context: "defensive-resolution",
           costPerUnit: 1,
-          effect: { kind: "reduce-incoming", perUnit: 2 },
+          // Tuned from 2 -> 1 when the defensive spend was actually wired
+          // up: at -2/token the Lightbearer blanked most attacks and won
+          // ~83% of AI-mirror matches.
+          effect: { kind: "reduce-incoming", perUnit: 1 },
           canSpendPartial: true,
         },
       ],

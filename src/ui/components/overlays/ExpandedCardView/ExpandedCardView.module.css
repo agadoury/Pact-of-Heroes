@@ -163,3 +163,49 @@
 @media (prefers-reduced-motion: reduce) {
   .overlay { animation: none; }
 }
+
+.facePicker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 2px;
+}
+.facePickerLabel {
+  font-family: var(--font-family-display);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+}
+.faceRow {
+  display: flex;
+  gap: 7px;
+}
+.faceOption {
+  width: 42px;
+  height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: 7px;
+  border: 1px solid var(--frame-stroke);
+  background: linear-gradient(180deg, rgba(30, 28, 48, 0.9), rgba(16, 14, 28, 0.9));
+  color: var(--bone);
+  cursor: pointer;
+  transition: border-color 150ms, box-shadow 150ms, transform 100ms;
+}
+.faceOption:active { transform: scale(0.94); }
+.faceSelected {
+  border-color: var(--gold-bright);
+  color: var(--gold-bright);
+  box-shadow: 0 0 0 1px var(--gold-bright), 0 0 14px rgba(240, 198, 104, 0.45);
+}
+.faceNum {
+  font-family: var(--font-family-display);
+  font-size: 11px;
+  font-weight: 800;
+}

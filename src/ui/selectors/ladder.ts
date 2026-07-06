@@ -24,6 +24,10 @@ import type {
 import { ROLL_ATTEMPTS } from '@/game/types'
 import type { LadderAbility, CriticalPreview } from '@/ui/types/ability'
 import type { AbilityId, EffectSegment } from '@/ui/types/card'
+import { resolveAbilityFor } from '@/game/cards'
+import { effectiveCombo } from '@/game/dice'
+import { effectiveFiringFaces } from '@/game/phases'
+import { getHero } from '@/content'
 import { deriveAbilityValue } from './abilityValue'
 import { derivePips, type UiDie } from './derivePips'
 import { parseEffectText } from '@/ui/util/parseEffect'
@@ -42,9 +46,23 @@ export function deriveLadder({ self, opponent, dice }: DeriveLadderInput): Ladde
   // before the first roll every row renders as not-yet-met.
   const hasRolled =
     self.rollAttemptsRemaining < ROLL_ATTEMPTS || self.forcedFaceValue != null
+
+  // The engine fires off effectiveFiringFaces (symbol bends + forced face
+  // values applied) — the UI must judge combos on the SAME faces or bend
+  // cards visibly do nothing and Last Stand shows the wrong pips. Patch
+  // each die's shown face with its effective counterpart.
+  const effFaces = effectiveFiringFaces(self, getHero(self.hero))
+  const bentDice: readonly UiDie[] = dice.map((d, i) => {
+    const eff = effFaces[i]
+    if (!eff || d.faces[d.current] === eff) return d
+    const faces = d.faces.slice()
+    faces[d.current] = eff
+    return { ...d, faces }
+  })
+
   const effectiveDice: readonly UiDie[] = hasRolled
-    ? dice
-    : dice.map(d => ({ ...d, isRolling: true }))   // rolling dice are excluded from pip matching
+    ? bentDice
+    : bentDice.map(d => ({ ...d, isRolling: true }))   // rolling dice are excluded from pip matching
 
   return self.activeOffense.map((abil, idx) =>
     deriveAbilityRow(abil, idx, self, opponent, effectiveDice),
@@ -52,19 +70,27 @@ export function deriveLadder({ self, opponent, dice }: DeriveLadderInput): Ladde
 }
 
 function deriveAbilityRow(
-  ability:  AbilityDef,
+  rawAbility:  AbilityDef,
   ladderIndex: number,
   self:     HeroSnapshot,
   opponent: HeroSnapshot,
   dice:     readonly UiDie[],
 ): LadderAbility {
-  const { descriptor, combo: comboState } = derivePips(ability.combo, dice)
+  // Resolve through the SAME pipeline the engine fires with — ladder
+  // upgrades (mastery replacements/appends) and combo overrides must show
+  // the ability that will actually fire, or the row lies about name,
+  // requirement, and effect.
+  const ability = resolveAbilityFor(self, rawAbility, 'offensive')
+  const combo = effectiveCombo(self, ability)
 
-  const scalingSymbol = extractScalingSymbol(ability.combo)
+  const { descriptor, combo: comboState } = derivePips(combo, dice)
+
+  const scalingSymbol = extractScalingSymbol(combo)
   const { value, scaling } = deriveAbilityValue({
     effect: ability.effect,
     dice:   dice.map(uiDieToEngineDie),
     scalingSymbol,
+    combo,
   })
 
   const willKill = value.kind === 'damage' && opponent.hp > 0 && value.amount >= opponent.hp

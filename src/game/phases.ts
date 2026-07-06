@@ -193,6 +193,10 @@ export function performRoll(state: GameState): OffensiveResolveResult {
     return { events, rolledAttempt: 1, canRollAgain: false };
   }
 
+  // Roll-scoped symbol bends applied to the PREVIOUS roll's faces expire
+  // the moment the dice tumble again.
+  active.symbolBends = active.symbolBends.filter(b => b.expires.kind !== "this-roll");
+
   // Determine attempt number (used by the choreographer for staggered visuals).
   // E.g. with ROLL_ATTEMPTS=3: 3→attempt 1, 2→attempt 2, 1→attempt 3.
   const attemptNumber = ROLL_ATTEMPTS - active.rollAttemptsRemaining + 1;
@@ -374,7 +378,7 @@ export function commitOffensiveAbility(state: GameState, abilityIndex: number): 
   }
 
   const defendable = ability.damageType === "normal" || ability.damageType === "collateral";
-  const incomingAmount = computeIncomingAmount(ability.effect, ability.combo, faces, damageBonus, critFlat, critMul);
+  const incomingAmount = computeIncomingAmount(state, active, opponent, ability, ability.effect, faces, damageBonus, critFlat, critMul);
 
   events.push({
     t: "attack-intended",
@@ -412,28 +416,48 @@ export function commitOffensiveAbility(state: GameState, abilityIndex: number): 
   return events;
 }
 
-/** Estimate the maximum damage this attack could deal, pre-defense, used for
- *  the defender's overlay ("incoming X damage"). Mirrors the actual resolver
- *  for damage / scaling-damage / compound, with crit + bonus applied. */
+/** Estimate the damage this attack will deal, pre-defense — the number on
+ *  the defender's overlay AND the amount that negate/multiplier defenses
+ *  mitigate against. Mirrors resolveAbilityEffect's damage math: ability-
+ *  upgrade modifiers, conditional bonuses, and passive-token adjustments
+ *  included — an unmodified estimate under-mitigates "negate the attack"
+ *  whenever the attacker has masteries or riders active. */
 function computeIncomingAmount(
+  state: GameState,
+  attacker: HeroSnapshot,
+  defender: HeroSnapshot,
+  ability: import("./types").AbilityDef,
   effect: import("./types").AbilityEffect,
-  firingCombo: import("./types").DiceCombo,
   firingFaces: ReadonlyArray<import("./types").DieFace>,
   damageBonus: number,
   critFlat: number,
   critMul: number,
 ): number {
   switch (effect.kind) {
-    case "damage":
-      return Math.ceil(effect.amount * critMul + critFlat) + damageBonus;
+    case "damage": {
+      let amount = applyModifiersToBaseDamage(attacker, ability.name, ability.tier, effect.amount, firingFaces);
+      let condBonus = 0;
+      const cb = applyConditionalBonusStructuralMod(attacker, ability.name, ability.tier, "damage-conditional-bonus", effect.conditional_bonus, firingFaces);
+      if (cb && checkState(state, attacker, defender, cb.condition, firingFaces)) {
+        condBonus = computeConditionalBonus(attacker, defender, patchConditionalBonusPerUnit(attacker, ability.name, ability.tier, "damage-conditional-bonus-bonus-per-unit", cb, firingFaces));
+      }
+      const tokenAdj = aggregatePassiveModifiers(attacker, "on-offensive-ability", "damage", state);
+      return Math.max(0, Math.ceil(amount * critMul + critFlat) + damageBonus + condBonus + tokenAdj);
+    }
     case "scaling-damage": {
-      const extras = computeComboExtras(firingCombo, firingFaces);
+      const extras = computeComboExtras(ability.combo, firingFaces);
       const clamped = Math.min(extras, effect.maxExtra);
-      const baseAmt = effect.baseAmount + clamped * effect.perExtra;
-      return Math.ceil(baseAmt * critMul + critFlat) + damageBonus;
+      let baseAmt = effect.baseAmount + clamped * effect.perExtra;
+      baseAmt = applyModifiersToBaseDamage(attacker, ability.name, ability.tier, baseAmt, firingFaces);
+      let condBonus = 0;
+      if (effect.conditional_bonus && checkState(state, attacker, defender, effect.conditional_bonus.condition, firingFaces)) {
+        condBonus = computeConditionalBonus(attacker, defender, patchConditionalBonusPerUnit(attacker, ability.name, ability.tier, "damage-conditional-bonus-bonus-per-unit", effect.conditional_bonus, firingFaces));
+      }
+      const tokenAdj = aggregatePassiveModifiers(attacker, "on-offensive-ability", "damage", state);
+      return Math.max(0, Math.ceil(baseAmt * critMul + critFlat) + damageBonus + condBonus + tokenAdj);
     }
     case "compound":
-      return effect.effects.reduce((acc, e) => acc + computeIncomingAmount(e, firingCombo, firingFaces, damageBonus, critFlat, critMul), 0);
+      return effect.effects.reduce((acc, e) => acc + computeIncomingAmount(state, attacker, defender, ability, e, firingFaces, damageBonus, critFlat, critMul), 0);
     default:
       return 0;
   }
@@ -457,7 +481,11 @@ export function resolveDefenseChoice(state: GameState, abilityIndex: number | nu
   // The drafted defensive loadout (2 abilities) — not the full catalog.
   const dl = defender.activeDefense;
 
-  let reduction = pa.injectedReduction ?? 0;
+  // Roll-based reduction (defense combo landing) applies only to
+  // defendable damage types; Instant-injected reduction (Phoenix Veil,
+  // Aegis of Dawn, defensive Radiance) applies to anything but pure.
+  let reduction = 0;
+  let injectedReduction = pa.injectedReduction ?? 0;
   let matchedTier: 1 | 2 | 3 | 4 | undefined;
   let matchedName: string | undefined;
   let landed = false;
@@ -531,7 +559,7 @@ export function resolveDefenseChoice(state: GameState, abilityIndex: number | nu
     events.push({
       t: "defense-resolved",
       player: defender.player,
-      reduction,
+      reduction: reduction + injectedReduction,
       matchedTier,
       abilityName: matchedName,
       landed,
@@ -560,12 +588,13 @@ export function resolveDefenseChoice(state: GameState, abilityIndex: number | nu
       }
     }
   }
-  // §15.3: incoming-damage pipeline buffs add to the final reduction.
+  // §15.3: incoming-damage pipeline buffs reduce like injected effects —
+  // they are not gated on the defense roll landing.
   {
     const baseline = pa.incomingAmount;
     const adjusted = aggregatePipelineModifiers(state.players[pa.defender], "incoming-damage", baseline);
     const extraReduction = Math.max(0, baseline - adjusted);
-    if (extraReduction > 0) reduction += extraReduction;
+    if (extraReduction > 0) injectedReduction += extraReduction;
   }
   events.push(...applyAttackEffects(
     state,
@@ -577,6 +606,7 @@ export function resolveDefenseChoice(state: GameState, abilityIndex: number | nu
     pa.isCritical,
     reduction,
     pa.critTriggered,
+    injectedReduction,
   ));
   state.pendingAttack = undefined;
   return events;
@@ -596,6 +626,7 @@ function applyAttackEffects(
   isCritical: "minor" | "major" | false,
   defensiveReduction: number,
   critTriggered: boolean,
+  injectedReduction = 0,
 ): GameEvent[] {
   const events: GameEvent[] = [];
   // Source attacker/defender from `pendingAttack` rather than `state.activePlayer`.
@@ -636,6 +667,7 @@ function applyAttackEffects(
     caster: active, opponent,
     damageBonus: effectiveBonus,
     defensiveReduction,
+    injectedReduction,
     critFlat,
     critMul: critMul * critEffectMul,
     firingCombo: ability.combo,
@@ -835,7 +867,10 @@ interface AbilityCtx {
   caster: HeroSnapshot;
   opponent: HeroSnapshot;
   damageBonus: number;
+  /** Defense-roll reduction — applies to defendable damage types only. */
   defensiveReduction: number;
+  /** Instant/pipeline reduction — applies to any non-pure damage type. */
+  injectedReduction?: number;
   critFlat: number;
   critMul: number;
   /** Combo + faces of the firing ability — used by scaling-damage effects
@@ -891,7 +926,10 @@ function resolveAbilityEffect(state: GameState, effect: import("./types").Abilit
     let total = Math.ceil((amount * ctx.critMul) + ctx.critFlat) + ctx.damageBonus + condBonus + tokenAdj;
     if (total < 0) total = 0;
     const isDefendable = (type === "normal" || type === "ultimate" || type === "collateral");
-    const r = dealDamage(ctx.caster.player, ctx.opponent, total, type, isDefendable ? ctx.defensiveReduction : 0);
+    const externalReduction =
+      (isDefendable ? ctx.defensiveReduction : 0)
+      + (type !== "pure" ? (ctx.injectedReduction ?? 0) : 0);
+    const r = dealDamage(ctx.caster.player, ctx.opponent, total, type, externalReduction);
     out.push(...r.events);
     // self_cost: unblockable HP loss to caster, doesn't trigger on-hit / passive gains.
     const selfCost = applyNumericModifier(ctx.caster, ctx.abilityName ?? "", ctx.abilityTier ?? 0, "damage-self-cost", effect.self_cost ?? 0, ctx.firingFaces);
@@ -924,7 +962,10 @@ function resolveAbilityEffect(state: GameState, effect: import("./types").Abilit
     let total = Math.ceil(baseAmt * ctx.critMul + ctx.critFlat) + ctx.damageBonus + condBonus + tokenAdj;
     if (total < 0) total = 0;
     const isDefendable = (type === "normal" || type === "ultimate" || type === "collateral");
-    const r = dealDamage(ctx.caster.player, ctx.opponent, total, type, isDefendable ? ctx.defensiveReduction : 0);
+    const externalReduction =
+      (isDefendable ? ctx.defensiveReduction : 0)
+      + (type !== "pure" ? (ctx.injectedReduction ?? 0) : 0);
+    const r = dealDamage(ctx.caster.player, ctx.opponent, total, type, externalReduction);
     out.push(...r.events);
     const selfCost = applyNumericModifier(ctx.caster, ctx.abilityName ?? "", ctx.abilityTier ?? 0, "damage-self-cost", effect.self_cost ?? 0, ctx.firingFaces);
     if (selfCost > 0) {
@@ -1441,13 +1482,24 @@ export function emitLadderState(state: GameState, hero: HeroDefinition, active: 
   // once new heroes register their behaviors. For now: only transient
   // nextAbilityBonusDamage (set by cards like "next ability +N dmg").
   const damageBonus = active.nextAbilityBonusDamage;
-  const rows = evaluateLadder(hero, active, active.rollAttemptsRemaining, {
+  let rows = evaluateLadder(hero, active, active.rollAttemptsRemaining, {
     opponentHp: opponent.hp,
     pendingOpponentDamage: 0,
     damageBonus,
     reachabilitySamples: 200,
     reachabilitySeed: state.rngSeed,
   });
+  // Before the first roll of a turn the dice show stale/resting faces the
+  // engine will never fire from — a "firing" row here is a lie (and rings
+  // the ladder-ready chime at turn start). Demote to out-of-reach.
+  const hasRolled = active.rollAttemptsRemaining < ROLL_ATTEMPTS || active.forcedFaceValue != null;
+  if (!hasRolled) {
+    rows = rows.map(r =>
+      r.kind === "firing" || r.kind === "triggered"
+        ? { kind: "out-of-reach" as const, tier: r.tier }
+        : r,
+    );
+  }
   active.ladderState = rows;
   return [{ t: "ladder-state-changed", player: active.player, rows }];
 }

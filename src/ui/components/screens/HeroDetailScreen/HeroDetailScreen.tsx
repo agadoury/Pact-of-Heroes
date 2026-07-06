@@ -83,6 +83,9 @@ export function HeroDetailScreen(): JSX.Element {
       ) : null)}
 
       <div className={s.actions}>
+        <Button variant="default" onClick={() => navigate(`/heroes/${heroId}/customize`)}>
+          Customize
+        </Button>
         <Button variant="primary" onClick={() => navigate('/heroes')} iconRight="chevron-right">
           Choose for Match
         </Button>
