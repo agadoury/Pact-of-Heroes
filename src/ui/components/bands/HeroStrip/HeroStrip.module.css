@@ -8,7 +8,24 @@
   height: 100%;
   border-bottom: 1px solid var(--frame-stroke);
   transition: background 400ms ease;
+  overflow: hidden;
 }
+
+/* Element accent bar along the left edge */
+.strip::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 15%;
+  bottom: 15%;
+  width: 3px;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  border-radius: 0 2px 2px 0;
+}
+.strip.element-frost::before { color: var(--frost-bright); }
+.strip.element-ember::before { color: var(--ember-bright); }
+.strip.element-dawn::before  { color: var(--dawn-bright); }
 
 .opponent {
   background: linear-gradient(180deg,

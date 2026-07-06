@@ -5,7 +5,35 @@
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg,
-    var(--night-stone) 0%,
-    var(--night-deep)  100%);
+  background:
+    radial-gradient(ellipse at 50% 30%,
+      rgba(212, 165, 72, 0.06) 0%,
+      transparent 40%),
+    radial-gradient(ellipse at 50% 70%,
+      rgba(74, 140, 200, 0.04) 0%,
+      transparent 40%),
+    linear-gradient(180deg,
+      var(--night-stone) 0%,
+      var(--night-deep)  100%);
+}
+
+/* Subtle animated grain/texture — long slow drift */
+.container::before {
+  content: '';
+  position: absolute;
+  inset: -10%;
+  background: repeating-linear-gradient(45deg,
+    transparent, transparent 90px,
+    rgba(212, 165, 72, 0.015) 90px, rgba(212, 165, 72, 0.015) 92px);
+  pointer-events: none;
+  animation: bands-drift 45s linear infinite;
+}
+
+@keyframes bands-drift {
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(60px, 60px, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .container::before { animation: none; }
 }

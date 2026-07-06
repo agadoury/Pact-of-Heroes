@@ -9,6 +9,16 @@
     box-shadow 300ms ease,
     transform  200ms ease;
   overflow: hidden;
+  animation: portrait-breathe 4.5s ease-in-out infinite;
+}
+
+@keyframes portrait-breathe {
+  0%, 100% { transform: scale(1);    }
+  50%      { transform: scale(1.03); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb { animation: none; }
 }
 
 .self {
