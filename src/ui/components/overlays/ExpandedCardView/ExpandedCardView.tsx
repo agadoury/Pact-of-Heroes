@@ -23,8 +23,11 @@ export interface ExpandedCardViewProps {
   playable?:   boolean
   unplayableReason?: string
   mode?:       'in-match' | 'inspection'
+  /** True when the card can be sold this phase (main phase, viewer's turn). */
+  sellable?:   boolean
   onCancel:    () => void
   onPlay?:     () => void
+  onSell?:     () => void
   className?:  string
 }
 
@@ -35,8 +38,10 @@ export function ExpandedCardView({
   playable = true,
   unplayableReason,
   mode = 'in-match',
+  sellable = false,
   onCancel,
   onPlay,
+  onSell,
   className,
 }: ExpandedCardViewProps): JSX.Element | null {
   if (!active || !card) return null
@@ -81,6 +86,11 @@ export function ExpandedCardView({
         <Button variant="default" onClick={onCancel} weight={1}>
           {mode === 'inspection' ? 'Back' : 'Cancel'}
         </Button>
+        {mode === 'in-match' && sellable && onSell ? (
+          <Button variant="default" onClick={onSell} weight={1}>
+            Sell +1 CP
+          </Button>
+        ) : null}
         {mode === 'in-match' ? (
           <Button
             variant={playable ? 'primary' : 'disabled'}

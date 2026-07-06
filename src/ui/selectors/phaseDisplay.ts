@@ -26,6 +26,11 @@ export function derivePhaseDisplay(
     return { kind: 'defense' }
   }
 
+  if (state.pendingAttack && state.pendingAttack.attacker === viewerId) {
+    // Viewer's attack is in flight — the opponent is picking their defense.
+    return { kind: 'resolving', abilityName: state.pendingAttack.abilityName, tone: 'gold' }
+  }
+
   if (state.pendingBankSpend && state.pendingBankSpend.holder === viewerId) {
     return { kind: 'spend' }
   }
@@ -74,7 +79,7 @@ export function derivePhaseDisplay(
 
     case 'main-post':
       return isViewer
-        ? { kind: 'roll', current: ROLL_ATTEMPTS_TOTAL, total: ROLL_ATTEMPTS_TOTAL }
+        ? { kind: 'plan' }
         : { kind: 'opponent-turn', heroName: active.hero, phase: 'Planning' }
 
     case 'discard':

@@ -13,6 +13,7 @@ import type { Tone } from './ui'
 
 export type PhaseDisplay =
   | { kind: 'roll';                current: number; total: number }
+  | { kind: 'plan' }
   | { kind: 'rolling' }
   | { kind: 'resolving';           abilityName: string; tone: Tone }
   | { kind: 'defense' }

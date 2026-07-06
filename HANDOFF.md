@@ -1,9 +1,8 @@
 # Pact of Heroes — Agent Handoff
 
-**Last updated:** 2026-07-06
-**Branch:** `main` (also `claude/rebuild-game-ui-sitp2`)
+**Last updated:** 2026-07-06 (game-loop stall fixes + AAA polish pass)
+**Branch:** `claude/game-polish-bugs-unafrj` (from `main`)
 **Live:** Deployed on Vercel from `main`
-**Head:** `036a226` "Premium polish pass 3: strip element accents, portrait breath, atmospheric bands"
 
 You are picking up mid-rebuild. This doc gives you the fastest possible
 onboarding so you can be productive without re-deriving the last few weeks
@@ -303,7 +302,51 @@ Hooks:
 
 ---
 
-## Recent bugs I just fixed (in `2325fea`)
+## Game-loop stall fixes + polish (this branch)
+
+The game shipped in `036a226` was unplayable: the AI played at most one
+turn and then the match stalled forever. Root causes fixed on this branch:
+
+1. **useAiDriver stale timer.** A fired timeout's handle was never
+   cleared, so `if (timerRef.current == null) tick()` in the store
+   subscription never re-kicked the AI after its first turn. The driver
+   is rewritten: closure-owned timer, re-kick from BOTH gameStore and
+   uiStore (queue drain), jittered thinking pace, and a no-progress
+   watchdog that halts loudly if the engine rejects 5 dispatches in a row.
+2. **Pending-actor routing.** Pending prompts (defense pick, bank spend,
+   instant windows) can target the NON-active player. `pendingActorFor()`
+   in ai.ts is now the single source of truth for who must act; the UI
+   driver, simulator, and tests all use it. Previously the AI-vs-AI sim
+   resolved every defense one turn late — p2 never attacked at all.
+3. **Engine guards.** `advance-phase` is a no-op while any pending prompt
+   is set (stray dispatches can no longer skip attack resolution).
+   `beginOffensivePick` requires an actual roll this turn (resting dice
+   can no longer ghost-fire five-of-a-kind matches via Skip).
+4. **uiStore.resetForMatch()** — resolution queue / aggregator / overlays
+   are cleared on every match start/resume/abandon path; stale
+   `currentResolution` used to permanently block the AI on rematch.
+5. **nextAiAction returns `Action | null`** and answers every prompt kind
+   (including `pendingStatusRemoval` instants). It never emits
+   advance-phase off-turn (which used to corrupt the human's turn).
+6. **MatchScreen hooks** hoisted above the no-match early return (was a
+   conditional-hooks crash waiting to happen), single-match offensive
+   picks auto-commit, instant prompt filters to genuinely matching cards
+   (with auto-decline safety valve), Take Hit / Confirm Defense split,
+   undefendable brace notice, two-tap full-pass Skip Turn, bank-spend
+   amount stepper wired to real hero spendOptions, Sell +1 CP in the
+   card view, empty-hand state.
+7. **Sigil SVG set** (`atoms/Sigil`) — real glyphs for all 11 die symbols
+   replace first-letter placeholders on dice, ladder pips, and defense
+   rows. Phase banner shows Plan during main-post and "<Hero>'s Turn"
+   capitalized; attacker sees "Resolving · <ability>" while the defender
+   picks. Ladder-firing chime only plays on the not-firing → firing
+   transition. All matchLog subscribers resync when the log shrinks.
+8. **E2E harness**: `node scripts/playtest.mjs --matches N` drives full
+   matches through the real DOM via Playwright (dev server must be
+   running) and fails loudly on any stall. `window.__poh` (dev-only)
+   exposes the stores for it.
+
+## Recent bugs fixed earlier (in `2325fea`)
 
 These made the game "barely playable" in the user's words:
 
@@ -416,16 +459,18 @@ These are known TODO / opportunity areas. Ordered by user-facing impact.
 
 ### Gameplay depth
 
-- **Sell card** — engine has `sell-card` action; UI has no affordance.
-  HandCard could get a long-press → sell menu.
-- **Counter cards / respond-to-counter** — engine has `pendingCounter`
-  but no UI overlay for it (analogous to InstantPrompt).
+- **Counter cards / respond-to-counter** — `pendingCounter` exists in
+  types but NOTHING in the engine sets it today; if content starts
+  setting it, the UI needs a responder overlay (the AI + pendingActorFor
+  already handle it).
 - **Mastery card UX** — mastery cards attach to a slot permanently but
   the UI doesn't visualize `masterySlots` on the strip.
-- **Bank spend** — SpendOverlay currently just has hardcoded 3 options;
-  should read the hero's `signatureMechanic.implementation.spendOptions`.
 - **Force face value / set die face effects** — Iron Focus, Last Stand
-  need a face picker UI (they take `targetFaceValue` in play-card).
+  could use a die/face picker UI (they take `targetFaceValue` in
+  play-card). The engine currently falls back to a sensible auto-target,
+  so cards work — the picker is a nicety.
+- **Balance** — 540-match AI matrix: Lightbearer wins ~70% into both
+  other heroes; Pyromancer beats Berserker ~62%. Content tuning task.
 
 ### Polish
 

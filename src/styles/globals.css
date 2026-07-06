@@ -15,6 +15,13 @@ html {
   overscroll-behavior: none;
 }
 
+/* Game surface: the seven-band screen owns the full viewport — the
+ * document itself must never scroll (rubber-banding breaks the illusion
+ * and Playwright/browser auto-scroll shifts the whole stage). */
+html, body, #root {
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   overscroll-behavior: none;

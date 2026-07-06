@@ -176,7 +176,7 @@ async function playMatch(page, matchIdx) {
     if (s.pendingAttack && s.pendingAttack.defender === s.viewerId) {
       // Pick the first defense option (row inside the Incoming overlay),
       // then confirm — or brace when the attack is undefendable.
-      const overlay = page.locator('div').filter({ hasText: /— Incoming —/ }).last()
+      const overlay = page.locator('[data-overlay="defensive"]')
       const opt = overlay.getByRole('button').first()
       if (await opt.isVisible().catch(() => false)) await opt.click().catch(() => {})
       await page.waitForTimeout(150)
@@ -196,7 +196,7 @@ async function playMatch(page, matchIdx) {
     if (s.pendingOffensiveChoice && s.pendingOffensiveChoice.attacker === s.viewerId) {
       // Two-step prompt scoped to the picker overlay: tap the first
       // ability row, then its Fire button.
-      const prompt = page.locator('div').filter({ hasText: /— Choose Ability —/ }).last()
+      const prompt = page.locator('[data-overlay="offensive-pick"]')
       const row = prompt.getByRole('button').filter({ hasText: /T\d/ }).first()
       if (await row.isVisible().catch(() => false)) {
         await row.click().catch(() => {})

@@ -117,6 +117,7 @@ export function MatchScreen(): JSX.Element {
   useEffect(() => {
     const unsub = useGameStore.subscribe((s) => {
       const log = s.matchLog
+      if (log.length < lastDiceEventIdx.current) lastDiceEventIdx.current = 0
       if (log.length <= lastDiceEventIdx.current) return
       for (let i = lastDiceEventIdx.current; i < log.length; i++) {
         const ev = log[i]
@@ -144,6 +145,7 @@ export function MatchScreen(): JSX.Element {
   useEffect(() => {
     const unsub = useGameStore.subscribe((s) => {
       const log = s.matchLog
+      if (log.length < lastCardEventIdx.current) lastCardEventIdx.current = 0
       if (log.length <= lastCardEventIdx.current) return
       for (let i = lastCardEventIdx.current; i < log.length; i++) {
         const ev = log[i]
@@ -440,6 +442,19 @@ export function MatchScreen(): JSX.Element {
     dispatch({ kind: 'play-card', card: focusedCard.id, casterPlayer: viewerId })
   }
 
+  const cardSellable =
+    isViewerTurn
+    && (state.phase === 'main-pre' || state.phase === 'main-post')
+    && !state.pendingOffensiveChoice
+
+  const onSellCard = () => {
+    if (!focusedCard) return
+    setOverlay('none')
+    focusCard(null)
+    dispatch({ kind: 'sell-card', card: focusedCard.id })
+    toast('info', `Sold ${focusedCard.name} · +1 CP`)
+  }
+
   const onOffensivePick = (abilityIndex: number) => {
     dispatch({ kind: 'select-offensive-ability', abilityIndex })
   }
@@ -627,8 +642,10 @@ export function MatchScreen(): JSX.Element {
               ? 'NOT YOUR TURN'
               : undefined
         }
+        sellable={cardSellable}
         onCancel={onCancelOverlay}
         onPlay={onPlayCard}
+        onSell={onSellCard}
       />
 
       <UltimateTakeover

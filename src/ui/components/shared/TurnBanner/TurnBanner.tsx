@@ -27,6 +27,7 @@ export function TurnBanner(): JSX.Element | null {
   useEffect(() => {
     const unsub = useGameStore.subscribe((s) => {
       const log = s.matchLog
+      if (log.length < lastIdx.current) lastIdx.current = 0
       if (log.length <= lastIdx.current) return
       const viewer = useUIStore.getState().viewerId
       for (let i = lastIdx.current; i < log.length; i++) {

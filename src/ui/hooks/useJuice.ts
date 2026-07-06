@@ -47,6 +47,7 @@ export function useJuice(): void {
   useEffect(() => {
     const unsub = useGameStore.subscribe((s) => {
       const log = s.matchLog
+      if (log.length < lastIdx.current) lastIdx.current = 0
       if (log.length <= lastIdx.current) return
       for (let i = lastIdx.current; i < log.length; i++) {
         const ev = log[i]

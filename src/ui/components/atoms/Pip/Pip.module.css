@@ -12,8 +12,12 @@
   font-family: var(--font-family-display);
   font-weight: 700;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--bone-deeper);
 }
+.face svg { display: block; }
 
 /* -------------------------------------------------------------- */
 /* Sizes                                                          */

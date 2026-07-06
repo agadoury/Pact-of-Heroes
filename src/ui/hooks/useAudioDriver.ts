@@ -16,15 +16,18 @@ import type { GameEvent } from '@/game/types'
 
 export function useAudioDriver(): void {
   const lastIdx = useRef(0)
+  const wasFiring = useRef(false)
 
   useEffect(() => {
     const unsub = useGameStore.subscribe((s) => {
       const log = s.matchLog
+      // Log shrank — a new match started; resync.
+      if (log.length < lastIdx.current) lastIdx.current = 0
       if (log.length <= lastIdx.current) return
       const viewer = useUIStore.getState().viewerId
       for (let i = lastIdx.current; i < log.length; i++) {
         const ev = log[i]
-        if (ev) fireSfxFor(ev, viewer)
+        if (ev) fireSfxFor(ev, viewer, wasFiring)
       }
       lastIdx.current = log.length
     })
@@ -32,7 +35,7 @@ export function useAudioDriver(): void {
   }, [])
 }
 
-function fireSfxFor(ev: GameEvent, _viewer: string): void {
+function fireSfxFor(ev: GameEvent, _viewer: string, wasFiring: { current: boolean }): void {
   switch (ev.t) {
     case 'dice-rolled':        audio.play('die-throw'); break
     case 'die-locked':         audio.play(ev.locked ? 'die-lock' : 'ui-back'); break
@@ -48,12 +51,15 @@ function fireSfxFor(ev: GameEvent, _viewer: string): void {
     case 'defense-resolved':   if (ev.landed && ev.reduction > 0) audio.play('shield-block'); break
     case 'match-won':          audio.play('victory-fanfare'); break
     case 'ladder-state-changed': {
-      // Fire the ladder-firing chime the first time any row hits `firing`
-      // (bibliotheca: this doesn't fire every render — only on transition).
+      // Chime only on the not-firing → firing TRANSITION — every ladder
+      // re-emission (each die lock, each roll) carries the firing rows,
+      // and re-playing the chime for all of them is pure spam.
       const anyFiring = ev.rows.some(r => r.kind === 'firing')
-      if (anyFiring) audio.play('ladder-firing')
       const anyLethal = ev.rows.some(r => r.kind !== 'out-of-reach' && (r as { lethal?: boolean }).lethal === true)
-      if (anyLethal) audio.play('ladder-lethal')
+      if (anyFiring && !wasFiring.current) {
+        audio.play(anyLethal ? 'ladder-lethal' : 'ladder-firing')
+      }
+      wasFiring.current = anyFiring
       break
     }
     default: break

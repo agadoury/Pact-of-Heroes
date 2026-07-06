@@ -51,6 +51,7 @@ export function PhaseBanner({
 function describe(phase: PhaseDisplay): { text: string; tone: Tone } {
   switch (phase.kind) {
     case 'roll':               return { text: `Roll · ${phase.current} of ${phase.total}`,  tone: 'gold' }
+    case 'plan':               return { text: 'Plan · Cards or End Turn',                   tone: 'gold' }
     case 'rolling':            return { text: 'Rolling…',                                    tone: 'gold' }
     case 'resolving':          return { text: `Resolving · ${phase.abilityName}`,           tone: phase.tone }
     case 'defense':            return { text: 'Choose Your Defense',                        tone: 'ember' }
@@ -61,12 +62,16 @@ function describe(phase: PhaseDisplay): { text: string; tone: Tone } {
     case 'upkeep-draw':        return { text: 'Upkeep · Draw',                              tone: 'gold' }
     case 'upkeep-cp-gain':     return { text: 'Upkeep · +1 CP',                             tone: 'gold' }
     case 'upkeep-deck-shuffle':return { text: 'Upkeep · Deck shuffled',                     tone: 'gold' }
-    case 'opponent-turn':      return { text: `${phase.heroName}'s Turn · ${phase.phase}`,  tone: 'ember' }
-    case 'match-start':        return { text: `Match begins · ${phase.opponentName}`,       tone: 'gold' }
-    case 'match-end':          return { text: `${phase.winnerName} prevails`,               tone: 'gold' }
+    case 'opponent-turn':      return { text: `${cap(phase.heroName)}'s Turn · ${phase.phase}`, tone: 'ember' }
+    case 'match-start':        return { text: `Match begins · ${cap(phase.opponentName)}`,  tone: 'gold' }
+    case 'match-end':          return { text: `${cap(phase.winnerName)} prevails`,          tone: 'gold' }
     case 'lethal':             return { text: `Lethal · ${phase.abilityName}`,              tone: 'crimson' }
     case 'idle':               return { text: '',                                            tone: 'gold' }
   }
+}
+
+function cap(name: string): string {
+  return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
 export default PhaseBanner

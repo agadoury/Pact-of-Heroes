@@ -49,7 +49,7 @@ export function SpendOverlay({
   const inc = () => onAmountChange(Math.min(available, amount + 1))
 
   return (
-    <div className={clsx(s.overlay, className)}>
+    <div className={clsx(s.overlay, className)} data-overlay="spend">
       <div className={s.title}>— Spend {resourceName} —</div>
       <div className={s.context}>{contextLabel}</div>
       <div className={s.available}>

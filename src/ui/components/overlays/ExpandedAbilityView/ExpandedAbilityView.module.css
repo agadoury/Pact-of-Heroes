@@ -142,3 +142,51 @@
 @media (prefers-reduced-motion: reduce) {
   .overlay { animation: none; }
 }
+
+.comboPanel {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(212, 165, 72, 0.25);
+  background: linear-gradient(180deg, rgba(20, 18, 34, 0.7), rgba(12, 10, 22, 0.5));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.comboLabel {
+  font-family: var(--font-family-display);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+}
+
+.comboStrip {
+  justify-content: center;
+}
+
+.comboText {
+  font-family: var(--font-family-body);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--bone);
+}
+
+.comboStatus {
+  font-family: var(--font-family-display);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+.comboStatus.statusEligible {
+  color: var(--gold-bright);
+  text-shadow: 0 0 10px rgba(240, 198, 104, 0.5);
+}
+.comboStatus.statusNear {
+  color: var(--dawn);
+}

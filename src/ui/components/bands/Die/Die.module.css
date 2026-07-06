@@ -59,8 +59,15 @@
   font-size: 22px;
   font-weight: 800;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--frost-bright);
   text-shadow: 0 0 4px rgba(108, 176, 232, 0.4);
+}
+.glyph svg {
+  display: block;
+  filter: drop-shadow(0 0 3px currentColor);
 }
 
 .element-ember .glyph { color: var(--ember-bright); text-shadow: 0 0 4px rgba(240, 104, 72, 0.4); }

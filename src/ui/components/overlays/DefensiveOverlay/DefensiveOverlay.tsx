@@ -40,7 +40,7 @@ export function DefensiveOverlay({
 }: DefensiveOverlayProps): JSX.Element | null {
   if (!active) return null
   return (
-    <div className={clsx(s.overlay, className)}>
+    <div className={clsx(s.overlay, className)} data-overlay="defensive">
       <div className={s.incoming}>
         <div className={s.eyebrow}>— Incoming —</div>
         <div className={s.damage}>{incoming.damage}</div>
@@ -54,11 +54,17 @@ export function DefensiveOverlay({
           </div>
         </div>
       ) : (
-        <DefensiveLadder
-          defenses={options}
-          selectedId={selectedId ?? null}
-          onSelect={onSelect}
-        />
+        <>
+          <DefensiveLadder
+            defenses={options}
+            selectedId={selectedId ?? null}
+            onSelect={onSelect}
+          />
+          <div className={s.footerHint}>
+            A defense rolls its dice once — if the combo lands, its effect
+            triggers. Instants in your hand can still be played.
+          </div>
+        </>
       )}
     </div>
   )

@@ -40,7 +40,7 @@ export function OffensivePickPrompt({
   }
 
   return (
-    <div className={clsx(s.overlay, className)}>
+    <div className={clsx(s.overlay, className)} data-overlay="offensive-pick">
       <div className={s.header}>
         <span className={s.eyebrow}>— Choose Ability —</span>
         <button

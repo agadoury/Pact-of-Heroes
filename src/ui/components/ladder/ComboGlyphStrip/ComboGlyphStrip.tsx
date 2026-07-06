@@ -9,6 +9,7 @@
 
 import { clsx } from '@/ui/util/clsx'
 import { Pip, type PipSize } from '@/ui/components/atoms/Pip'
+import { Sigil } from '@/ui/components/atoms/Sigil'
 import type { ComboDescriptor, ComboState } from '@/ui/types/ability'
 import s from './ComboGlyphStrip.module.css'
 
@@ -27,7 +28,7 @@ export function ComboGlyphStrip({
   variant = 'offensive',
   className,
 }: ComboGlyphStripProps): JSX.Element {
-  const glyphs = glyphsFor(descriptor)
+  const glyphs = glyphsFor(descriptor, size === 'prominent' ? 13 : 10)
   return (
     <div className={clsx(s.strip, size === 'prominent' && s.prominent, className)}>
       {state.pips.map((pipState, i) => (
@@ -39,23 +40,17 @@ export function ComboGlyphStrip({
   )
 }
 
-function glyphsFor(desc: ComboDescriptor): (string | number)[] {
+function glyphsFor(desc: ComboDescriptor, sigilSize: number): (string | number | JSX.Element)[] {
   switch (desc.kind) {
     case 'sigil':
-      return desc.symbols.map(sym => symbolGlyph(sym))
+      return desc.symbols.map((sym, i) => <Sigil key={i} symbol={sym} size={sigilSize} />)
     case 'straight':
       return desc.numbers
     case 'n-of-a-kind':
       return Array.from({ length: desc.count }, () => '×')
     case 'compound':
-      return desc.clauses.flatMap(c => glyphsFor(c))
+      return desc.clauses.flatMap(c => glyphsFor(c, sigilSize))
   }
-}
-
-function symbolGlyph(symbol: string): string {
-  // Take first char after the namespace as a short-form glyph.
-  const bare = symbol.includes(':') ? symbol.split(':').pop()! : symbol
-  return bare.charAt(0).toUpperCase()
 }
 
 export default ComboGlyphStrip

@@ -158,6 +158,9 @@
   color: var(--bone);
   overflow: hidden;
   word-wrap: break-word;
+  /* Overflow reads as an intentional fade, not a hard clip. */
+  mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
 }
 
 .value {

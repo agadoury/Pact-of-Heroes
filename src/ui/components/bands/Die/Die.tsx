@@ -9,6 +9,7 @@
 
 import { clsx } from '@/ui/util/clsx'
 import { Icon } from '@/ui/components/atoms/Icon'
+import { Sigil } from '@/ui/components/atoms/Sigil'
 import type { DieFace, HeroId } from '@/game/types'
 import { HERO_ELEMENT } from '@/ui/types/ui'
 import s from './Die.module.css'
@@ -51,7 +52,7 @@ export function Die({
       aria-pressed={locked}
     >
       <span className={s.number}>{face.faceValue}</span>
-      <span className={s.glyph}>{face.label.charAt(0).toUpperCase()}</span>
+      <span className={s.glyph}><Sigil symbol={face.symbol} size={22} /></span>
       {locked ? (
         <span className={s.lockBadge} aria-hidden="true">
           <Icon name="lock" size={8} />

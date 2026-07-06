@@ -8,10 +8,11 @@
  */
 
 import { clsx } from '@/ui/util/clsx'
-import type { LadderAbility } from '@/ui/types/ability'
+import type { ComboDescriptor, LadderAbility } from '@/ui/types/ability'
 import type { EffectSegment } from '@/ui/types/card'
 import { KEYWORD_REGISTRY } from '@/ui/types/card'
 import { AbilityValueBadge } from '@/ui/components/ladder/AbilityValueBadge'
+import { ComboGlyphStrip } from '@/ui/components/ladder/ComboGlyphStrip'
 import { Button } from '@/ui/components/atoms/Button'
 import { Icon } from '@/ui/components/atoms/Icon'
 import s from './ExpandedAbilityView.module.css'
@@ -80,6 +81,30 @@ export function ExpandedAbilityView({
         <RenderSegments segments={ability.fullEffect} />
       </div>
 
+      <div className={s.comboPanel}>
+        <div className={s.comboLabel}>— Requires —</div>
+        <ComboGlyphStrip
+          descriptor={ability.combo}
+          state={ability.comboState}
+          size="prominent"
+          className={s.comboStrip}
+        />
+        <div className={s.comboText}>{describeCombo(ability.combo)}</div>
+        <div
+          className={clsx(
+            s.comboStatus,
+            ability.comboState.status === 'eligible' && s.statusEligible,
+            ability.comboState.status === 'near-eligible' && s.statusNear,
+          )}
+        >
+          {ability.comboState.status === 'eligible'
+            ? '◆ Combo met — ready to fire'
+            : ability.comboState.status === 'near-eligible'
+              ? '◇ One die away'
+              : '◇ Combo not met'}
+        </div>
+      </div>
+
       {isLethal ? (
         <div className={s.lethalCallout}>
           ⚠ LETHAL · will kill target
@@ -104,6 +129,27 @@ export function ExpandedAbilityView({
       ) : null}
     </div>
   )
+}
+
+function describeCombo(combo: ComboDescriptor): string {
+  switch (combo.kind) {
+    case 'sigil': {
+      const counts = new Map<string, number>()
+      for (const sym of combo.symbols) {
+        const bare = sym.includes(':') ? sym.split(':').pop()! : sym
+        counts.set(bare, (counts.get(bare) ?? 0) + 1)
+      }
+      return Array.from(counts.entries())
+        .map(([bare, n]) => `${n} × ${bare.charAt(0).toUpperCase() + bare.slice(1)}`)
+        .join(' + ')
+    }
+    case 'straight':
+      return `Straight of ${combo.length}`
+    case 'n-of-a-kind':
+      return `${combo.count} of a kind`
+    case 'compound':
+      return combo.clauses.map(describeCombo).join(combo.op === 'and' ? ' + ' : '  or  ')
+  }
 }
 
 function RenderSegments({ segments }: { segments: EffectSegment[] }): JSX.Element {
