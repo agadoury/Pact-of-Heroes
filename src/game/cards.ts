@@ -1239,7 +1239,11 @@ export function canPlay(state: GameState, hero: HeroSnapshot, opponent: HeroSnap
       if (state.phase !== "main-pre" && state.phase !== "main-post") return false;
       break;
     case "instant":
-      // Instants are always playable subject to CP + their own trigger.
+      // An Instant is only playable while its trigger window is OPEN.
+      // Without this gate, playing e.g. Phoenix Veil with no attack
+      // pending pays the CP and burns the (once-per-match) card while
+      // its reduce-damage effect silently no-ops — a trap, not a play.
+      if (!instantWindowOpen(state, hero, card)) return false;
       break;
     case "mastery":
       // Masteries are played from the main phase like persistent buffs.
@@ -1262,6 +1266,45 @@ export function canPlay(state: GameState, hero: HeroSnapshot, opponent: HeroSnap
     }
   }
   return true;
+}
+
+/** Is the Instant's trigger window currently open? Mirrors the trigger
+ *  taxonomy for the trigger kinds shipped content actually uses; unknown /
+ *  legacy kinds default to open (manual-style play). */
+function instantWindowOpen(state: GameState, hero: HeroSnapshot, card: Card): boolean {
+  const trig = card.trigger;
+  switch (trig.kind) {
+    case "self-attacked":
+    case "self-takes-damage":
+    case "opponent-fires-ability": {
+      const pa = state.pendingAttack;
+      if (!pa || pa.defender !== hero.player) return false;
+      const tier = trig.kind === "self-takes-damage" ? undefined : trig.tier;
+      if (tier != null && tier !== "any" && tier !== pa.tier) return false;
+      return true;
+    }
+    case "opponent-attempts-remove-status":
+      // Answered exclusively through the respond-to-status-removal prompt —
+      // the raw play-card path would resolve the effect without completing
+      // the queued removal, leaving the engine paused.
+      return false;
+    case "opponent-removes-status":
+      // Reactive after a completed strip: the window opens once the named
+      // status has actually been stripped off us.
+      return (hero.lastStripped[trig.status] ?? 0) > 0;
+    case "opponent-applies-status":
+      return stacksOf(hero, trig.status) > 0;
+    case "match-state-threshold": {
+      const value = trig.metric === "self-hp" ? hero.hp : state.players[other_(hero.player)].hp;
+      return trig.op === "<=" ? value <= trig.value : value >= trig.value;
+    }
+    default:
+      return true;
+  }
+}
+
+function other_(p: import("./types").PlayerId): import("./types").PlayerId {
+  return p === "p1" ? "p2" : "p1";
 }
 
 /** Used for the AI to surface "what could push tier X into reach right now." */

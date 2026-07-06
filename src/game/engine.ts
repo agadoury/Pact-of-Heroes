@@ -284,6 +284,17 @@ function rollAction(state: GameState): GameEvent[] {
     // Allow rolling from main-pre as the trigger that *enters* the roll phase.
     if (state.phase === "main-pre") {
       const events: GameEvent[] = [];
+      // Stunned players skip their whole roll phase. Completing the skip
+      // HERE matters: performRoll's stun branch zeroes rollAttemptsRemaining,
+      // and a player left sitting in offensive-roll with zeroed attempts
+      // would pass the "has rolled" check and fire off resting dice.
+      if (stacksOf(state.players[state.activePlayer], "stun") > 0) {
+        const skip = performRoll(state);      // consumes the stun
+        events.push(...skip.events);
+        events.push(...enterPhase(state, "defensive-roll"));
+        events.push(...enterPhase(state, "main-post"));
+        return events;
+      }
       events.push(...enterPhase(state, "offensive-roll"));
       const r = performRoll(state);
       events.push(...r.events);

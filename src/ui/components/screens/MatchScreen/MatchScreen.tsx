@@ -51,6 +51,7 @@ import { OffensivePickPrompt } from '@/ui/components/overlays/OffensivePickPromp
 import { InstantPrompt } from '@/ui/components/overlays/InstantPrompt'
 import { MatchIntro } from '@/ui/components/screens/MatchIntro'
 import { getHero } from '@/content'
+import { canPlay } from '@/game/cards'
 import { derivePhaseDisplay } from '@/ui/selectors/phaseDisplay'
 import { deriveLadder } from '@/ui/selectors/ladder'
 import { deriveStatusTrack } from '@/ui/selectors/statusTrack'
@@ -100,6 +101,14 @@ export function MatchScreen(): JSX.Element {
   // If the ensuing advance-phase triggers a multi-ability picker, we auto-pick
   // this one so the player's chosen ability wins without a second modal.
   const preferredAbilityIdx = useRef<number | null>(null)
+
+  // The preference is scoped to the commit it was made for — if it survives
+  // past the turn (picker never fired), it would silently auto-pick a stale
+  // ability on some FUTURE turn's picker.
+  const currentTurn = state?.turn
+  useEffect(() => {
+    preferredAbilityIdx.current = null
+  }, [currentTurn])
 
   // Two-tap Skip Turn protection — first tap arms, second tap (within the
   // window) executes the full pass. The arm auto-expires.
@@ -332,6 +341,30 @@ export function MatchScreen(): JSX.Element {
   const selectedAbility = ladder.find(a => a.id === selectedAbilityId) ?? null
   const focusedCard = self.hand.find(c => c.id === focusedCardId) ?? null
 
+  // The Play button must agree with the engine — an enabled button whose
+  // dispatch the engine rejects is a dead tap. `canPlay` is the truth;
+  // the reason string explains WHY it's blocked.
+  const focusedCardPlayable =
+    focusedCard != null
+    && (isViewerTurn || focusedCard.kind === 'instant')
+    && canPlay(state, self, opponent, focusedCard)
+  const focusedCardBlockReason = ((): string | undefined => {
+    if (!focusedCard || focusedCardPlayable) return undefined
+    if (self.cp < focusedCard.cost) return `NEED ${focusedCard.cost} CP (HAVE ${self.cp})`
+    if (!isViewerTurn && focusedCard.kind !== 'instant') return 'NOT YOUR TURN'
+    if (focusedCard.oncePerMatch && self.consumedOncePerMatchCards.includes(focusedCard.id)) return 'ALREADY USED THIS MATCH'
+    if (focusedCard.oncePerTurn && self.consumedOncePerTurnCards.includes(focusedCard.id)) return 'ALREADY USED THIS TURN'
+    const k = focusedCard.kind
+    const mainish = k === 'main-phase' || k === 'main-action' || k === 'upgrade' || k === 'status' || k === 'mastery'
+    if (mainish && state.phase !== 'main-pre' && state.phase !== 'main-post') return 'MAIN PHASE ONLY'
+    if ((k === 'roll-phase' || k === 'roll-action') && state.phase !== 'offensive-roll' && state.phase !== 'defensive-roll') return 'ROLL PHASE ONLY'
+    if (k === 'mastery') return 'MASTERY SLOT FILLED'
+    return 'CANNOT PLAY RIGHT NOW'
+  })()
+
+  const viewerHasRolled =
+    self.rollAttemptsRemaining < 3 || self.forcedFaceValue != null
+
   const pendingAttackOnViewer = state.pendingAttack?.defender === viewerId ? state.pendingAttack : null
   const attackDefendable = pendingAttackOnViewer
     ? pendingAttackOnViewer.damageType === 'normal' || pendingAttackOnViewer.damageType === 'collateral'
@@ -563,7 +596,7 @@ export function MatchScreen(): JSX.Element {
               key={card.id + '-' + idx}
               card={card}
               position={idx}
-              state={cardPlayableState(state, self, card, isViewerTurn, uiOverlay)}
+              state={cardPlayableState(state, self, opponent, card, isViewerTurn, uiOverlay)}
               focused={focusedCardId === card.id}
               onTap={() => onCardTap(card.id)}
             />
@@ -614,14 +647,16 @@ export function MatchScreen(): JSX.Element {
         ability={selectedAbility}
         activatable={
           isViewerTurn
+          && viewerHasRolled
           && selectedAbility?.comboState.status === 'eligible'
-          && (state.phase === 'main-pre' || state.phase === 'offensive-roll')
+          && state.phase === 'offensive-roll'
         }
         readOnly={!isViewerTurn}
         unactivatableReason={
           !isViewerTurn ? 'NOT YOUR TURN'
+          : !viewerHasRolled ? 'ROLL FIRST'
           : selectedAbility?.comboState.status !== 'eligible' ? 'COMBO NOT MET'
-          : (state.phase !== 'main-pre' && state.phase !== 'offensive-roll') ? 'NOT ROLL PHASE'
+          : state.phase !== 'offensive-roll' ? 'NOT ROLL PHASE'
           : undefined
         }
         onCancel={onCancelOverlay}
@@ -632,16 +667,8 @@ export function MatchScreen(): JSX.Element {
         active={uiOverlay === 'card' && !!focusedCard}
         card={focusedCard}
         affordable={focusedCard != null && self.cp >= focusedCard.cost}
-        playable={focusedCard != null && self.cp >= focusedCard.cost && (
-          isViewerTurn || focusedCard.kind === 'instant'
-        )}
-        unplayableReason={
-          focusedCard && self.cp < focusedCard.cost
-            ? `NEED ${focusedCard.cost} CP (HAVE ${self.cp})`
-            : !isViewerTurn && focusedCard?.kind !== 'instant'
-              ? 'NOT YOUR TURN'
-              : undefined
-        }
+        playable={focusedCardPlayable}
+        unplayableReason={focusedCardBlockReason}
         sellable={cardSellable}
         onCancel={onCancelOverlay}
         onPlay={onPlayCard}
@@ -710,6 +737,7 @@ export function MatchScreen(): JSX.Element {
 function cardPlayableState(
   state: GameState,
   self: HeroSnapshot,
+  opponent: HeroSnapshot,
   card: HeroSnapshot['hand'][0],
   isViewerTurn: boolean,
   overlay: string,
@@ -718,30 +746,10 @@ function cardPlayableState(
   if (!affordable) return 'unaffordable'
   if (overlay !== 'none' && overlay !== 'tooltip' && overlay !== 'card') return 'wrong-timing-modal'
   if (!isViewerTurn && card.kind !== 'instant') return 'wrong-timing-opp'
-
-  // Phase-gate by card kind — mirrors engine's canPlay() switch.
-  const p = state.phase
-  const mainPhase = p === 'main-pre' || p === 'main-post'
-  const rollPhase = p === 'offensive-roll' || p === 'defensive-roll'
-
-  switch (card.kind) {
-    case 'main-action':
-    case 'upgrade':
-    case 'main-phase':
-    case 'status':
-      if (!mainPhase && isViewerTurn) return 'wrong-timing-modal'
-      break
-    case 'roll-action':
-    case 'roll-phase':
-      if (!rollPhase && isViewerTurn) return 'wrong-timing-modal'
-      break
-    case 'mastery':
-      if (!mainPhase && isViewerTurn) return 'wrong-timing-modal'
-      break
-    case 'instant':
-      // Always playable subject to CP + trigger — engine checks.
-      break
-  }
+  // The engine's canPlay is the single source of truth (phase gates,
+  // playCondition, once-per-match/turn, mastery slots) — a bright card
+  // whose Play the engine rejects is a dead tap.
+  if (!canPlay(state, self, opponent, card)) return 'wrong-timing-modal'
   return 'playable'
 }
 

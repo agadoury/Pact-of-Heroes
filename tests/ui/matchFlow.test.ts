@@ -151,6 +151,20 @@ describe('UI-flow: full match progression', () => {
     expect(state.phase).toBe('match-end')
   })
 
+  it('a stunned player tapping Roll skips their roll phase entirely', () => {
+    let state = newMatch()
+    state = runToInteractive(state)
+    expect(state.phase).toBe('main-pre')
+    // Stun the active player, then tap Roll like the UI does.
+    state.players.p1.statuses.push({ id: 'stun', stacks: 1, appliedBy: 'p2' })
+    state = dispatch(state, { kind: 'roll-dice' })
+    // Skip completes to main-post — never parked in offensive-roll where
+    // a commit could evaluate resting dice.
+    expect(state.phase).toBe('main-post')
+    expect(state.pendingOffensiveChoice).toBeUndefined()
+    expect(state.pendingAttack).toBeUndefined()
+  })
+
   it('committing without ever rolling cannot fire an ability', () => {
     let state = newMatch()
     state = runToInteractive(state)

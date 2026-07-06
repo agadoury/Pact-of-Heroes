@@ -21,6 +21,7 @@ import type {
   PlayerId,
   SymbolId,
 } from '@/game/types'
+import { ROLL_ATTEMPTS } from '@/game/types'
 import type { LadderAbility, CriticalPreview } from '@/ui/types/ability'
 import type { AbilityId, EffectSegment } from '@/ui/types/card'
 import { deriveAbilityValue } from './abilityValue'
@@ -35,8 +36,18 @@ export interface DeriveLadderInput {
 }
 
 export function deriveLadder({ self, opponent, dice }: DeriveLadderInput): LadderAbility[] {
+  // Resting dice (no roll yet this turn) all show face 0 — five identical
+  // symbols that would light half the ladder "eligible". The engine
+  // refuses to fire off un-rolled dice, so the UI must not advertise it:
+  // before the first roll every row renders as not-yet-met.
+  const hasRolled =
+    self.rollAttemptsRemaining < ROLL_ATTEMPTS || self.forcedFaceValue != null
+  const effectiveDice: readonly UiDie[] = hasRolled
+    ? dice
+    : dice.map(d => ({ ...d, isRolling: true }))   // rolling dice are excluded from pip matching
+
   return self.activeOffense.map((abil, idx) =>
-    deriveAbilityRow(abil, idx, self, opponent, dice),
+    deriveAbilityRow(abil, idx, self, opponent, effectiveDice),
   )
 }
 

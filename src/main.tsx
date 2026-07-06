@@ -26,9 +26,10 @@ function installAudioUnlock() {
 installAudioUnlock();
 wireMatchPersistence();
 
-// Dev-only debug handle — lets automated playtests and the console inspect
-// live store state. Stripped from production builds by the DEV guard.
-if (import.meta.env.DEV) {
+// Debug handle — lets automated playtests and the console inspect live
+// store state. Available in dev, and in production builds ONLY when built
+// with VITE_E2E=1 (CI playtests of the real bundle).
+if (import.meta.env.DEV || import.meta.env.VITE_E2E === '1') {
   void Promise.all([
     import("./store/gameStore"),
     import("./ui/store/uiStore"),
