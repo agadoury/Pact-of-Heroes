@@ -18,3 +18,4 @@ npm-debug.log*
 .tsbuildinfo
 *.tsbuildinfo
 .vite
+playtest-stall-*.png
