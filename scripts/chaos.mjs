@@ -177,6 +177,18 @@ async function playMatch(page, matchIdx, { doResumeTest }) {
     }
 
     // ── Viewer prompts ──────────────────────────────────────────────
+    // Bank spend outranks the defense pick (both can be set at once
+    // during a defensive-resolution spend — mirrors the action bar).
+    if (s.pbs && s.pbs.holder === 'p1') {
+      // Exercise the stepper sometimes.
+      if (rand() < 0.5) {
+        await page.locator('[data-overlay="spend"]').getByRole('button', { name: /less/ }).click().catch(() => {})
+      }
+      if (!(await clickBar(page, 'Confirm Spend'))) await clickBar(page, 'Skip Spend')
+      await page.waitForTimeout(250)
+      continue
+    }
+
     if (s.pa && s.pa.defender === 'p1') {
       // Sometimes try an instant from hand first.
       const instant = s.hand.find(c => c.kind === 'instant' && c.cost <= s.cp)
@@ -194,15 +206,6 @@ async function playMatch(page, matchIdx, { doResumeTest }) {
       } else {
         await clickBar(page, defendable ? 'Take Hit' : 'Brace')
       }
-      await page.waitForTimeout(250)
-      continue
-    }
-    if (s.pbs && s.pbs.holder === 'p1') {
-      // Exercise the stepper sometimes.
-      if (rand() < 0.5) {
-        await page.locator('[data-overlay="spend"]').getByRole('button', { name: /less/ }).click().catch(() => {})
-      }
-      if (!(await clickBar(page, 'Confirm Spend'))) await clickBar(page, 'Skip Spend')
       await page.waitForTimeout(250)
       continue
     }

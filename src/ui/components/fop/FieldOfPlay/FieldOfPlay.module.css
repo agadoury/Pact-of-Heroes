@@ -1,6 +1,9 @@
 .overlay {
   position: absolute;
-  inset: 16.5% 0 42.5% 0;
+  /* FieldOfPlay renders INSIDE MiddleBand — percentages here resolve
+     against the band, not the screen. The screen-level inset it shipped
+     with squeezed cinematics into a strip of the band. */
+  inset: 0;
   z-index: var(--z-fop);
   display: flex;
   align-items: center;

@@ -155,10 +155,13 @@
   /* ============================================================
    * BAND HEIGHTS — as percentage of viewport height (bible Part 2.1)
    * ============================================================ */
+  /* The seven bands MUST sum to exactly 100% — every overlay inset is
+     computed against these (e.g. bottom 7.5% = the action bar). A 97%
+     sum left a 3% drift that made overlays clip the action bar's top. */
   --band-opponent-strip: 13%;
   --band-phase-banner:   3.5%;
   --band-dice-tray:      13%;
-  --band-middle:         28%;
+  --band-middle:         31%;
   --band-self-strip:     12%;
   --band-hand:           20%;
   --band-action-bar:     7.5%;

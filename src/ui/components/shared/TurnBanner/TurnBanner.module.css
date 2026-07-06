@@ -11,6 +11,10 @@
 
 .card {
   padding: var(--space-6) var(--space-16);
+  /* Never wider than the phone viewport — "Pyromancer's Turn" at full
+     tracking measured 409px on a 390px screen and clipped its left edge. */
+  max-width: 92vw;
+  box-sizing: border-box;
   border: 1px solid currentColor;
   background: linear-gradient(180deg,
     rgba(0, 0, 0, 0.8),

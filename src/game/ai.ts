@@ -56,9 +56,12 @@ export function nextAiAction(state: GameState, ai: PlayerId): Action | null {
       return { kind: "spend-bank", amount: want };
     }
     if (pbs.context === "defensive-resolution") {
+      // Leave room for the defense roll we're about to make (~3 typical
+      // reduction) and never spend into chip damage — the bank feeds
+      // Judgment of the Sun.
       const incoming = state.pendingAttack?.incomingAmount ?? 0;
-      const want = Math.min(pbs.available, Math.ceil(incoming / 2));
-      return { kind: "spend-bank", amount: want };
+      const want = Math.min(pbs.available, Math.max(0, incoming - 3));
+      return want > 0 ? { kind: "spend-bank", amount: want } : { kind: "decline-bank-spend" };
     }
     return { kind: "decline-bank-spend" };
   }
@@ -100,7 +103,13 @@ export function nextAiAction(state: GameState, ai: PlayerId): Action | null {
     // either play another instant or finalise with select-defense.
     const me = state.players[ai];
     const opponent = state.players[other(ai)];
-    const instant = me.hand.find(c => c.kind === "instant" && instantMatchesPendingAttack(c, state) && canPlay(state, me, opponent, c));
+    const pa0 = state.pendingAttack;
+    // Only reach for an Instant when the hit is heavy or would kill us —
+    // burning a once-per-match negate on 3 chip damage reads as broken.
+    const threat = pa0.incomingAmount >= 6 || me.hp <= pa0.incomingAmount;
+    const instant = threat
+      ? me.hand.find(c => c.kind === "instant" && instantMatchesPendingAttack(c, state) && canPlay(state, me, opponent, c))
+      : undefined;
     if (instant) return { kind: "play-card", card: instant.id, casterPlayer: ai };
 
     // No instant to play — pick a defense. For non-defendable attacks
@@ -145,8 +154,9 @@ function instantMatchesPendingAttack(card: import("./types").Card, state: GameSt
   const pa = state.pendingAttack;
   if (!pa) return false;
   const trig = card.trigger;
-  if (trig.kind === "self-attacked") {
-    return trig.tier == null || trig.tier === "any" || trig.tier === pa.tier;
+  if (trig.kind === "self-attacked" || trig.kind === "self-takes-damage") {
+    const tier = trig.kind === "self-attacked" ? trig.tier : undefined;
+    return tier == null || tier === "any" || tier === pa.tier;
   }
   if (trig.kind === "opponent-fires-ability") {
     return trig.tier == null || trig.tier === "any" || trig.tier === pa.tier;
@@ -154,10 +164,44 @@ function instantMatchesPendingAttack(card: import("./types").Card, state: GameSt
   return false;
 }
 
+/** Does the effect tree contain a set-die-face with a player-chosen face? */
+function hasPlayerFaceSetter(effect: import("./types").AbilityEffect): boolean {
+  if (effect.kind === "set-die-face") return effect.target.kind === "face" && effect.target.faceValue == null;
+  if (effect.kind === "compound") return effect.effects.some(hasPlayerFaceSetter);
+  return false;
+}
+
 function pickBestDefense(state: GameState, ai: PlayerId): number | null {
   const me = state.players[ai];
   const dl = me.activeDefense;
   if (!dl || dl.length === 0) return null;
+  const incoming = state.pendingAttack?.incomingAmount ?? 0;
+
+  const flatReduce = (e: import("./types").AbilityEffect): number => {
+    if (e.kind === "reduce-damage") return e.negate_attack ? 99 : (e.multiplier != null ? Math.ceil(incoming * (1 - e.multiplier)) : e.amount);
+    if (e.kind === "compound") return e.effects.reduce((a, x) => a + flatReduce(x), 0);
+    return 0;
+  };
+  const healAmount = (e: import("./types").AbilityEffect): number => {
+    if (e.kind === "heal") return e.amount;
+    if (e.kind === "compound") return e.effects.reduce((a, x) => a + healAmount(x), 0);
+    return 0;
+  };
+
+  // 1) A reduce that fully blocks the hit wins outright.
+  for (let i = 0; i < dl.length; i++) {
+    if (flatReduce(dl[i].effect) >= incoming && incoming > 0) return i;
+  }
+  // 2) Low HP → the biggest heal keeps us alive past this attack.
+  if (me.hp <= me.hpStart * 0.4) {
+    let bestIdx = -1; let bestHeal = 0;
+    for (let i = 0; i < dl.length; i++) {
+      const h = healAmount(dl[i].effect);
+      if (h > bestHeal) { bestHeal = h; bestIdx = i; }
+    }
+    if (bestIdx >= 0) return bestIdx;
+  }
+  // 3) Otherwise highest tier (legacy heuristic).
   let bestIdx = 0;
   let bestTier = -1;
   for (let i = 0; i < dl.length; i++) {
@@ -249,16 +293,36 @@ function decideOffensiveRoll(state: GameState, ai: PlayerId): Action {
       // every decision through the unstable pickTargetTier path.
       const symbols = symbolsOnDice(me.dice);
       const faces = me.dice.map(d => d.faces[d.current]);
-      void hero;
       const resolved = me.activeOffense.map(a => resolveAbilityFor(me, a, "offensive"));
       let firingTier = -1;
       for (let i = 0; i < resolved.length; i++) {
         if (comboMatchesFaces(resolved[i].combo, faces)) firingTier = i;
       }
       const targetTier = firingTier >= 0 ? firingTier : pickTargetTier(state, ai);
+
+      // One symbol short of the target combo? A set-die-face card (Iron
+      // Focus) closes the gap — without this, a quarter of every deck
+      // (dice-manipulation) was dead weight in the AI's hands.
+      if (firingTier === -1 && targetTier >= 0) {
+        const targetCombo = resolved[targetTier].combo;
+        if (targetCombo.kind === "symbol-count" || targetCombo.kind === "at-least" || targetCombo.kind === "matching") {
+          const have = symbols.filter(sym => sym === targetCombo.symbol).length;
+          if (targetCombo.count - have === 1) {
+            const setter = me.hand.find(c =>
+              (c.kind === "roll-phase" || c.kind === "roll-action")
+              && hasPlayerFaceSetter(c.effect)
+              && canPlay(state, me, opponent, c),
+            );
+            const face = hero.diceIdentity.faces.find(f => f.symbol === targetCombo.symbol);
+            if (setter && face) {
+              return { kind: "play-card", card: setter.id, casterPlayer: ai, targetFaceValue: face.faceValue };
+            }
+          }
+        }
+      }
       if (targetTier >= 0) {
         const ability = resolved[targetTier];
-        const keep = pickKeepMask(ability.combo, symbols);
+        const keep = pickKeepMask(ability.combo, symbols, faces.map(f => f.faceValue));
         // Monotonic lock policy: only LOCK a die that the keep mask wants
         // locked. Never UNLOCK mid-attempt — `pickTargetTier`'s MC depends
         // on current locks, so an unlock could flip the target tier and
@@ -291,8 +355,8 @@ function pickTargetTier(state: GameState, ai: PlayerId): number {
   const hero = getHero(me.hero);
   const rows = evaluateLadder(hero, me, me.rollAttemptsRemaining, {
     opponentHp: opponent.hp,
-    pendingOpponentDamage: stacksOf(opponent, "bleeding"),
-    damageBonus: (me.signatureState["rage"] ?? 0) + me.nextAbilityBonusDamage,
+    pendingOpponentDamage: stacksOf(opponent, "burn"),
+    damageBonus: (me.signatureState["frenzy"] ?? 0) + me.nextAbilityBonusDamage,
     reachabilitySamples: 200,
     reachabilitySeed: state.rngSeed,
   });
@@ -382,6 +446,10 @@ function pickHeroMainPhaseCard(state: GameState, ai: PlayerId): string | null {
         if ((opp.statuses.find(s => s.id === "pyromancer:cinder")?.stacks ?? 0) >= 1) return card.id;
         return card.id;
       default:
+        // Unlisted hero card: play it when CP-rich — a 25% dead deck reads
+        // as a broken opponent. The +3 cushion keeps the AI from going
+        // broke on cards the whitelist hasn't hand-tuned.
+        if (me.cp >= card.cost + 3) return card.id;
         break;
     }
   }

@@ -302,6 +302,32 @@ Hooks:
 
 ---
 
+## Overhaul session (multi-agent audit + fixes)
+
+An 8-dimension multi-agent audit (engine cards/phases, MatchScreen wiring,
+selectors, screens/flows, hooks/drivers, layout, AI quality) with
+adversarial verification, plus a chaos harness (`scripts/chaos.mjs`),
+surfaced ~40 confirmed defects. All fixed — see commits `b81356e`,
+`f56628a`, and the overhaul-final commit for the full change list.
+Highlights: Iron Focus/Last Stand face picker, instant trigger windows,
+symbol-bend expiry, Verdict/Frost-bite debuffs un-nullified, defensive
+Radiance spend wired end-to-end, ladder resolves upgrades/bends like the
+engine, MatchIntro/CardPlayOverlay timer resets, Atone button, MatchMenu
+(pause/concede/save-quit), customize navigation + valid-only persistence,
+resume restores the event log, AI locks straights / plays dice-manip
+cards / picks defenses by value, band heights sum to 100%.
+
+### Balance state (AI matrix, 60 matches per pairing)
+
+- Berserker ↔ Lightbearer: ~even.
+- Pyromancer loses ~65-70% into both others — needs content tuning
+  (its whitelisted AI plays fewer signature cards; Cinder detonation at
+  5 stacks rarely lands in 8-turn matches).
+- Mirror matches show a consistent p1-seat advantage (~60%) even with
+  the coin alternating — worth a design look at the first-income skip.
+- Tuned this session: Verdict total debuff capped at -4, Radiance spends
+  +1 dmg / -1 incoming per token (from +2/-2), AI atones at 2 stacks.
+
 ## Game-loop stall fixes + polish (this branch)
 
 The game shipped in `036a226` was unplayable: the AI played at most one

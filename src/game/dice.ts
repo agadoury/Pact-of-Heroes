@@ -214,8 +214,15 @@ export function reachabilityProbability(
   return hits / samples;
 }
 
-/** Heuristic: which dice should we keep when chasing this combo right now? */
-export function pickKeepMask(combo: DiceCombo, symbols: ReadonlyArray<SymbolId>): boolean[] {
+/** Heuristic: which dice should we keep when chasing this combo right now?
+ *  `faceValues` (parallel to `symbols`) enables value-aware masks for
+ *  n-of-a-kind and straight combos — without it those fall back to keep-all
+ *  / keep-none, which made the AI reroll away FIRING straights. */
+export function pickKeepMask(
+  combo: DiceCombo,
+  symbols: ReadonlyArray<SymbolId>,
+  faceValues?: ReadonlyArray<number>,
+): boolean[] {
   const keep = symbols.map(() => false);
   const t = tally(symbols);
   switch (combo.kind) {
@@ -224,10 +231,20 @@ export function pickKeepMask(combo: DiceCombo, symbols: ReadonlyArray<SymbolId>)
     case "symbol-count":
       for (let i = 0; i < symbols.length; i++) if (symbols[i] === combo.symbol) keep[i] = true;
       return keep;
-    case "n-of-a-kind":
-      // Heuristic: keep all dice (caller resolves via face values elsewhere).
-      for (let i = 0; i < symbols.length; i++) keep[i] = true;
+    case "n-of-a-kind": {
+      if (!faceValues) {
+        // No face info — keep everything (legacy fallback).
+        for (let i = 0; i < symbols.length; i++) keep[i] = true;
+        return keep;
+      }
+      // Keep only the largest same-value group; reroll the rest.
+      const counts = new Map<number, number>();
+      for (const v of faceValues) counts.set(v, (counts.get(v) ?? 0) + 1);
+      let bestVal = faceValues[0] ?? 1; let bestN = 0;
+      for (const [v, n] of counts.entries()) if (n > bestN) { bestVal = v; bestN = n; }
+      for (let i = 0; i < faceValues.length; i++) if (faceValues[i] === bestVal) keep[i] = true;
       return keep;
+    }
     case "matching-any": {
       // Keep dice matching the most-common symbol.
       let best: SymbolId | undefined; let bestN = 0;
@@ -258,7 +275,7 @@ export function pickKeepMask(combo: DiceCombo, symbols: ReadonlyArray<SymbolId>)
     case "compound": {
       // OR  → keep mask = union of best clause's mask
       // AND → keep mask = union over all clauses (committed dice for any clause)
-      const masks = combo.clauses.map(c => pickKeepMask(c, symbols));
+      const masks = combo.clauses.map(c => pickKeepMask(c, symbols, faceValues));
       const out = symbols.map(() => false);
       if (combo.op === "or") {
         // Pick the clause currently most matched and keep its mask.
@@ -272,9 +289,28 @@ export function pickKeepMask(combo: DiceCombo, symbols: ReadonlyArray<SymbolId>)
       for (const m of masks) for (let i = 0; i < m.length; i++) if (m[i]) out[i] = true;
       return out;
     }
-    case "straight":
-      // Stub: keep distinct numeric symbols only.
+    case "straight": {
+      if (!faceValues) return keep;
+      // Keep one die per value along the longest ascending run — a firing
+      // straight must be LOCKED or the next reroll throws the attack away.
+      const byValue = new Map<number, number>();       // value → die index
+      for (let i = 0; i < faceValues.length; i++) {
+        if (!byValue.has(faceValues[i]!)) byValue.set(faceValues[i]!, i);
+      }
+      const values = new Set(faceValues);
+      let bestStart = 0; let bestLen = 0;
+      for (const v of values) {
+        if (values.has(v - 1)) continue;               // not a run start
+        let len = 1;
+        while (values.has(v + len)) len++;
+        if (len > bestLen) { bestLen = len; bestStart = v; }
+      }
+      for (let v = bestStart; v < bestStart + bestLen; v++) {
+        const idx = byValue.get(v);
+        if (idx != null) keep[idx] = true;
+      }
       return keep;
+    }
   }
 }
 

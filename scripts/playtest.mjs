@@ -172,7 +172,14 @@ async function playMatch(page, matchIdx) {
       continue
     }
 
-    // Viewer-directed prompts take precedence.
+    // Viewer-directed prompts take precedence. Bank spend outranks the
+    // defense pick (both set during a defensive-resolution spend).
+    if (s.pendingBankSpend && s.pendingBankSpend.holder === s.viewerId) {
+      if (!(await clickBar(page, 'Confirm Spend'))) await clickBar(page, 'Skip Spend')
+      await page.waitForTimeout(200)
+      continue
+    }
+
     if (s.pendingAttack && s.pendingAttack.defender === s.viewerId) {
       // Pick the first defense option (row inside the Incoming overlay),
       // then confirm — or brace when the attack is undefendable.
@@ -185,11 +192,6 @@ async function playMatch(page, matchIdx) {
         || await clickBar(page, 'Brace for Impact')
         || await clickBar(page, 'Take Hit')
       if (!confirmed) log('  ⚠ no defense confirm button found')
-      await page.waitForTimeout(200)
-      continue
-    }
-    if (s.pendingBankSpend && s.pendingBankSpend.holder === s.viewerId) {
-      if (!(await clickBar(page, 'Confirm Spend'))) await clickBar(page, 'Skip Spend')
       await page.waitForTimeout(200)
       continue
     }

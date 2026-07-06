@@ -1,6 +1,6 @@
 .overlay {
   position: absolute;
-  inset: 16.5% 0 30.5% 0;
+  inset: 16.5% 0 27.5% 0;  /* banner-bottom → self-strip-bottom */
   z-index: var(--z-modal);
   padding: 14px 12px 10px;
   background: linear-gradient(180deg,
