@@ -26,7 +26,6 @@ import type {
   ResolutionEffect,
   SubEventData,
   DetonationData,
-  CardPlayData,
   DefenseData,
 } from '@/ui/types/fop'
 
@@ -124,16 +123,10 @@ export function aggregateEvents(
       }
 
       case 'card-played': {
-        // Card plays get their own micro-cinematic and don't merge with
-        // an ability buffer.
-        emitted.push({
-          kind: 'card-play',
-          data: {
-            card:     { id: ev.cardId } as unknown as CardPlayData['card'],
-            playedBy: ev.player,
-            tone:     'gold',
-          },
-        })
+        // Card plays are visualised by MatchScreen's CardPlayOverlay
+        // (which watches gameStore.matchLog) — we don't queue them into
+        // the resolution pipeline because the overlay renders on top of
+        // the MiddleBand, not inside it.
         break
       }
 

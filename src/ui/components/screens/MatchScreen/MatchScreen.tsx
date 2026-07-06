@@ -14,6 +14,7 @@ import type { GameState, HeroSnapshot, PlayerId } from '@/game/types'
 import { useGameStore } from '@/store/gameStore'
 import { useUIStore, wireResolutionBridge } from '@/ui/store/uiStore'
 import { useResolutionDriver } from '@/ui/hooks/useResolutionDriver'
+import { useAiDriver } from '@/ui/hooks/useAiDriver'
 import { ScreenBands } from '@/ui/components/shared/ScreenBands'
 import { HeroStrip } from '@/ui/components/bands/HeroStrip'
 import { PhaseBanner } from '@/ui/components/bands/PhaseBanner'
@@ -63,12 +64,51 @@ export function MatchScreen(): JSX.Element {
   const selectDefense      = useUIStore(u => u.selectDefense)
   const focusCard          = useUIStore(u => u.focusCard)
 
-  // Card-play cinematic — the last card the player just committed.
+  // Card-play cinematic — MatchScreen watches gameStore.matchLog for
+  // card-played events (both viewer's and opponent's) and pops the
+  // CardPlayOverlay accordingly.
   const [playedCard, setPlayedCard] = useState<import('@/game/types').Card | null>(null)
+  const [playedByOpp, setPlayedByOpp] = useState(false)
+  const lastCardEventIdx = useRef(0)
 
   // Match-intro cinematic — plays once per match on first mount with state.
   const introShownFor = useRef<string | null>(null)
   const [introActive, setIntroActive] = useState(false)
+
+  // When the player taps Activate on a specific ability, remember which one.
+  // If the ensuing advance-phase triggers a multi-ability picker, we auto-pick
+  // this one so the player's chosen ability wins without a second modal.
+  const preferredAbilityIdx = useRef<number | null>(null)
+
+  // Subscribe to gameStore matchLog to pop CardPlayOverlay on the latest
+  // card-played event (viewer or opponent). Look up the card object via
+  // the caster's catalog.
+  useEffect(() => {
+    const unsub = useGameStore.subscribe((s) => {
+      const log = s.matchLog
+      if (log.length <= lastCardEventIdx.current) return
+      for (let i = lastCardEventIdx.current; i < log.length; i++) {
+        const ev = log[i]
+        if (ev?.t === 'card-played') {
+          const caster = s.state?.players[ev.player]
+          if (!caster) continue
+          // Look for the card in the caster's hand + deck + discard (already
+          // moved). Fall back to a placeholder if unknown — the overlay's
+          // effect-parser will still render something readable.
+          const found =
+            caster.hand.find(c => c.id === ev.cardId)
+            ?? caster.deck.find(c => c.id === ev.cardId)
+            ?? caster.discard.find(c => c.id === ev.cardId)
+          if (found) {
+            setPlayedCard(found)
+            setPlayedByOpp(ev.player !== viewerId)
+          }
+        }
+      }
+      lastCardEventIdx.current = log.length
+    })
+    return unsub
+  }, [viewerId])
 
   // Wire event bridge once.
   useEffect(() => {
@@ -78,6 +118,10 @@ export function MatchScreen(): JSX.Element {
 
   // Drive queued resolutions.
   useResolutionDriver()
+
+  // Drive the AI opponent (p2 in single-player vs AI mode).
+  const aiPlayer = useGameStore(g => g.aiPlayer)
+  useAiDriver(aiPlayer)
 
   // Redirect to summary when match ends.
   useEffect(() => {
@@ -131,18 +175,37 @@ export function MatchScreen(): JSX.Element {
 
   // Handlers -------------------------------------------------------------
 
+  const canRoll = isViewerTurn && (state.phase === 'main-pre' || state.phase === 'offensive-roll')
+
   const onDieTap = (index: number) => {
-    if (!isViewerTurn) return
+    if (!canRoll) return
+    // Only unlocked dice from the current roll can be locked; can't toggle
+    // during the tumble animation. Engine rejects invalid inputs anyway.
     dispatch({ kind: 'toggle-die-lock', die: index as 0|1|2|3|4 })
   }
 
   const onActionTap = (id: string) => {
     switch (id) {
       case 'roll':
+        // roll-dice from main-pre auto-enters offensive-roll and consumes
+        // one attempt. From offensive-roll it consumes another attempt.
         return dispatch({ kind: 'roll-dice' })
+      case 'commit':
+        // End rolling; engine's beginOffensivePick decides. Auto-commits
+        // if one match, fizzles if none, opens picker if multiple.
+        return dispatch({ kind: 'advance-phase' })
       case 'end-turn':
-      case 'skip-turn':
         return dispatch({ kind: 'end-turn' })
+      case 'skip-turn':
+        // Skip during main-pre / offensive-roll = fizzle + advance to
+        // main-post. During main-post it's an end-turn.
+        if (state.phase === 'main-post') {
+          return dispatch({ kind: 'end-turn' })
+        }
+        // From other viewer phases: advance-phase walks to main-post,
+        // then a follow-up end-turn dispatch would be needed. Simpler:
+        // just advance-phase; player can hit End Turn from main-post.
+        return dispatch({ kind: 'advance-phase' })
       case 'confirm-defense':
         if (state.pendingAttack) {
           const idx = self.activeDefense.findIndex(a => a.name === selectedDefenseId)
@@ -181,14 +244,39 @@ export function MatchScreen(): JSX.Element {
     }
     setOverlay('none')
     selectAbility(null)
-    dispatch({ kind: 'select-offensive-ability', abilityIndex: idx })
+    // Remember the choice for auto-selection if the picker fires.
+    preferredAbilityIdx.current = idx
+    // Advance the phase — engine will either auto-commit this ability
+    // (if it's the only eligible one) or emit pendingOffensiveChoice
+    // (which our useEffect below auto-answers with preferredAbilityIdx).
+    dispatch({ kind: 'advance-phase' })
   }
+
+  // If pendingOffensiveChoice fires AND we remembered a preferred ability,
+  // auto-select it so the player doesn't see a redundant picker.
+  useEffect(() => {
+    if (!state?.pendingOffensiveChoice) return
+    if (state.pendingOffensiveChoice.attacker !== viewerId) return
+    const pref = preferredAbilityIdx.current
+    if (pref == null) return
+    const matches = state.pendingOffensiveChoice.matches
+    const chosen = matches.find(m => m.abilityIndex === pref)
+    if (chosen) {
+      preferredAbilityIdx.current = null
+      dispatch({ kind: 'select-offensive-ability', abilityIndex: chosen.abilityIndex })
+    } else {
+      // Preferred choice didn't survive engine eligibility — clear and
+      // let the manual picker overlay handle it.
+      preferredAbilityIdx.current = null
+    }
+  }, [state?.pendingOffensiveChoice, viewerId, dispatch])
 
   const onPlayCard = () => {
     if (!focusedCard) return
     setOverlay('none')
     focusCard(null)
-    setPlayedCard(focusedCard)
+    // Card overlay pops from the matchLog subscription — we don't
+    // pre-render it here to avoid double-firing.
     dispatch({ kind: 'play-card', card: focusedCard.id, casterPlayer: viewerId })
   }
 
@@ -274,7 +362,7 @@ export function MatchScreen(): JSX.Element {
         <DiceTray
           dice={activeSnapshot.dice}
           isRolling={false}
-          interactable={isViewerTurn}
+          interactable={canRoll}
           heroId={activeSnapshot.hero}
           onDieTap={onDieTap}
         />
@@ -362,11 +450,16 @@ export function MatchScreen(): JSX.Element {
       <ExpandedAbilityView
         active={uiOverlay === 'ability' && !!selectedAbility}
         ability={selectedAbility}
-        activatable={isViewerTurn && selectedAbility?.comboState.status === 'eligible'}
+        activatable={
+          isViewerTurn
+          && selectedAbility?.comboState.status === 'eligible'
+          && (state.phase === 'main-pre' || state.phase === 'offensive-roll')
+        }
         readOnly={!isViewerTurn}
         unactivatableReason={
           !isViewerTurn ? 'NOT YOUR TURN'
           : selectedAbility?.comboState.status !== 'eligible' ? 'COMBO NOT MET'
+          : (state.phase !== 'main-pre' && state.phase !== 'offensive-roll') ? 'NOT ROLL PHASE'
           : undefined
         }
         onCancel={onCancelOverlay}
@@ -412,7 +505,7 @@ export function MatchScreen(): JSX.Element {
       <CardPlayOverlay
         active={!!playedCard}
         card={playedCard}
-        tone="gold"
+        tone={playedByOpp ? 'ember' : 'gold'}
         onComplete={() => setPlayedCard(null)}
       />
 
@@ -444,7 +537,7 @@ export function MatchScreen(): JSX.Element {
 // ---------------------------------------------------------------------------
 
 function cardPlayableState(
-  _state: GameState,
+  state: GameState,
   self: HeroSnapshot,
   card: HeroSnapshot['hand'][0],
   isViewerTurn: boolean,
@@ -454,6 +547,30 @@ function cardPlayableState(
   if (!affordable) return 'unaffordable'
   if (overlay !== 'none' && overlay !== 'tooltip' && overlay !== 'card') return 'wrong-timing-modal'
   if (!isViewerTurn && card.kind !== 'instant') return 'wrong-timing-opp'
+
+  // Phase-gate by card kind — mirrors engine's canPlay() switch.
+  const p = state.phase
+  const mainPhase = p === 'main-pre' || p === 'main-post'
+  const rollPhase = p === 'offensive-roll' || p === 'defensive-roll'
+
+  switch (card.kind) {
+    case 'main-action':
+    case 'upgrade':
+    case 'main-phase':
+    case 'status':
+      if (!mainPhase && isViewerTurn) return 'wrong-timing-modal'
+      break
+    case 'roll-action':
+    case 'roll-phase':
+      if (!rollPhase && isViewerTurn) return 'wrong-timing-modal'
+      break
+    case 'mastery':
+      if (!mainPhase && isViewerTurn) return 'wrong-timing-modal'
+      break
+    case 'instant':
+      // Always playable subject to CP + trigger — engine checks.
+      break
+  }
   return 'playable'
 }
 

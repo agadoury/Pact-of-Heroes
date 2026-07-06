@@ -60,14 +60,10 @@ export function deriveActionBar(input: DeriveActionBarInput): ActionButton[] {
   }
 
   if (state.pendingOffensiveChoice?.attacker === viewerId) {
+    // Picker overlay handles the selection; bar is inactive.
     return [
       skipTurnDisabled,
-      {
-        id:      'confirm-ability',
-        label:   'Confirm',
-        variant: 'primary',
-        iconRight: 'chevron-right',
-      },
+      { id: 'pick-hint', label: 'Choose ability…', variant: 'disabled' },
     ]
   }
 
@@ -99,30 +95,49 @@ export function deriveActionBar(input: DeriveActionBarInput): ActionButton[] {
   // Viewer's turn — phase-based buttons.
   const rollsLeft = viewer.rollAttemptsRemaining
   const canRoll   = rollsLeft > 0
-  const isFirstRoll = rollsLeft === ROLL_ATTEMPTS_TOTAL
+  void ROLL_ATTEMPTS_TOTAL
 
-  const skipTurn: ActionButton = state.phase === 'main-post' || state.phase === 'main-pre'
+  const skipTurn: ActionButton = (state.phase === 'main-post' || state.phase === 'main-pre')
     ? { id: 'skip-turn', label: 'Skip Turn', variant: 'skip' }
     : { id: 'skip-turn', label: 'Skip Turn', variant: 'disabled' }
 
-  if (state.phase === 'main-pre' || state.phase === 'offensive-roll') {
+  if (state.phase === 'main-pre') {
+    // Very first action of the turn — no dice yet.
     return [
       skipTurn,
-      canRoll
-        ? {
-            id:      'roll',
-            label:   isFirstRoll ? 'Roll' : 'Reroll',
-            variant: 'default',
-            badge:   isFirstRoll ? undefined : rollsLeft,
-          }
-        : { id: 'roll', label: 'Reroll · 0', variant: 'disabled' },
+      {
+        id:      'roll',
+        label:   'Roll',
+        variant: 'primary',
+      },
     ]
+  }
+
+  if (state.phase === 'offensive-roll') {
+    // Player has rolled at least once. Show BOTH reroll (if attempts left)
+    // and commit — commit is the primary path once any ability is eligible.
+    const buttons: ActionButton[] = [skipTurn]
+    if (canRoll) {
+      buttons.push({
+        id:      'roll',
+        label:   'Reroll',
+        variant: 'default',
+        badge:   rollsLeft,
+      })
+    }
+    buttons.push({
+      id:        'commit',
+      label:     'Fire',
+      variant:   'primary',
+      iconRight: 'chevron-right',
+    })
+    return buttons
   }
 
   if (state.phase === 'main-post') {
     return [
       skipTurn,
-      { id: 'end-turn', label: 'End Turn', variant: 'primary' },
+      { id: 'end-turn', label: 'End Turn', variant: 'primary', iconRight: 'chevron-right' },
     ]
   }
 
