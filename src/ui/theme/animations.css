@@ -76,14 +76,6 @@
 }
 
 /* ============================================================
- * Dice tumble — active during roll
- * ============================================================ */
-@keyframes dice-tumble {
-  0%, 100% { transform: rotate(-8deg) translateY(0); }
-  50%      { transform: rotate(8deg)  translateY(-2px); }
-}
-
-/* ============================================================
  * Particle drift — ambient FOP motion during hold phase
  * ============================================================ */
 @keyframes particle-drift {

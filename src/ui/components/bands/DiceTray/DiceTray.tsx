@@ -2,7 +2,8 @@
  * <DiceTray>
  *
  * Row of 5 dice. Renders the active player's dice regardless of viewer
- * (bible Part 7.3.5.1). Tumble stagger via rollDelay.
+ * (bible Part 7.3.5.1). Each rising edge of `rollSignal` throws the
+ * unlocked dice; `rollDelay` staggers their landings left→right.
  *
  * Bible reference: Part 2.7.
  */
@@ -14,7 +15,7 @@ import s from './DiceTray.module.css'
 
 export interface DiceTrayProps {
   dice:          readonly EngineDie[]
-  isRolling?:    boolean
+  rollSignal?:   number
   interactable?: boolean
   heroId?:       HeroId
   onDieTap?:     (index: number) => void
@@ -23,7 +24,7 @@ export interface DiceTrayProps {
 
 export function DiceTray({
   dice,
-  isRolling,
+  rollSignal,
   interactable = true,
   heroId,
   onDieTap,
@@ -36,8 +37,9 @@ export function DiceTray({
         <Die
           key={d.index}
           face={d.faces[d.current]!}
+          faces={d.faces}
           locked={d.locked}
-          isRolling={isRolling && !d.locked}
+          rollSignal={rollSignal}
           rollDelay={i * 80}
           interactable={interactable}
           heroId={heroId}

@@ -33,8 +33,57 @@
     0 0 8px rgba(212, 165, 72, 0.4);
 }
 
-.die.rolling {
-  animation: dice-tumble 600ms ease-in-out infinite;
+/* ── Tumble: airborne hop + 3D spin, faces cycling via JS ─────────── */
+.die.tumbling {
+  /* Duration/delay are set inline per-die to desync the tray. */
+  animation: die-air 440ms linear infinite;
+  z-index: 2;
+  pointer-events: none;
+  will-change: transform;
+  box-shadow:
+    0 10px 14px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(108, 176, 232, 0.25);
+}
+.tumbling .glyph svg { filter: drop-shadow(0 0 5px currentColor); }
+
+@keyframes die-air {
+  0%   { transform: translateY(0)     rotateX(0deg)   rotateZ(0deg)    scale(1); }
+  22%  { transform: translateY(-13px) rotateX(160deg) rotateZ(-15deg)  scale(1.14); }
+  45%  { transform: translateY(-3px)  rotateX(345deg) rotateZ(9deg)    scale(1.04); }
+  50%  { transform: translateY(-2px)  rotateX(360deg) rotateZ(11deg)   scale(1.03); }
+  72%  { transform: translateY(-11px) rotateX(535deg) rotateZ(-9deg)   scale(1.11); }
+  100% { transform: translateY(0)     rotateX(720deg) rotateZ(0deg)    scale(1); }
+}
+
+/* ── Settle: overshoot bounce into rest + impact ring ─────────────── */
+.die.settling {
+  animation: die-land 280ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  pointer-events: none;
+}
+
+@keyframes die-land {
+  0%   { transform: translateY(-14px) rotateZ(-9deg) scale(1.16); }
+  52%  { transform: translateY(2px)   rotateZ(2deg)  scale(0.9); }
+  78%  { transform: translateY(-2px)  rotateZ(-1deg) scale(1.05); }
+  100% { transform: translateY(0)     rotateZ(0deg)  scale(1); }
+}
+
+.die.settling::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 12px;
+  border: 1.5px solid var(--frost-bright);
+  opacity: 0;
+  pointer-events: none;
+  animation: die-impact-ring 320ms ease-out 90ms forwards;
+}
+.element-ember.settling::after { border-color: var(--ember-bright); }
+.element-dawn.settling::after  { border-color: var(--dawn-bright); }
+
+@keyframes die-impact-ring {
+  0%   { opacity: 0.85; transform: scale(0.72); }
+  100% { opacity: 0;    transform: scale(1.35); }
 }
 
 .number {
@@ -92,6 +141,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .die.rolling { animation: none; transform: rotate(6deg); }
+  .die.tumbling { animation: none; transform: rotate(6deg); }
+  .die.settling { animation: none; }
+  .die.settling::after { animation: none; opacity: 0; }
   .die:active:not(:disabled) { transform: none; }
 }

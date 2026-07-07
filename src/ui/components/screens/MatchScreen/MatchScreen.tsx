@@ -89,7 +89,10 @@ export function MatchScreen(): JSX.Element {
   const [playedByOpp, setPlayedByOpp] = useState(false)
   const lastCardEventIdx = useRef(0)
 
-  // Dice tumble — clock a short "isRolling" burst whenever roll-dice fires.
+  // Dice tumble — `rollSignal` increments per roll batch; each rising edge
+  // throws the unlocked dice in <Die>. `rollingUntil` blocks dice input
+  // until the last staggered die lands (max air ~780ms + 280ms settle).
+  const [rollSignal, setRollSignal] = useState(0)
   const [rollingUntil, setRollingUntil] = useState(0)
   const isRolling = performance.now() < rollingUntil
   const lastDiceEventIdx = useRef(0)
@@ -136,11 +139,13 @@ export function MatchScreen(): JSX.Element {
       const log = s.matchLog
       if (log.length < lastDiceEventIdx.current) lastDiceEventIdx.current = 0
       if (log.length <= lastDiceEventIdx.current) return
+      let rolled = false
       for (let i = lastDiceEventIdx.current; i < log.length; i++) {
-        const ev = log[i]
-        if (ev?.t === 'dice-rolled') {
-          setRollingUntil(performance.now() + 600)
-        }
+        if (log[i]?.t === 'dice-rolled') rolled = true
+      }
+      if (rolled) {
+        setRollSignal(n => n + 1)
+        setRollingUntil(performance.now() + 1100)
       }
       lastDiceEventIdx.current = log.length
     })
@@ -634,7 +639,7 @@ export function MatchScreen(): JSX.Element {
       <div className={s.band} data-band="dice-tray">
         <DiceTray
           dice={activeSnapshot.dice}
-          isRolling={isRolling}
+          rollSignal={rollSignal}
           interactable={diceInteractable && !isRolling}
           heroId={activeSnapshot.hero}
           onDieTap={onDieTap}
