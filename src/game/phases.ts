@@ -377,7 +377,14 @@ export function commitOffensiveAbility(state: GameState, abilityIndex: number): 
     }
   }
 
-  const defendable = ability.damageType === "normal" || ability.damageType === "collateral";
+  // Effective damage type: the resolved view already bakes unconditional
+  // damage-type mods; roll-conditional ones (Cleave Mastery's "undefendable
+  // at 4+ axes") are applied here against the firing faces. Without this,
+  // the defender is prompted to roll a defense that can't reduce the hit.
+  const effectiveType =
+    applyModifiersToDamageType(active, ability.name, ability.tier, ability.damageType, faces)
+    ?? ability.damageType;
+  const defendable = effectiveType === "normal" || effectiveType === "collateral";
   const incomingAmount = computeIncomingAmount(state, active, opponent, ability, ability.effect, faces, damageBonus, critFlat, critMul);
 
   events.push({
@@ -386,7 +393,7 @@ export function commitOffensiveAbility(state: GameState, abilityIndex: number): 
     defender: opponent.player,
     abilityName: ability.name,
     tier: ability.tier,
-    damageType: ability.damageType,
+    damageType: effectiveType,
     incomingAmount,
     defendable,
   });
@@ -404,7 +411,7 @@ export function commitOffensiveAbility(state: GameState, abilityIndex: number): 
     abilityIndex,
     abilityName: ability.name,
     tier: ability.tier,
-    damageType: ability.damageType,
+    damageType: effectiveType,
     incomingAmount,
     damageBonus,
     critFlat,
@@ -447,8 +454,9 @@ function computeIncomingAmount(
     case "scaling-damage": {
       const extras = computeComboExtras(ability.combo, firingFaces);
       const clamped = Math.min(extras, effect.maxExtra);
-      let baseAmt = effect.baseAmount + clamped * effect.perExtra;
-      baseAmt = applyModifiersToBaseDamage(attacker, ability.name, ability.tier, baseAmt, firingFaces);
+      const preBase = applyModifiersToBaseDamage(attacker, ability.name, ability.tier, effect.baseAmount, firingFaces, ["scaling-damage-base"]);
+      let baseAmt = preBase + clamped * effect.perExtra;
+      baseAmt = applyModifiersToBaseDamage(attacker, ability.name, ability.tier, baseAmt, firingFaces, ["base-damage"]);
       let condBonus = 0;
       if (effect.conditional_bonus && checkState(state, attacker, defender, effect.conditional_bonus.condition, firingFaces)) {
         condBonus = computeConditionalBonus(attacker, defender, patchConditionalBonusPerUnit(attacker, ability.name, ability.tier, "damage-conditional-bonus-bonus-per-unit", effect.conditional_bonus, firingFaces));
@@ -946,9 +954,13 @@ function resolveAbilityEffect(state: GameState, effect: import("./types").Abilit
       extras = computeComboExtras(ctx.firingCombo, ctx.firingFaces);
     }
     const clamped = Math.min(extras, effect.maxExtra);
-    let baseAmt = effect.baseAmount + clamped * effect.perExtra;
+    // "scaling-damage-base" mods adjust the PRE-scale base (a "set 5" on
+    // Cleave means 5/7/9, not a flat 5 that erases the per-extra scaling);
+    // "base-damage" mods adjust the post-scale total.
+    const preBase = applyModifiersToBaseDamage(ctx.caster, ctx.abilityName ?? "", ctx.abilityTier ?? 0, effect.baseAmount, ctx.firingFaces, ["scaling-damage-base"]);
+    let baseAmt = preBase + clamped * effect.perExtra;
     let type = effect.type;
-    baseAmt = applyModifiersToBaseDamage(ctx.caster, ctx.abilityName ?? "", ctx.abilityTier ?? 0, baseAmt, ctx.firingFaces);
+    baseAmt = applyModifiersToBaseDamage(ctx.caster, ctx.abilityName ?? "", ctx.abilityTier ?? 0, baseAmt, ctx.firingFaces, ["base-damage"]);
     type = applyModifiersToDamageType(ctx.caster, ctx.abilityName ?? "", ctx.abilityTier ?? 0, type, ctx.firingFaces) ?? type;
     if (effect.conditional_type_override && checkState(state, ctx.caster, ctx.opponent, effect.conditional_type_override.condition, ctx.firingFaces)) {
       type = effect.conditional_type_override.overrideTo;
@@ -1088,12 +1100,14 @@ function applyModifiersToBaseDamage(
   tier: number,
   base: number,
   firingFaces?: ReadonlyArray<import("./types").DieFace>,
+  fields: ReadonlyArray<string> = ["base-damage", "scaling-damage-base"],
 ): number {
   let amount = base;
   for (const m of caster.abilityModifiers) {
     if (!modifierMatches(m, abilityName, tier)) continue;
     for (const mod of m.modifications) {
-      if (mod.field !== "base-damage" && mod.field !== "scaling-damage-base") continue;
+      if (!mod.conditional) continue; // unconditional mods are baked into resolveAbilityFor
+      if (!fields.includes(mod.field)) continue;
       if (mod.conditional && !conditionalMatches(mod.conditional, caster, firingFaces)) continue;
       const val = typeof mod.value === "number" ? mod.value : 0;
       if (mod.operation === "set") amount = val;
@@ -1115,6 +1129,7 @@ function applyModifiersToDamageType(
   for (const m of caster.abilityModifiers) {
     if (!modifierMatches(m, abilityName, tier)) continue;
     for (const mod of m.modifications) {
+      if (!mod.conditional) continue; // unconditional mods are baked into resolveAbilityFor
       if (mod.field !== "damage-type") continue;
       if (mod.conditional && !conditionalMatches(mod.conditional, caster, firingFaces)) continue;
       if (typeof mod.value === "string") return mod.value as import("./types").DamageType;
@@ -1225,8 +1240,9 @@ function* iterDefensiveMods(
     else if (m.scope.kind === "ability-ids") matches = m.scope.ids.some(id => id.toLowerCase() === abilityName.toLowerCase());
     if (!matches) continue;
     for (const mod of m.modifications) {
+      if (!mod.conditional) continue; // unconditional mods are baked into resolveAbilityFor
       if (mod.field !== field) continue;
-      if (mod.conditional && !conditionalMatches(mod.conditional, defender, firingFaces)) continue;
+      if (!conditionalMatches(mod.conditional, defender, firingFaces)) continue;
       yield mod;
     }
   }
@@ -1248,8 +1264,9 @@ function applyNumericModifier(
   for (const m of caster.abilityModifiers) {
     if (!modifierMatches(m, abilityName, tier)) continue;
     for (const mod of m.modifications) {
+      if (!mod.conditional) continue; // unconditional mods are baked into resolveAbilityFor
       if (mod.field !== field) continue;
-      if (mod.conditional && !conditionalMatches(mod.conditional, caster, firingFaces)) continue;
+      if (!conditionalMatches(mod.conditional, caster, firingFaces)) continue;
       const val = typeof mod.value === "number" ? mod.value : 0;
       if (mod.operation === "set") amount = val;
       else if (mod.operation === "add") amount += val;
@@ -1295,8 +1312,9 @@ function applyConditionalBonusStructuralMod(
   for (const m of caster.abilityModifiers) {
     if (!modifierMatches(m, abilityName, tier)) continue;
     for (const mod of m.modifications) {
+      if (!mod.conditional) continue; // unconditional mods are baked into resolveAbilityFor
       if (mod.field !== field) continue;
-      if (mod.conditional && !conditionalMatches(mod.conditional, caster, firingFaces)) continue;
+      if (!conditionalMatches(mod.conditional, caster, firingFaces)) continue;
       // Object values stamp the entire structure.
       if (mod.operation === "set" && typeof mod.value === "object" && mod.value !== null) {
         result = mod.value as import("./types").ConditionalBonus;

@@ -157,3 +157,12 @@
 @media (prefers-reduced-motion: reduce) {
   .ultimate-lethal { animation: none; }
 }
+
+/* Mastery-upgraded slot marker. */
+.upgraded {
+  margin-left: 5px;
+  font-size: 9px;
+  color: var(--gold-bright);
+  text-shadow: 0 0 4px rgba(240, 198, 104, 0.7);
+  vertical-align: 1px;
+}

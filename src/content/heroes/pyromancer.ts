@@ -35,9 +35,9 @@ registerStatus({
   detonation: {
     threshold: 5,
     triggerTiming: "on-application-overflow",
-    // 8 → 10: detonations land roughly once per match — as the hero's
-    // entire signature payoff they must hit like a T3, not a T2.
-    effect: { kind: "damage", amount: 10, type: "undefendable" },
+    // 8 → 10 → 11: detonations land roughly once per match — as the
+    // hero's entire signature payoff they must hit like a T3, not a T2.
+    effect: { kind: "damage", amount: 11, type: "undefendable" },
     resetsStacksTo: 0,
   },
   visualTreatment: { icon: "cinder", color: "#F97316", pulse: true, particle: "embers" },
@@ -269,7 +269,7 @@ export const PYROMANCER: HeroDefinition = {
       combo: { kind: "symbol-count", symbol: "pyromancer:ruin", count: 5 },
       shortText: "Stun + 11 ult + force detonation",
       longText:
-        "5 ruin (all 5 dice on face 6); Stun, 11 ultimate damage, then push Cinder to 5 — detonation fires for 10 (14 with Crater Wind).",
+        "5 ruin (all 5 dice on face 6); Stun, 11 ultimate damage, then push Cinder to 5 — detonation fires for 11 (15 with Crater Wind).",
       effect: {
         kind: "compound",
         effects: [

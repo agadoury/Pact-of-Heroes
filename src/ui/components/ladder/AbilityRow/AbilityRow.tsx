@@ -35,7 +35,12 @@ export function AbilityRow({ ability, onTap, className }: AbilityRowProps): JSX.
     >
       <AbilityValueBadge value={ability.value} variant={badgeVariant} />
       <div className={s.info}>
-        <div className={s.name}>{ability.name}</div>
+        <div className={s.name}>
+          {ability.name}
+          {ability.isUpgraded ? (
+            <span className={s.upgraded} title="Upgraded by a Mastery">{'\u2605'}</span>
+          ) : null}
+        </div>
         {ability.willKill && ability.isUltimate ? (
           <div className={s.lethalCondition}>Lethal · will kill</div>
         ) : (

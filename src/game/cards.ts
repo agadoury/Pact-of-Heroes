@@ -460,18 +460,21 @@ function addAbilityModifier(
  *  ai.ts can swap their `snapshot.activeOffense[i]` reads for `resolveAbilityFor`
  *  without signature churn.
  *
- *  Field-tweak modifications (today's Mastery system) are NOT folded into
- *  this view — they're applied later, at effect-resolution time inside
- *  phases.ts, by reading `caster.abilityModifiers[*].modifications`. The
- *  resolver only swaps the structural pieces that must change before
- *  resolution: combo, name, damageType, the post-append effect tree, and
- *  the repeat multiplier. */
+ *  UNCONDITIONAL field-tweak modifications (Mastery "set base to 5") ARE
+ *  baked into this view's effect tree + damageType, so previews, the AI,
+ *  and the ladder UI all see upgraded numbers. Modifications carrying a
+ *  `conditional` depend on the firing roll and are applied at
+ *  effect-resolution time inside phases.ts (which skips unconditional
+ *  mods to avoid double application). */
 import type { AbilityDef, AbilityScope, ReplacementAbilityDef } from "./types";
 
 export type ResolvedAbilityView = AbilityDef & {
   /** True when a replacement modifier is in flight on this slot — UI may
    *  decorate the ladder row to indicate the swap. */
   isReplaced: boolean;
+  /** True when ANY modifier (replacement, field mods, appends, repeat)
+   *  touches this slot — the ladder shows an upgrade marker. */
+  isUpgraded: boolean;
 };
 
 function abilityScopeMatches(scope: AbilityScope, ability: AbilityDef, context: "offensive" | "defensive"): boolean {
@@ -523,6 +526,105 @@ function resolveRepeat(
   return total;
 }
 
+// ── Field-modification baking ────────────────────────────────────────────────
+// Unconditional field modifications (Mastery "set Cleave base to 5" etc.)
+// are folded structurally into the resolved effect tree, so EVERY consumer —
+// fire-time resolution, incoming-amount previews, the offensive picker, the
+// AI evaluator, and the ladder UI — sees the same upgraded numbers. Mods
+// with a `conditional` depend on the firing roll and stay fire-time-applied
+// (phases.ts skips unconditional mods to avoid double application).
+
+type NumericOp = { operation: "set" | "add" | "multiply"; value: unknown };
+
+function applyOp(current: number, mod: NumericOp): number {
+  const val = typeof mod.value === "number" ? mod.value : 0;
+  if (mod.operation === "set") return val;
+  if (mod.operation === "add") return current + val;
+  return Math.ceil(current * val);
+}
+
+/** Deep-map an effect tree, applying `fn` to every leaf (compound nodes
+ *  recurse). `fn` returns a new leaf or the same reference when untouched. */
+function mapEffectTree(effect: AbilityEffect, fn: (leaf: AbilityEffect) => AbilityEffect): AbilityEffect {
+  if (effect.kind === "compound") {
+    const mapped = effect.effects.map(e => mapEffectTree(e, fn));
+    return mapped.some((e, i) => e !== effect.effects[i]) ? { ...effect, effects: mapped } : effect;
+  }
+  return fn(effect);
+}
+
+/** Bake one unconditional modification into the effect tree + top-level
+ *  damageType. Fields the baker doesn't understand are left for fire time. */
+function bakeModification(
+  effect: AbilityEffect,
+  damageType: import("./types").DamageType,
+  mod: import("./types").AbilityUpgradeMod,
+): { effect: AbilityEffect; damageType: import("./types").DamageType } {
+  let dt = damageType;
+  const next = mapEffectTree(effect, (leaf) => {
+    switch (mod.field) {
+      case "scaling-damage-base":
+        return leaf.kind === "scaling-damage" ? { ...leaf, baseAmount: applyOp(leaf.baseAmount, mod) } : leaf;
+      case "scaling-damage-per-extra":
+        return leaf.kind === "scaling-damage" ? { ...leaf, perExtra: applyOp(leaf.perExtra, mod) } : leaf;
+      case "scaling-damage-max-extra":
+        return leaf.kind === "scaling-damage" ? { ...leaf, maxExtra: applyOp(leaf.maxExtra, mod) } : leaf;
+      case "base-damage":
+        if (leaf.kind === "damage") return { ...leaf, amount: applyOp(leaf.amount, mod) };
+        if (leaf.kind === "scaling-damage") return { ...leaf, baseAmount: applyOp(leaf.baseAmount, mod) };
+        return leaf;
+      case "damage-type":
+        if (typeof mod.value !== "string") return leaf;
+        if (leaf.kind === "damage" || leaf.kind === "scaling-damage") {
+          dt = mod.value as import("./types").DamageType;
+          return { ...leaf, type: mod.value as import("./types").DamageType };
+        }
+        return leaf;
+      case "heal-amount":
+        return leaf.kind === "heal" ? { ...leaf, amount: applyOp(leaf.amount, mod) } : leaf;
+      case "heal-conditional-bonus":
+        return leaf.kind === "heal" && leaf.conditional_bonus
+          ? { ...leaf, conditional_bonus: { ...leaf.conditional_bonus, bonusPerUnit: applyOp(leaf.conditional_bonus.bonusPerUnit, mod) } }
+          : leaf;
+      case "applied-status-stacks":
+        return leaf.kind === "apply-status" && leaf.target === "opponent"
+          ? { ...leaf, stacks: applyOp(leaf.stacks, mod) }
+          : leaf;
+      case "applied-status-stacks-self":
+        return leaf.kind === "apply-status" && leaf.target === "self"
+          ? { ...leaf, stacks: applyOp(leaf.stacks, mod) }
+          : leaf;
+      case "passive-counter-gain-amount":
+        return leaf.kind === "passive-counter-modifier" && leaf.operation === "add"
+          ? { ...leaf, value: applyOp(leaf.value, mod) }
+          : leaf;
+      case "damage-conditional-bonus-bonus-per-unit":
+        return (leaf.kind === "damage" || leaf.kind === "scaling-damage") && leaf.conditional_bonus
+          ? { ...leaf, conditional_bonus: { ...leaf.conditional_bonus, bonusPerUnit: applyOp(leaf.conditional_bonus.bonusPerUnit, mod) } }
+          : leaf;
+      case "reduce-damage-amount":
+        return leaf.kind === "reduce-damage" ? { ...leaf, amount: applyOp(leaf.amount, mod) } : leaf;
+      case "reduce-damage-apply-to-attacker-stacks":
+        return leaf.kind === "reduce-damage" && leaf.apply_to_attacker
+          ? { ...leaf, apply_to_attacker: { ...leaf.apply_to_attacker, stacks: applyOp(leaf.apply_to_attacker.stacks, mod) } }
+          : leaf;
+      case "removed-status-stacks":
+        return leaf.kind === "remove-status" && typeof leaf.stacks === "number"
+          ? { ...leaf, stacks: applyOp(leaf.stacks, mod) }
+          : leaf;
+      case "bonus-dice-count":
+        return leaf.kind === "bonus-dice-damage" ? { ...leaf, bonusDice: applyOp(leaf.bonusDice, mod) } : leaf;
+      case "bonus-dice-threshold":
+        return leaf.kind === "bonus-dice-damage" && leaf.thresholdBonus
+          ? { ...leaf, thresholdBonus: { ...leaf.thresholdBonus, threshold: applyOp(leaf.thresholdBonus.threshold, mod) } }
+          : leaf;
+      default:
+        return leaf;
+    }
+  });
+  return { effect: next, damageType: dt };
+}
+
 /** Resolve the live ability view a caster fires from a given ladder slot,
  *  after walking their active ability modifiers. `context` distinguishes
  *  offensive vs defensive ladders for `all-defenses`-scoped modifiers. */
@@ -549,12 +651,29 @@ export function resolveAbilityFor(
     : ability;
 
   let effect: AbilityEffect = base.effect;
-  const additions = collectAdditionalEffects(snapshot.abilityModifiers, ability, context);
-  if (additions.length > 0) effect = { kind: "compound", effects: [effect, ...additions] };
-  const repeat = resolveRepeat(snapshot.abilityModifiers, ability, context);
-  if (repeat > 1) effect = { kind: "compound", effects: Array.from({ length: repeat }, () => effect) };
+  let damageType = base.damageType;
+  let isUpgraded = !!replacement;
 
-  return { ...base, effect, isReplaced: !!replacement };
+  // Bake unconditional field modifications (see block comment above).
+  // Scope matching uses the ORIGINAL ability name — masteries target the
+  // catalog name even when a replacement renamed the slot.
+  for (const m of snapshot.abilityModifiers) {
+    if (!abilityScopeMatches(m.scope, ability, context)) continue;
+    if (m.modifications.length > 0) isUpgraded = true;
+    for (const mod of m.modifications) {
+      if (mod.conditional) continue;   // roll-dependent — applied at fire time
+      const baked = bakeModification(effect, damageType, mod);
+      effect = baked.effect;
+      damageType = baked.damageType;
+    }
+  }
+
+  const additions = collectAdditionalEffects(snapshot.abilityModifiers, ability, context);
+  if (additions.length > 0) { effect = { kind: "compound", effects: [effect, ...additions] }; isUpgraded = true; }
+  const repeat = resolveRepeat(snapshot.abilityModifiers, ability, context);
+  if (repeat > 1) { effect = { kind: "compound", effects: Array.from({ length: repeat }, () => effect) }; isUpgraded = true; }
+
+  return { ...base, effect, damageType, isReplaced: !!replacement, isUpgraded };
 }
 
 /** Pick the first buff-type status currently on `holder`. Returns undefined
@@ -798,8 +917,9 @@ function applyPassiveCounterGainModifier(
     else if (m.scope.kind === "all-defenses") scopeMatches = true;
     if (!scopeMatches) continue;
     for (const mod of m.modifications) {
+      if (!mod.conditional) continue; // unconditional mods are baked into resolveAbilityFor
       if (mod.field !== "passive-counter-gain-amount") continue;
-      if (mod.conditional && !checkStateForMod(mod.conditional, caster, firingFaces, tier)) continue;
+      if (!checkStateForMod(mod.conditional, caster, firingFaces, tier)) continue;
       const v = typeof mod.value === "number" ? mod.value : 0;
       if (mod.operation === "set") value = v;
       else if (mod.operation === "add") value += v;

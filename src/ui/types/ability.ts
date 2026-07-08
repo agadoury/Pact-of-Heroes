@@ -75,6 +75,7 @@ export interface LadderAbility {
   combo:             ComboDescriptor
   comboState:        ComboState
   isUltimate:        boolean         // === tier === 4
+  isUpgraded:        boolean         // a Mastery/buff modifies this slot — row shows the upgrade star
   isCritical:        boolean         // engine's criticalCondition met (rendered as critical eligible)
   willKill:          boolean         // UI-computed: preview damage >= opponent.hp
   scaling?:          ScalingPreview

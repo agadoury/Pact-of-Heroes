@@ -65,7 +65,7 @@ export const BERSERKER_CARDS: Card[] = [
       occupiesSlot: true,
       name: "Cleave Mastery",
       cost: 2,
-      text: "Permanent. Cleave damage becomes 5/7/9. Cleave with 4+ axes becomes undefendable.",
+      text: "Permanent. Cleave damage becomes 5/7/9. Cleave with all 5 axes becomes undefendable.",
       trigger: { kind: "manual" },
       effect: {
         kind: "ability-upgrade",
@@ -74,10 +74,13 @@ export const BERSERKER_CARDS: Card[] = [
         modifications: [
           { field: "scaling-damage-base", operation: "set", value: 5 },
           {
+            // 5 axes (was 4): with three axe faces the 4+ case fired on
+            // most Cleaves once the mastery pipeline actually worked,
+            // deleting defense-identity heroes (73% vs Lightbearer).
             field: "damage-type",
             operation: "set",
             value: "undefendable",
-            conditional: { kind: "combo-symbol-count", symbol: "berserker:axe", count: 4 },
+            conditional: { kind: "combo-symbol-count", symbol: "berserker:axe", count: 5 },
           },
         ],
       },
@@ -132,7 +135,7 @@ export const BERSERKER_CARDS: Card[] = [
       occupiesSlot: true,
       name: "Bloodbound",
       cost: 3,
-      text: "Permanent. Blood Harvest: threshold becomes 10, heals 3 HP per Frenzy stack. Frostfang: damage becomes 9, +3 Frost-bite.",
+      text: "Permanent. Blood Harvest: threshold becomes 10, heals 2 HP per Frenzy stack. Frostfang: damage becomes 9, +3 Frost-bite.",
       trigger: { kind: "manual" },
       effect: {
         kind: "ability-upgrade",
@@ -148,7 +151,7 @@ export const BERSERKER_CARDS: Card[] = [
           {
             field: "heal-conditional-bonus",
             operation: "set",
-            value: 3,
+            value: 2,
             conditional: { kind: "combo-symbol-count", symbol: "berserker:howl", count: 2 },
           },
           {
@@ -286,7 +289,7 @@ export const BERSERKER_CARDS: Card[] = [
       kind: "main-phase",
       cardCategory: "signature",
       name: "Hunter's Mark",
-      cost: 1,
+      cost: 2,
       text: "Apply 2 Frost-bite to opponent directly, no roll required.",
       trigger: { kind: "manual" },
       effect: {

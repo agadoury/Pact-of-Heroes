@@ -75,12 +75,15 @@ export const BERSERKER: HeroDefinition = {
   signatureMechanic: {
     name: "Frenzy",
     description:
-      "Take damage from an opponent's offensive ability → +1 Frenzy at the start of your next turn (max 6, capped at +1/turn). Each stack adds +1 damage to all your offensive abilities.",
+      "Take damage from an opponent's offensive ability → +1 Frenzy at the start of your next turn (max 4, capped at +1/turn). Each stack adds +1 damage to all your offensive abilities.",
     implementation: {
       kind: "frenzy",
       passiveKey: "frenzy",
       bankStartsAt: 0,
-      bankCap: 6,
+      // Cap 6 → 4: in long matchups (vs the Lightbearer especially) the
+      // bank maxed out and out-scaled Verdict's -3, running the matchup
+      // to ~66% once the mastery pipeline was fixed.
+      bankCap: 4,
     },
   },
 
@@ -138,12 +141,12 @@ export const BERSERKER: HeroDefinition = {
       damageType: "normal",
       targetLandingRate: [0.45, 0.7],
       combo: { kind: "straight", length: 4 },
-      shortText: "9 dmg + 2 Frost-bite",
-      longText: "Small straight (4 in a row); 9 damage + 2 Frost-bite.",
+      shortText: "8 dmg + 2 Frost-bite",
+      longText: "Small straight (4 in a row); 8 damage + 2 Frost-bite.",
       effect: {
         kind: "compound",
         effects: [
-          { kind: "damage", amount: 9, type: "normal" },
+          { kind: "damage", amount: 8, type: "normal" },
           { kind: "apply-status", status: "berserker:frostbite", stacks: 2, target: "opponent" },
         ],
       },
@@ -179,7 +182,7 @@ export const BERSERKER: HeroDefinition = {
       },
       shortText: "sum dmg + Frost-bite + heal/Frenzy",
       longText:
-        "3 axes + 2 howl; rolls 3 bonus dice and deals their sum; sum ≥ 14 grants +2 extra Frost-bite; heal 2 HP per Frenzy stack.",
+        "3 axes + 2 howl; rolls 3 bonus dice and deals their sum; sum ≥ 14 grants +2 extra Frost-bite; heal 1 HP per Frenzy stack.",
       effect: {
         kind: "compound",
         effects: [
@@ -200,7 +203,7 @@ export const BERSERKER: HeroDefinition = {
             target: "self",
             conditional_bonus: {
               condition: { kind: "passive-counter-min", passiveKey: "frenzy", count: 1 },
-              bonusPerUnit: 2,
+              bonusPerUnit: 1,
               source: "self-passive-counter",
               sourcePassiveKey: "frenzy",
             },

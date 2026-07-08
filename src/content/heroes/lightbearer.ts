@@ -195,13 +195,13 @@ export const LIGHTBEARER: HeroDefinition = {
         ],
       },
       targetLandingRate: [0.45, 0.7],
-      shortText: "4 dmg ub + Radiance + Verdict",
+      shortText: "5 dmg ub + Radiance + Verdict",
       longText:
-        "2 swords + 1 sun + 1 dawn; deals 4 unblockable damage, you gain 1 Radiance, applies 1 Verdict.",
+        "2 swords + 1 sun + 1 dawn; deals 5 unblockable damage, you gain 1 Radiance, applies 1 Verdict.",
       effect: {
         kind: "compound",
         effects: [
-          { kind: "damage", amount: 4, type: "undefendable" },
+          { kind: "damage", amount: 5, type: "undefendable" },
           { kind: "passive-counter-modifier", passiveKey: "radiance", operation: "add", value: 1, respectsCap: true },
           { kind: "apply-status", status: "lightbearer:verdict", stacks: 1, target: "opponent" },
         ],
@@ -470,13 +470,13 @@ export const LIGHTBEARER: HeroDefinition = {
       combo: { kind: "symbol-count", symbol: "lightbearer:dawn", count: 1 },
       defenseDiceCount: 3,
       targetLandingRate: [0.35, 0.55],
-      shortText: "Heal 4",
+      shortText: "Heal 5",
       longText:
-        "1+ dawn on 3 dice rolled; full attack damage applies, then you heal 4 HP. (With Cathedral Light: also +2 Radiance on 3+ dawn.)",
+        "1+ dawn on 3 dice rolled; full attack damage applies, then you heal 5 HP. (With Cathedral Light: heal 7, +2 Radiance on 3+ dawn.)",
       effect: {
         kind: "compound",
         effects: [
-          { kind: "heal", amount: 4, target: "self" },
+          { kind: "heal", amount: 5, target: "self" },
           // Inert at value: 0 baseline (no Radiance gained without Cathedral
           // Light). Cathedral Light's `passive-counter-gain-amount` modifier
           // bumps the value to 2, activating the conditional gain when 3+
@@ -494,7 +494,7 @@ export const LIGHTBEARER: HeroDefinition = {
       offensiveFallback: {
         diceCount: 3,
         combo: { kind: "symbol-count", symbol: "lightbearer:dawn", count: 1 },
-        effect: { kind: "heal", amount: 4, target: "self" },
+        effect: { kind: "heal", amount: 5, target: "self" },
       },
     },
 
@@ -513,13 +513,13 @@ export const LIGHTBEARER: HeroDefinition = {
       },
       defenseDiceCount: 4,
       targetLandingRate: [0.35, 0.55],
-      shortText: "Reduce 5 + 1 Rad",
+      shortText: "Reduce 6 + 1 Rad",
       longText:
-        "1 sun + 1 zenith on 4 dice rolled; reduces incoming damage by 5, gain 1 Radiance.",
+        "1 sun + 1 zenith on 4 dice rolled; reduces incoming damage by 6, gain 1 Radiance.",
       effect: {
         kind: "compound",
         effects: [
-          { kind: "reduce-damage", amount: 5 },
+          { kind: "reduce-damage", amount: 6 },
           { kind: "passive-counter-modifier", passiveKey: "radiance", operation: "add", value: 1, respectsCap: true },
         ],
       },

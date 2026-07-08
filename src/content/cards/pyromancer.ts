@@ -95,27 +95,42 @@ export const PYROMANCER_CARDS: Card[] = [
       occupiesSlot: true,
       name: "Volcanic Awakening",
       cost: 4,
-      text: "Permanent. Buffs all 3 T2 abilities — Firestorm 6 dmg + 3 Cinder, Obsidian Burst 9 dmg, Ember Wall 6 dmg + Shield 2 (4+ ember).",
+      text: "Permanent. Buffs all 3 T2 abilities — Firestorm 7 dmg + 3 Cinder, Obsidian Burst 9 dmg, Ember Wall 6 dmg + Shield 2 (4+ ember).",
       trigger: { kind: "manual" },
+      // One ability-upgrade per target: the old single-scope form gave all
+      // three abilities every modification (same conditional), so Firestorm
+      // silently ended at 9 damage — Obsidian Burst's value.
       effect: {
-        kind: "ability-upgrade",
-        scope: { kind: "ability-ids", ids: ["Firestorm", "Obsidian Burst", "Ember Wall"] },
-        permanent: true,
-        modifications: [
-          // Firestorm + Obsidian Burst share a 1+ magma signature; both pick
-          // up the +6 / +3-Cinder buff. (Per the spec author, this overlap
-          // is acceptable — both T2 abilities scaling together is intended.)
-          { field: "base-damage", operation: "set", value: 6,
-            conditional: { kind: "combo-symbol-count", symbol: "pyromancer:magma", count: 1 } },
-          { field: "applied-status-stacks", operation: "set", value: 3,
-            conditional: { kind: "combo-symbol-count", symbol: "pyromancer:magma", count: 1 } },
-          { field: "base-damage", operation: "set", value: 9,
-            conditional: { kind: "combo-symbol-count", symbol: "pyromancer:magma", count: 1 } },
-          // Ember Wall: damage 4 → 6 (3+ ember), Shield 1 → 2 (4+ ember).
-          { field: "base-damage", operation: "set", value: 6,
-            conditional: { kind: "combo-symbol-count", symbol: "pyromancer:ember", count: 3 } },
-          { field: "applied-status-stacks-self", operation: "set", value: 2,
-            conditional: { kind: "combo-symbol-count", symbol: "pyromancer:ember", count: 4 } },
+        kind: "compound",
+        effects: [
+          {
+            kind: "ability-upgrade",
+            scope: { kind: "ability-ids", ids: ["Firestorm"] },
+            permanent: true,
+            modifications: [
+              { field: "base-damage", operation: "set", value: 7 },
+              { field: "applied-status-stacks", operation: "set", value: 3 },
+            ],
+          },
+          {
+            kind: "ability-upgrade",
+            scope: { kind: "ability-ids", ids: ["Obsidian Burst"] },
+            permanent: true,
+            modifications: [
+              { field: "base-damage", operation: "set", value: 9 },
+            ],
+          },
+          {
+            kind: "ability-upgrade",
+            scope: { kind: "ability-ids", ids: ["Ember Wall"] },
+            permanent: true,
+            modifications: [
+              { field: "base-damage", operation: "set", value: 6 },
+              // Shield 1 → 2 only when the roll shows 4+ ember.
+              { field: "applied-status-stacks-self", operation: "set", value: 2,
+                conditional: { kind: "combo-symbol-count", symbol: "pyromancer:ember", count: 4 } },
+            ],
+          },
         ],
       },
       flavor: "When the mountain wakes, it doesn't choose its words.",
@@ -255,13 +270,13 @@ export const PYROMANCER_CARDS: Card[] = [
       cardCategory: "signature",
       name: "Crater Wind",
       cost: 3,
-      text: "Until end of match, Cinder detonations deal 14 instead of 10.",
+      text: "Until end of match, Cinder detonations deal 15 instead of 11.",
       trigger: { kind: "manual" },
       effect: {
         kind: "persistent-buff",
         id: "crater-wind",
         target: "pyromancer:cinder",
-        modifier: { field: "detonation-amount", operation: "set", value: 14 },
+        modifier: { field: "detonation-amount", operation: "set", value: 15 },
         discardOn: { kind: "match-ends" },
       },
       flavor: "When the wind comes, the mountain answers louder.",

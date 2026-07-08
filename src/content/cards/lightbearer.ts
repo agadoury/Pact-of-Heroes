@@ -152,7 +152,7 @@ export const LIGHTBEARER_CARDS: Card[] = [
     upgradesAbilities: ["Solar Blade", "Divine Ray"],
     name: "Sunblade Mastery",
     cost: 3,
-    text: "Permanent. Solar Blade: 8 ub, +2 dmg per Verdict stripped. Divine Ray: 11 dmg, +3 Verdict.",
+    text: "Permanent. Solar Blade: 9 ub, +2 dmg per Verdict stripped. Divine Ray: 11 dmg, +3 Verdict.",
     trigger: { kind: "manual" },
     effect: {
       kind: "compound",
@@ -161,7 +161,7 @@ export const LIGHTBEARER_CARDS: Card[] = [
           kind: "ability-upgrade",
           scope: { kind: "ability-ids", ids: ["Solar Blade"] },
           modifications: [
-            { field: "base-damage", operation: "set", value: 8 },
+            { field: "base-damage", operation: "set", value: 9 },
             { field: "damage-conditional-bonus-bonus-per-unit", operation: "set", value: 2 },
           ],
           permanent: true,
@@ -188,7 +188,7 @@ export const LIGHTBEARER_CARDS: Card[] = [
     upgradesAbilities: ["Dawn-Ward", "Prayer of Shielding", "Wall of Dawn"],
     name: "Cathedral Light",
     cost: 3,
-    text: "Permanent. Dawn-Ward: heal 6 (+2 Radiance with 3+ dawn). Prayer of Shielding: -7 dmg, +2 Radiance. Wall of Dawn: -10 dmg (+1 Radiance with 4+ sun).",
+    text: "Permanent. Dawn-Ward: heal 7 (+2 Radiance with 3+ dawn). Prayer of Shielding: -8 dmg, +2 Radiance. Wall of Dawn: -10 dmg (+1 Radiance with 4+ sun).",
     trigger: { kind: "manual" },
     effect: {
       kind: "compound",
@@ -198,7 +198,7 @@ export const LIGHTBEARER_CARDS: Card[] = [
           kind: "ability-upgrade",
           scope: { kind: "ability-ids", ids: ["Dawn-Ward"] },
           modifications: [
-            { field: "heal-amount", operation: "set", value: 6 },
+            { field: "heal-amount", operation: "set", value: 7 },
             { field: "passive-counter-gain-amount", operation: "set", value: 2 },
           ],
           permanent: true,
@@ -208,7 +208,7 @@ export const LIGHTBEARER_CARDS: Card[] = [
           kind: "ability-upgrade",
           scope: { kind: "ability-ids", ids: ["Prayer of Shielding"] },
           modifications: [
-            { field: "reduce-damage-amount", operation: "set", value: 7 },
+            { field: "reduce-damage-amount", operation: "set", value: 8 },
             { field: "passive-counter-gain-amount", operation: "set", value: 2 },
           ],
           permanent: true,

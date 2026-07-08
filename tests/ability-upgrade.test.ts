@@ -60,19 +60,42 @@ describe("resolveAbilityFor — no modifiers", () => {
 });
 
 describe("resolveAbilityFor — transform mode", () => {
-  it("field-tweak modifications are NOT folded into the resolved view (handled by phases.ts at resolution time)", () => {
+  it("unconditional field-tweak modifications ARE baked into the resolved view; conditional ones stay fire-time", () => {
     const snap = snapshot();
     snap.abilityModifiers.push({
       id: "m1", source: "card",
       scope: { kind: "ability-ids", ids: ["Cleave"] },
-      modifications: [{ field: "base-damage", operation: "set", value: 99 }],
+      modifications: [
+        { field: "base-damage", operation: "set", value: 99 },
+        // Conditional mods depend on the firing roll — never baked.
+        { field: "base-damage", operation: "set", value: 7,
+          conditional: { kind: "combo-symbol-count", symbol: "berserker:axe", count: 4 } },
+      ],
       permanent: true,
     });
     const r = resolveAbilityFor(snap, baseT1, "offensive");
-    // The damage leaf still reads 4 here — phases.ts walks the modifiers at
-    // resolution time. The resolver only handles structural changes.
-    expect(r.effect).toEqual(baseT1.effect);
     expect(r.name).toBe("Cleave");
+    expect(r.isUpgraded).toBe(true);
+    // Walk the resolved tree: every plain-damage leaf reads the baked 99;
+    // scaling leaves get their baseAmount set. The conditional "7" must NOT
+    // have been applied.
+    const leaves: unknown[] = [];
+    const walk = (e: typeof r.effect): void => {
+      if (e.kind === "compound") { e.effects.forEach(walk); return; }
+      leaves.push(e);
+    };
+    walk(r.effect);
+    for (const leaf of leaves as Array<{ kind: string; amount?: number; baseAmount?: number }>) {
+      if (leaf.kind === "damage") expect(leaf.amount).toBe(99);
+      if (leaf.kind === "scaling-damage") expect(leaf.baseAmount).toBe(99);
+    }
+  });
+
+  it("an ability with no matching modifiers reports isUpgraded false", () => {
+    const snap = snapshot();
+    const r = resolveAbilityFor(snap, baseT1, "offensive");
+    expect(r.isUpgraded).toBe(false);
+    expect(r.effect).toEqual(baseT1.effect);
   });
 
   it("appends additionalEffects as compound siblings (heal-on-hit)", () => {

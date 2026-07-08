@@ -117,6 +117,7 @@ function deriveAbilityRow(
     combo:           descriptor,
     comboState,
     isUltimate:      ability.tier === 4,
+    isUpgraded:      ability.isUpgraded,
     isCritical:      critPreview?.isMet === true,
     willKill,
     scaling,
