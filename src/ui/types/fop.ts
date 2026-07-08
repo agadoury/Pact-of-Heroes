@@ -37,8 +37,11 @@ export interface AbilityResolutionData {
 }
 
 export interface ResolutionEffect {
-  kind:        'damage' | 'heal' | 'resource' | 'token' | 'status'
+  kind:        'damage' | 'heal' | 'resource' | 'token' | 'status' | 'block'
   description: string
+  /** Who the effect lands on — lets the row show a YOU/FOE tag so players
+   *  can tell "+2 Cinder" on the opponent from Cinder landing on them. */
+  target?:     PlayerId
 }
 
 /** Cinder detonation cinematic. */

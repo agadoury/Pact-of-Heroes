@@ -77,6 +77,15 @@ const STATUS_INFO: Record<string, StatusInfo> = {
   },
 }
 
+/** Player-facing display name for a status/counter id — "pyromancer:cinder"
+ *  → "Cinder". Falls back to a capitalized bare id for unknown tokens. */
+export function statusDisplayName(effect: string): string {
+  const info = STATUS_INFO[effect]
+  if (info) return info.name
+  const bare = effect.includes(':') ? effect.split(':').pop()! : effect
+  return bare.charAt(0).toUpperCase() + bare.slice(1)
+}
+
 /** Build tooltip content for a status/counter chip. Unknown ids get a
  *  graceful fallback so a future token never renders a dead tap. */
 export function statusTooltip(effect: string, count?: number): TooltipContent {

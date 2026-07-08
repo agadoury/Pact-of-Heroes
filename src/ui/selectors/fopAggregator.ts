@@ -20,6 +20,7 @@
  */
 
 import type { GameEvent, PlayerId } from '@/game/types'
+import { statusDisplayName } from '@/ui/types/statusInfo'
 import type {
   FOPScene,
   AbilityResolutionData,
@@ -173,10 +174,15 @@ export function aggregateEvents(
         }
         if (pending?.kind === 'ability') {
           pending.damage = (pending.damage ?? 0) + Math.max(0, ev.amount)
-          pending.effects.push({
-            kind:        'damage',
-            description: `−${ev.amount} HP${ev.type === 'undefendable' ? ' · unblockable' : ''}`,
-          })
+          pending.effects.push(
+            ev.amount <= 0
+              ? { kind: 'block',  description: 'Fully blocked', target: ev.to }
+              : {
+                  kind:        'damage',
+                  description: `−${ev.amount} HP${ev.type === 'undefendable' ? ' · Unblockable' : ''}`,
+                  target:      ev.to,
+                },
+          )
         }
         break
       }
@@ -185,7 +191,8 @@ export function aggregateEvents(
         if (pending?.kind === 'ability') {
           pending.effects.push({
             kind:        'heal',
-            description: `+${ev.amount} HP`,
+            description: `Heal ${ev.amount} HP`,
+            target:      ev.player,
           })
         }
         break
@@ -195,7 +202,8 @@ export function aggregateEvents(
         if (pending?.kind === 'ability') {
           pending.effects.push({
             kind:        'status',
-            description: `+${ev.stacks} ${ev.status}`,
+            description: `+${ev.stacks} ${statusDisplayName(ev.status)}`,
+            target:      ev.holder,
           })
         }
         break
@@ -205,7 +213,8 @@ export function aggregateEvents(
         if (pending?.kind === 'ability' && ev.delta > 0) {
           pending.effects.push({
             kind:        'resource',
-            description: `+${ev.delta} ${ev.passiveKey}`,
+            description: `+${ev.delta} ${statusDisplayName(ev.passiveKey)}`,
+            target:      ev.player,
           })
         }
         break
@@ -228,8 +237,9 @@ export function aggregateEvents(
       case 'defense-resolved': {
         if (pending?.kind === 'ability' && ev.reduction > 0) {
           pending.effects.push({
-            kind:        'damage',
-            description: `−${ev.reduction} blocked by ${ev.abilityName ?? 'defense'}`,
+            kind:        'block',
+            description: `${ev.abilityName ?? 'Defense'} blocks ${ev.reduction}`,
+            target:      pending.defender,
           })
         } else if (!pending && ev.abilityName) {
           // Undefendable / no pending ability — surface as a standalone
@@ -289,16 +299,10 @@ function buildSubEvent(ev: Extract<GameEvent, { t: 'status-ticked' }>): FOPScene
     kind: 'sub-event',
     data: {
       eventKind:      'status-tick',
-      label:          `${capitalize(ev.status)} Ticks`,
+      label:          `${statusDisplayName(ev.status)} ticks`,
       value,
       tone,
       affectedPlayer: ev.holder,
     } satisfies SubEventData,
   }
-}
-
-function capitalize(s: string): string {
-  // "berserker:frostbite" → "Frostbite"
-  const bare = s.includes(':') ? s.split(':').pop()! : s
-  return bare.charAt(0).toUpperCase() + bare.slice(1)
 }

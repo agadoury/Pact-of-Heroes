@@ -56,13 +56,19 @@ export function FieldOfPlay({
               tone={scene.data.elementalTone}
               phase={phase}
             />
-            {scene.data.damage != null ? (
+            {scene.data.damage != null && scene.data.damage > 0 ? (
               <DamageNumber
                 value={scene.data.damage}
                 variant={scene.data.isLethal ? 'crimson' : scene.data.damageVariant}
                 size={scene.data.tier === 4 ? 'ultimate' : 'standard'}
                 phase={phase}
               />
+            ) : scene.data.damage === 0 ? (
+              // A landed attack that dealt nothing — say so instead of a
+              // giant meaningless "0".
+              <div className={clsx(s.blocked, phase === 'damage-in' || phase === 'effects-in' || phase === 'holding' ? s.blockedVisible : undefined)}>
+                Blocked
+              </div>
             ) : null}
             <EffectRows effects={scene.data.effects} phase={phase} />
           </>

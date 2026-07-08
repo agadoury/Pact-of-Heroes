@@ -61,7 +61,7 @@ describe('fopAggregator', () => {
     if (scene.kind === 'ability') {
       expect(scene.data.abilityName).toBe('Solar Blade')
       expect(scene.data.damage).toBe(5)
-      expect(scene.data.effects.some(e => e.description.includes('blocked'))).toBe(true)
+      expect(scene.data.effects.some(e => e.kind === 'block' && e.description.includes('blocks'))).toBe(true)
     }
   })
 

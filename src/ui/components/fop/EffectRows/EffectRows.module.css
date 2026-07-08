@@ -6,14 +6,21 @@
   align-items: center;
 }
 
+/* Readable pill per effect: dark plate, colored icon + text, target tag.
+ * (The old design set `background: currentColor` on the ROW itself, which
+ * painted each row as a solid bar with same-color — invisible — text.) */
 .row {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  padding: 3px 10px 3px 6px;
+  border-radius: 999px;
+  background: rgba(8, 8, 18, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   font-family: var(--font-family-tech);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   transition: opacity 200ms cubic-bezier(0, 0, 0.2, 1),
               transform 200ms cubic-bezier(0, 0, 0.2, 1);
@@ -23,28 +30,41 @@
 .visible { opacity: 1; transform: translateX(0);    }
 
 .marker {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  box-shadow: 0 0 4px currentColor;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: currentColor;
   flex-shrink: 0;
 }
+.marker svg { filter: drop-shadow(0 0 3px currentColor); }
 
-.kind-damage    { color: var(--ember-bright);   background: currentColor; }
-.kind-heal      { color: var(--green-bright);   background: currentColor; }
-.kind-resource  { color: var(--dawn-bright);    background: currentColor; }
-.kind-token     { color: var(--gold-bright);    background: currentColor; }
-.kind-status    { color: var(--dawn-bright);    background: currentColor; }
-
-.row.kind-damage    { color: var(--ember-bright); }
-.row.kind-heal      { color: var(--green-bright); }
-.row.kind-resource  { color: var(--dawn-bright); }
-.row.kind-token     { color: var(--gold-bright); }
-.row.kind-status    { color: var(--dawn-bright); }
+.kind-damage    { color: var(--ember-bright); }
+.kind-heal      { color: var(--green-bright); }
+.kind-resource  { color: var(--dawn-bright); }
+.kind-token     { color: var(--gold-bright); }
+.kind-status    { color: var(--gold-bright); }
+.kind-block     { color: var(--frost-bright); }
 
 .desc {
-  color: inherit;
+  color: var(--bone);
 }
+
+/* Who it lands on. */
+.tag {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  line-height: 1.4;
+}
+.tagYou { color: var(--frost-bright); }
+.tagFoe { color: var(--ember-bright); }
 
 @media (prefers-reduced-motion: reduce) {
   .row { transition-delay: 0ms !important; }
