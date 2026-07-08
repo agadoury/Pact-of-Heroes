@@ -31,9 +31,9 @@ import { nextAiAction, pendingActorFor } from '@/game/ai'
 import type { PlayerId } from '@/game/types'
 
 /** Base delay between AI actions (ms) — reads as deliberate, not robotic. */
-const THINK_MS = 420
+const THINK_MS = 650
 /** Extra random jitter added to each think delay (ms). */
-const THINK_JITTER_MS = 240
+const THINK_JITTER_MS = 350
 /** Poll interval while waiting for the resolution queue to drain. */
 const DRAIN_POLL_MS = 200
 /** Consecutive rejected dispatches before the watchdog halts the loop. */

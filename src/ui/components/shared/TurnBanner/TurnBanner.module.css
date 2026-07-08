@@ -6,7 +6,7 @@
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  animation: banner-flash 1400ms ease-out;
+  animation: banner-flash 1900ms ease-out;
 }
 
 .card {
@@ -60,7 +60,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .overlay {
-    animation: banner-fade 1400ms ease-out;
+    animation: banner-fade 1900ms ease-out;
   }
   @keyframes banner-fade {
     0%, 10%   { opacity: 0; }

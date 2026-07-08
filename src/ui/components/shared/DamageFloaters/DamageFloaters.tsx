@@ -78,7 +78,7 @@ export function DamageFloaters(): JSX.Element {
         next.forEach((f, i) => {
           window.setTimeout(() => {
             setFloaters(prev => prev.filter(x => x.id !== f.id))
-          }, 1600 + (i + 4) * 200)
+          }, 2200 + (i + 4) * 200)
         })
       }
     })

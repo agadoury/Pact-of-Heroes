@@ -45,7 +45,7 @@ export function TurnBanner(): JSX.Element | null {
             variant: isViewer ? 'you' : 'opponent',
           })
           if (timer.current != null) window.clearTimeout(timer.current)
-          timer.current = window.setTimeout(() => setBanner(null), 1400)
+          timer.current = window.setTimeout(() => setBanner(null), 1900)
         }
       }
       lastIdx.current = log.length

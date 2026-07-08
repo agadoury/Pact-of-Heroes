@@ -1,7 +1,7 @@
 /**
  * <CardPlayOverlay>
  *
- * ~1700ms cinematic when a card is played. Renders the played card at
+ * Card-read cinematic when a card is played (DURATION.cardPlayBeat). Renders the played card at
  * readable center-stage size, holds, then slides to the discard corner.
  *
  * Bible reference: Part 6.6.5.
@@ -14,6 +14,7 @@ import type { EffectSegment } from '@/ui/types/card'
 import { KEYWORD_REGISTRY } from '@/ui/types/card'
 import { parseEffectText } from '@/ui/util/parseEffect'
 import { deriveCardVisualStyle } from '@/ui/selectors/cardVisual'
+import { DURATION } from '@/ui/util/duration'
 import { CardArt } from '@/ui/art/cardArt'
 import s from './CardPlayOverlay.module.css'
 
@@ -27,7 +28,7 @@ export interface CardPlayOverlayProps {
   className?:  string
 }
 
-const BEAT_MS = 1700
+const BEAT_MS = DURATION.cardPlayBeat
 
 export function CardPlayOverlay({
   active,

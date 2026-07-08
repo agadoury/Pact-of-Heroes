@@ -13,15 +13,19 @@ export const DURATION = {
   hover:            150,     // Hover state transition (desktop only)
   ripple:           250,     // Tap ripple effect
 
-  // Resolution pipeline phases — sum to ~2000ms total arc
-  resolutionConfirm:  100,   // 0 → 100ms:   confirm button flash
-  resolutionFadeIn:   250,   // 100 → 350ms: ladder fades out, FOP fades in
-  resolutionNameIn:   200,   // 250 → 450ms: ability name renders
-  resolutionDamage:   200,   // 450 → 650ms: damage number scales in with overshoot
-  resolutionEffects:  200,   // 700 → 900ms: multi-effect rows stagger in (100ms each)
-  resolutionHold:     400,   // 1000 → 1400ms: cinematic holds
-  resolutionFadeOut:  300,   // 1400 → 1700ms: FOP fades, ladder fades back
-  resolutionSettle:   300,   // 1700 → 2000ms: final settle
+  // Resolution pipeline phases. The arc is CONTENT-AWARE: the hold phase
+  // starts at `resolutionHold` and grows by `resolutionHoldPerRow` for
+  // every effect row past the first, so a 3-effect hit stays on screen
+  // long enough to actually read (see useResolutionDriver).
+  resolutionConfirm:    100,  // confirm button flash
+  resolutionFadeIn:     250,  // ladder fades out, FOP fades in
+  resolutionNameIn:     200,  // ability name renders
+  resolutionDamage:     200,  // damage number scales in with overshoot
+  resolutionEffects:    200,  // multi-effect rows stagger in (100ms each)
+  resolutionHold:       900,  // base cinematic hold (single-effect scene)
+  resolutionHoldPerRow: 350,  // extra hold per effect row past the first
+  resolutionFadeOut:    300,  // FOP fades, ladder fades back
+  resolutionSettle:     300,  // final settle
 
   // Token animations
   tokenSlamIn:      250,     // Token appears on a strip
@@ -53,8 +57,11 @@ export const DURATION = {
   dawnPipPulse:   1800,
 
   // Upkeep FOP beat
-  upkeepBeat:   700,   // full lightweight variant beat
+  upkeepBeat:   950,   // full lightweight variant beat
   upkeepGap:    100,   // between consecutive upkeep beats
+
+  // Card-play read beat (overlay + resolution sequence)
+  cardPlayBeat: 2600,
 
   // Match intro
   matchIntro:   1800,

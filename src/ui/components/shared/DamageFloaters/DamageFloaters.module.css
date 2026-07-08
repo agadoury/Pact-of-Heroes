@@ -12,7 +12,7 @@
   line-height: 1;
   letter-spacing: 0.05em;
   pointer-events: none;
-  animation: floater-rise 1600ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: floater-rise 2200ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
   will-change: transform, opacity;
   text-shadow:
     0 0 8px currentColor,
@@ -37,7 +37,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .floater {
-    animation: floater-fade 1600ms ease-out forwards;
+    animation: floater-fade 2200ms ease-out forwards;
   }
   @keyframes floater-fade {
     0%   { opacity: 0; }

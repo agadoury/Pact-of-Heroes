@@ -4,9 +4,11 @@
  * Advances the resolution queue on uiStore, playing each ResolvedEvent
  * through a per-scene phase pipeline:
  *
- *   ability / detonation / consume / defense: 2000ms full cinematic
- *   sub-event (upkeep beats):                  700ms lightweight
- *   card-play:                                 1700ms card-lift beat
+ *   ability / detonation / consume / defense: content-aware cinematic
+ *     (~2.3s for a bare hit, +350ms per extra effect row — see
+ *     standardSequence)
+ *   sub-event (upkeep beats):                  950ms lightweight
+ *   card-play:                                 2600ms card-read beat
  *
  * The driver mounts a passive listener that fires when currentResolution
  * changes; it walks the phase sequence via setTimeouts stored in a ref so
@@ -26,39 +28,59 @@ interface PhaseStep {
   phase: ResolutionPhase
 }
 
-const STANDARD_SEQUENCE: PhaseStep[] = [
-  { at: 0,                          phase: 'preconfirm' },
-  { at: DURATION.resolutionConfirm, phase: 'fade-in' },
-  { at: 350,                        phase: 'name-in' },
-  { at: 550,                        phase: 'damage-in' },
-  { at: 800,                        phase: 'effects-in' },
-  { at: 1100,                       phase: 'holding' },
-  { at: 1500,                       phase: 'fade-out' },
-  { at: 2000,                       phase: 'idle' },
-]
-
 const SUB_EVENT_SEQUENCE: PhaseStep[] = [
-  { at: 0,   phase: 'preconfirm' },
-  { at: 50,  phase: 'fade-in' },
-  { at: 150, phase: 'holding' },
-  { at: 600, phase: 'fade-out' },
-  { at: 700, phase: 'idle' },
+  { at: 0,                         phase: 'preconfirm' },
+  { at: 50,                        phase: 'fade-in' },
+  { at: 150,                       phase: 'holding' },
+  { at: DURATION.upkeepBeat - 100, phase: 'fade-out' },
+  { at: DURATION.upkeepBeat,       phase: 'idle' },
 ]
 
 const CARD_PLAY_SEQUENCE: PhaseStep[] = [
-  { at: 0,    phase: 'preconfirm' },
-  { at: 100,  phase: 'fade-in' },
-  { at: 300,  phase: 'holding' },
-  { at: 1500, phase: 'fade-out' },
-  { at: 1700, phase: 'idle' },
+  { at: 0,                          phase: 'preconfirm' },
+  { at: 100,                        phase: 'fade-in' },
+  { at: 300,                        phase: 'holding' },
+  { at: DURATION.cardPlayBeat - 200, phase: 'fade-out' },
+  { at: DURATION.cardPlayBeat,       phase: 'idle' },
 ]
 
+/** Full-cinematic sequence, paced by content: the hold grows with the
+ *  number of effect rows (and detonations get an extra beat) so players
+ *  have time to read what actually happened. */
+function standardSequence(scene: FOPScene | null): PhaseStep[] {
+  const effectCount =
+    scene?.kind === 'ability' ? scene.data.effects.length : 0
+  const isUltimate   = scene?.kind === 'ability' && scene.data.tier === 4
+  const isDetonation = scene?.kind === 'detonation'
+
+  const effectsIn = 800
+  // Holding begins once the last staggered row (100ms apiece) has landed.
+  const holdStart = effectsIn + 150 + effectCount * 100
+  const hold =
+    DURATION.resolutionHold
+    + Math.max(0, effectCount - 1) * DURATION.resolutionHoldPerRow
+    + (isUltimate ? 600 : 0)
+    + (isDetonation ? 500 : 0)
+  const fadeOut = holdStart + hold
+
+  return [
+    { at: 0,                          phase: 'preconfirm' },
+    { at: DURATION.resolutionConfirm, phase: 'fade-in' },
+    { at: 350,                        phase: 'name-in' },
+    { at: 550,                        phase: 'damage-in' },
+    { at: effectsIn,                  phase: 'effects-in' },
+    { at: holdStart,                  phase: 'holding' },
+    { at: fadeOut,                    phase: 'fade-out' },
+    { at: fadeOut + 400,              phase: 'idle' },
+  ]
+}
+
 function sequenceFor(scene: FOPScene | null): PhaseStep[] {
-  if (!scene) return STANDARD_SEQUENCE
+  if (!scene) return standardSequence(null)
   switch (scene.kind) {
     case 'sub-event': return SUB_EVENT_SEQUENCE
     case 'card-play': return CARD_PLAY_SEQUENCE
-    default:          return STANDARD_SEQUENCE
+    default:          return standardSequence(scene)
   }
 }
 
