@@ -12,6 +12,28 @@ import "./ui/util/ambientMusic";
 // to `pact-of-heroes:*`. Must run before any module reads its own storage.
 migrateLegacyStorage();
 
+// Service-worker registration with ACTIVE update polling. The default
+// autoUpdate injection only checks for a new version on page load — an
+// installed PWA that stays open (typical on a phone home screen) keeps
+// serving the stale precache across deploys. Poll every minute while the
+// app is open, and immediately when it returns to the foreground; when a
+// new build is found, autoUpdate activates + reloads.
+if (!import.meta.env.DEV) {
+  void import("virtual:pwa-register").then(({ registerSW }) => {
+    const updateSW = registerSW({
+      onRegisteredSW(_url, registration) {
+        if (!registration) return;
+        const check = () => { void registration.update().catch(() => {}); };
+        window.setInterval(check, 60_000);
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") check();
+        });
+      },
+    });
+    void updateSW;
+  });
+}
+
 // Audio-context unlock: iOS Safari requires a user gesture before audio plays.
 // We listen once, globally, and let the audio manager (Step 4) hook in.
 function installAudioUnlock() {
