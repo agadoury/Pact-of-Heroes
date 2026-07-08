@@ -422,7 +422,9 @@ export const BERSERKER: HeroDefinition = {
 
   recommendedDeck: [
     // 4 generic
-    "generic/quick-draw", "generic/focus", "generic/cleanse", "generic/bandage",
+    // (Cleanse lives in the catalog as opt-in anti-stack tech — default
+    // decks stay identity-neutral, so Battle Plan takes the fourth slot.)
+    "generic/quick-draw", "generic/focus", "generic/battle-plan", "generic/bandage",
     // 3 dice-manip
     "berserker/iron-focus", "berserker/berserker-rage", "berserker/pelt-of-the-wolf",
     // 3 ladder-upgrade (T1, T2, T3 — offensive starter; wolfborn deferred to deck-builder choice)

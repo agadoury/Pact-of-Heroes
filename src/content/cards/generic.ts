@@ -37,9 +37,13 @@ export const GENERIC_CARDS: Card[] = [
     cardCategory: "generic",
     name: "Cleanse",
     cost: 2,
-    text: "Remove all Burn stacks from yourself.",
+    text: "Remove up to 2 stacks of negative statuses from yourself.",
     trigger: { kind: "manual" },
-    effect: { kind: "remove-status", status: "burn", stacks: 99, target: "self" },
+    // Was "remove all Burn" — dead weight in every deck, since no current
+    // hero applies Burn. Now a universal answer to Frost-bite / Cinder /
+    // Verdict pressure (note: stripping Cinder pays the Pyromancer CP by
+    // design — her economy makes opponents pay either way).
+    effect: { kind: "remove-status", status: "any-debuff", stacks: 2, target: "self" },
   },
   {
     id: "generic/bandage",

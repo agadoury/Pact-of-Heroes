@@ -253,9 +253,13 @@ function decideMainPre(state: GameState, ai: PlayerId): Action {
     if (card) return { kind: "play-card", card: card.id };
   }
 
-  // 1) Removal: clear heavy generic DoTs (Burn) when affordable.
-  const myBurn = stacksOf(me, "burn");
-  if (myBurn >= 3 && me.hand.find(c => c.id === "generic/cleanse" && c.cost <= me.cp)) {
+  // 1) Removal: Cleanse strips up to 2 stacks of any self debuff — worth
+  // the 2 CP once meaningful pressure has accumulated (3+ debuff stacks).
+  const myDebuffStacks = me.statuses.reduce((sum, s) => {
+    const def = getStatusDef(s.id);
+    return def?.type === "debuff" ? sum + s.stacks : sum;
+  }, 0);
+  if (myDebuffStacks >= 3 && me.hand.find(c => c.id === "generic/cleanse" && c.cost <= me.cp)) {
     return { kind: "play-card", card: "generic/cleanse" };
   }
 
@@ -470,6 +474,18 @@ function pickHeroMainPhaseCard(state: GameState, ai: PlayerId): string | null {
         // Boost Cinder detonation — play first chance once Cinder is a thing.
         if ((opp.statuses.find(s => s.id === "pyromancer:cinder")?.stacks ?? 0) >= 1) return card.id;
         return card.id;
+      case "pyromancer/phoenix-stir":
+        // Once-per-match burst heal — spend it wounded, and prefer waiting
+        // for 3+ opponent Cinder (heal 8 instead of 5) unless critical.
+        if (me.hp / me.hpStart < 0.35) return card.id;
+        if (me.hp / me.hpStart < 0.65
+          && (opp.statuses.find(s => s.id === "pyromancer:cinder")?.stacks ?? 0) >= 3) return card.id;
+        break;
+      case "pyromancer/char":
+        // Direct 3 Cinder — strongest when it threatens detonation (5).
+        if ((opp.statuses.find(s => s.id === "pyromancer:cinder")?.stacks ?? 0) >= 2) return card.id;
+        if (me.cp >= card.cost + 2) return card.id;
+        break;
       default:
         // Unlisted hero card: play it when CP-rich — a 25% dead deck reads
         // as a broken opponent. The +3 cushion keeps the AI from going

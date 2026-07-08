@@ -35,7 +35,9 @@ registerStatus({
   detonation: {
     threshold: 5,
     triggerTiming: "on-application-overflow",
-    effect: { kind: "damage", amount: 8, type: "undefendable" },
+    // 8 → 10: detonations land roughly once per match — as the hero's
+    // entire signature payoff they must hit like a T3, not a T2.
+    effect: { kind: "damage", amount: 10, type: "undefendable" },
     resetsStacksTo: 0,
   },
   visualTreatment: { icon: "cinder", color: "#F97316", pulse: true, particle: "embers" },
@@ -60,15 +62,18 @@ registerStatus({
 });
 
 // Convenience: Cinder application with the ASHFALL sparks-bonus baked in.
-// "Apply 1 Cinder + 1 more if 3+ ember on roll." Used by every offensive
+// "Apply 1 Cinder + 1 more if 2+ ember on roll." Used by every offensive
 // ability the Pyromancer fires (the spec calls this her signature passive).
+// Balance note: the ember threshold was 3, but ash-combo rolls almost never
+// carry 3 spare ember faces — the passive was effectively dead (sim-audited
+// at <5% of fires). At 2+ ember it triggers often enough to be an identity.
 const ASHFALL_CINDER = (extraStacks: number) => ({
   kind: "apply-status" as const,
   status: "pyromancer:cinder",
   stacks: 1 + extraStacks,
   target: "opponent" as const,
   conditional_bonus: {
-    condition: { kind: "combo-symbol-count" as const, symbol: "pyromancer:ember", count: 3 },
+    condition: { kind: "combo-symbol-count" as const, symbol: "pyromancer:ember", count: 2 },
     bonusPerUnit: 1,
     source: "fixed-one" as const,
   },
@@ -108,7 +113,7 @@ export const PYROMANCER: HeroDefinition = {
   signatureMechanic: {
     name: "Ashfall",
     description:
-      "Every offensive ability you land applies +1 Cinder. If your roll has 3+ ember faces, +1 additional Cinder.",
+      "Every offensive ability you land applies +1 Cinder. If your roll has 2+ ember faces, +1 additional Cinder.",
     implementation: {
       kind: "ashfall",
       // Flavor passive — the actual mechanic is folded into each offensive
@@ -129,12 +134,12 @@ export const PYROMANCER: HeroDefinition = {
       damageType: "normal",
       targetLandingRate: [0.75, 0.95],
       combo: { kind: "symbol-count", symbol: "pyromancer:ash", count: 3 },
-      shortText: "3/5/7 dmg + Cinder",
-      longText: "3+ ash; 3/5/7 damage (scales with ash count) + 1 Cinder (+1 if 3+ ember).",
+      shortText: "4/6/8 dmg + Cinder",
+      longText: "3+ ash; 4/6/8 damage (scales with ash count) + 1 Cinder (+1 if 2+ ember).",
       effect: {
         kind: "compound",
         effects: [
-          { kind: "scaling-damage", baseAmount: 3, perExtra: 2, maxExtra: 2, type: "normal" },
+          { kind: "scaling-damage", baseAmount: 4, perExtra: 2, maxExtra: 2, type: "normal" },
           ASHFALL_CINDER(0),
         ],
       },
@@ -153,12 +158,12 @@ export const PYROMANCER: HeroDefinition = {
           { kind: "symbol-count", symbol: "pyromancer:magma", count: 1 },
         ],
       },
-      shortText: "5 dmg + 2 Cinder",
-      longText: "2 ash + 1 ember + 1 magma; 5 damage + 2 Cinder (+1 if 3+ ember).",
+      shortText: "6 dmg + 2 Cinder",
+      longText: "2 ash + 1 ember + 1 magma; 6 damage + 2 Cinder (+1 if 2+ ember).",
       effect: {
         kind: "compound",
         effects: [
-          { kind: "damage", amount: 5, type: "normal" },
+          { kind: "damage", amount: 6, type: "normal" },
           ASHFALL_CINDER(1),
         ],
       },
@@ -264,7 +269,7 @@ export const PYROMANCER: HeroDefinition = {
       combo: { kind: "symbol-count", symbol: "pyromancer:ruin", count: 5 },
       shortText: "Stun + 11 ult + force detonation",
       longText:
-        "5 ruin (all 5 dice on face 6); Stun, 11 ultimate damage, then push Cinder to 5 — detonation fires for 8 (12 with Crater Wind).",
+        "5 ruin (all 5 dice on face 6); Stun, 11 ultimate damage, then push Cinder to 5 — detonation fires for 10 (14 with Crater Wind).",
       effect: {
         kind: "compound",
         effects: [
@@ -285,7 +290,7 @@ export const PYROMANCER: HeroDefinition = {
       combo: { kind: "symbol-count", symbol: "pyromancer:ash", count: 3 },
       shortText: "3 dmg + 2 Cinder",
       longText:
-        "3+ ash; 3 damage + 2 Cinder (+1 if 3+ ember). Trade Ember Strike's escalating damage for heavier Cinder pressure.",
+        "3+ ash; 3 damage + 2 Cinder (+1 if 2+ ember). Trade Ember Strike's escalating damage for heavier Cinder pressure.",
       effect: {
         kind: "compound",
         effects: [
@@ -303,7 +308,7 @@ export const PYROMANCER: HeroDefinition = {
       combo: { kind: "n-of-a-kind", count: 3 },
       shortText: "6 dmg + 1 Cinder",
       longText:
-        "Three of a kind (any face); 6 damage + 1 Cinder (+1 if 3+ ember). Hero-symbol-agnostic T2.",
+        "Three of a kind (any face); 6 damage + 1 Cinder (+1 if 2+ ember). Hero-symbol-agnostic T2.",
       effect: {
         kind: "compound",
         effects: [
@@ -386,11 +391,11 @@ export const PYROMANCER: HeroDefinition = {
       targetLandingRate: [0.6, 0.8],
       combo: { kind: "symbol-count", symbol: "pyromancer:ember", count: 1 },
       defenseDiceCount: 3,
-      shortText: "Reduce 3 + Cinder",
-      longText: "1+ ember on 3 dice; reduce 3 + apply 1 Cinder to attacker.",
+      shortText: "Reduce 4 + Cinder",
+      longText: "1+ ember on 3 dice; reduce 4 + apply 1 Cinder to attacker.",
       effect: {
         kind: "reduce-damage",
-        amount: 3,
+        amount: 4,
         apply_to_attacker: { status: "pyromancer:cinder", stacks: 1 },
       },
     },
@@ -463,12 +468,16 @@ export const PYROMANCER: HeroDefinition = {
 
   recommendedDeck: [
     // 4 generic
-    "generic/quick-draw", "generic/focus", "generic/cleanse", "generic/bandage",
+    // (Cleanse lives in the catalog as opt-in anti-stack tech — default
+    // decks stay identity-neutral, so Battle Plan takes the fourth slot.)
+    "generic/quick-draw", "generic/focus", "generic/battle-plan", "generic/bandage",
     // 3 dice-manip
     "pyromancer/ember-channel", "pyromancer/pyromantic-surge", "pyromancer/forge",
     // 3 ladder-upgrade (T1, T2, T3 — offensive starter; mountains-patience deferred to deck-builder choice)
     "pyromancer/ember-strike-mastery", "pyromancer/volcanic-awakening", "pyromancer/crater-heart",
-    // 2 signature
-    "pyromancer/char", "pyromancer/phoenix-veil",
+    // 2 signature — phoenix-stir over phoenix-veil: the glass cannon's one
+    // self-heal. Zero sustain was sim-audited as the core of the hero's
+    // losing record; the once-per-match negate fired too rarely to matter.
+    "pyromancer/char", "pyromancer/phoenix-stir",
   ],
 };

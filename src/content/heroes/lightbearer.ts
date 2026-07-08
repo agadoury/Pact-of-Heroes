@@ -44,11 +44,13 @@ registerStatus({
     trigger: "on-offensive-ability",
     field: "damage",
     valuePerStack: -2,
-    // Total debuff capped at -4 (two stacks' worth): with the debuff
-    // actually functional, an uncapped -8 at full stacks made the
-    // Lightbearer win ~85% of AI-mirror matches. The cap keeps Verdict
-    // threatening without deleting the opponent's offense.
-    cap: { min: -4 },
+    // Total debuff capped at -3: uncapped (-8) the Lightbearer won ~85%
+    // of AI-mirror matches; at -4, first-strike Verdict tempo still ran
+    // 57-62% winrates from the p1 seat (it halves the Pyromancer's
+    // ability damage outright, while Frenzy lets the Berserker shrug it
+    // off). -3 keeps Verdict threatening without deleting small-hit
+    // heroes' offense.
+    cap: { min: -3 },
   },
   stateThresholdEffects: [
     {
@@ -193,13 +195,13 @@ export const LIGHTBEARER: HeroDefinition = {
         ],
       },
       targetLandingRate: [0.45, 0.7],
-      shortText: "5 dmg ub + Radiance + Verdict",
+      shortText: "4 dmg ub + Radiance + Verdict",
       longText:
-        "2 swords + 1 sun + 1 dawn; deals 5 unblockable damage, you gain 1 Radiance, applies 1 Verdict.",
+        "2 swords + 1 sun + 1 dawn; deals 4 unblockable damage, you gain 1 Radiance, applies 1 Verdict.",
       effect: {
         kind: "compound",
         effects: [
-          { kind: "damage", amount: 5, type: "undefendable" },
+          { kind: "damage", amount: 4, type: "undefendable" },
           { kind: "passive-counter-modifier", passiveKey: "radiance", operation: "add", value: 1, respectsCap: true },
           { kind: "apply-status", status: "lightbearer:verdict", stacks: 1, target: "opponent" },
         ],
@@ -574,7 +576,9 @@ export const LIGHTBEARER: HeroDefinition = {
 
   recommendedDeck: [
     // 4 generic
-    "generic/quick-draw", "generic/focus", "generic/cleanse", "generic/bandage",
+    // (Cleanse lives in the catalog as opt-in anti-stack tech — default
+    // decks stay identity-neutral, so Battle Plan takes the fourth slot.)
+    "generic/quick-draw", "generic/focus", "generic/battle-plan", "generic/bandage",
     // 3 dice-manip (lightbearer's symbol-bend / set-face cards)
     "lightbearer/steady-light", "lightbearer/faith", "lightbearer/resolve",
     // 3 ladder-upgrade (T1, T2, T3 — offensive starter; cathedral-light deferred to deck-builder choice)

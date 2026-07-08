@@ -115,6 +115,13 @@ function startMatch(
   for (const pid of ["p1", "p2"] as const) {
     events.push(...drawCards(state, state.players[pid], STARTING_HAND));
   }
+  // Second-player compensation: going second concedes the first attack
+  // (AI-mirror sims measured a 55-62% first-seat winrate). The off-coin
+  // player starts with +1 CP and +1 card to buy back the tempo.
+  const second = coin === "p1" ? "p2" : "p1";
+  state.players[second].cp += 1;
+  events.push({ t: "cp-changed", player: second, delta: 1, total: state.players[second].cp });
+  events.push(...drawCards(state, state.players[second], 1));
 
   // Enter the first phase: upkeep for the start player.
   state.phase = "pre-match";

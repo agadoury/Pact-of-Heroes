@@ -335,16 +335,38 @@ engine, MatchIntro/CardPlayOverlay timer resets, Atone button, MatchMenu
 resume restores the event log, AI locks straights / plays dice-manip
 cards / picks defenses by value, band heights sum to 100%.
 
-### Balance state (AI matrix, 60 matches per pairing)
+### Balance state (after the full rebalance session)
 
-- Berserker ↔ Lightbearer: ~even.
-- Pyromancer loses ~65-70% into both others — needs content tuning
-  (its whitelisted AI plays fewer signature cards; Cinder detonation at
-  5 stacks rarely lands in 8-turn matches).
-- Mirror matches show a consistent p1-seat advantage (~60%) even with
-  the coin alternating — worth a design look at the first-income skip.
-- Tuned this session: Verdict total debuff capped at -4, Radiance spends
-  +1 dmg / -1 incoming per token (from +2/-2), AI atones at 2 stacks.
+Measured by `scripts/balance.ts` (full ordered-pair matrix with per-source
+damage/heal/CP attribution; final validation at 300 matches per pairing,
+2700 total):
+
+- **Pooled winrates: Berserker 50.6% / Pyromancer 49.9% / Lightbearer 49.4%**
+  (baseline before the session: 53.2 / 35.0 / 61.8).
+- Matchups (pooled across seats): ber-pyro 48.0, ber-LB 53.8 for ber,
+  pyro-LB 47.8 for pyro. All cells within ±4 of even.
+- Seat bias: mirrors at 50.3 / 48.3 / 54.7 p1 (was 55-62 across the board).
+  Fixed structurally — the player going second starts with +1 CP and +1
+  card (engine.ts start-match).
+- Damage throughput per match: 32.5 / 30.6 / 31.4 — flat.
+
+What changed (all sim-verified round by round):
+- **Pyromancer** (was 35%): Ashfall ember bonus threshold 3 → 2 (was
+  sim-dead at <5% of fires), Cinder detonation 8 → 10 (Crater Wind
+  12 → 14), Ember Strike 3/5/7 → 4/6/8 (mastery 5/7/9), Firestorm 5 → 6,
+  Magma Shield reduce 3 → 4 (Mountain's Patience 5), recommended deck
+  swaps phoenix-veil → phoenix-stir (the glass cannon's one heal; veil
+  fired 0.1/match), AI plays Char/Phoenix Stir at sensible thresholds.
+- **Lightbearer** (was 61.8%): Solar Devotion's Sun Strike 7 → 6 ub,
+  Sunblade Mastery's Solar Blade 9 → 8 ub, Sun Strike base 5 → 4 ub,
+  Verdict cap -4 → -3.
+- **Generic pool**: Cleanse redesigned from "remove all Burn" (dead —
+  nothing applies Burn) to "remove up to 2 stacks of any self debuff";
+  it is deliberately catalog-only anti-stack tech now — recommended
+  decks carry Battle Plan instead (a real Cleanse in default decks
+  swung LB +4.5 points by defusing Cinder/Frost-bite engines).
+- Remaining known asymmetry: LB going first vs Pyromancer is ~56%
+  (first-strike Verdict tempo vs a slow engine) — acceptable, tracked.
 
 ## Game-loop stall fixes + polish (this branch)
 
@@ -513,8 +535,9 @@ These are known TODO / opportunity areas. Ordered by user-facing impact.
   could use a die/face picker UI (they take `targetFaceValue` in
   play-card). The engine currently falls back to a sensible auto-target,
   so cards work — the picker is a nicety.
-- **Balance** — 540-match AI matrix: Lightbearer wins ~70% into both
-  other heroes; Pyromancer beats Berserker ~62%. Content tuning task.
+- **Balance** — DONE (full rebalance session; see "Balance state" above).
+  Pooled winrates 50.6/49.9/49.4 at 2700-match validation. Re-run
+  `npx tsx scripts/balance.ts --n 300` after any content change.
 
 ### Polish
 

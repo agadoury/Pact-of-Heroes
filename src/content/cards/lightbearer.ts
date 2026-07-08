@@ -112,7 +112,7 @@ export const LIGHTBEARER_CARDS: Card[] = [
     upgradesAbilities: ["Sun Strike", "Dawn Prayer"],
     name: "Solar Devotion",
     cost: 3,
-    text: "Permanent. Sun Strike: 7 ub, +2 Radiance. Dawn Prayer: 5 dmg + heal 3 + 2 Verdict.",
+    text: "Permanent. Sun Strike: 6 ub, +2 Radiance. Dawn Prayer: 5 dmg + heal 3 + 2 Verdict.",
     trigger: { kind: "manual" },
     effect: {
       kind: "compound",
@@ -123,7 +123,7 @@ export const LIGHTBEARER_CARDS: Card[] = [
           kind: "ability-upgrade",
           scope: { kind: "ability-ids", ids: ["Sun Strike"] },
           modifications: [
-            { field: "base-damage", operation: "set", value: 7 },
+            { field: "base-damage", operation: "set", value: 6 },
             { field: "passive-counter-gain-amount", operation: "set", value: 2 },
           ],
           permanent: true,
@@ -152,7 +152,7 @@ export const LIGHTBEARER_CARDS: Card[] = [
     upgradesAbilities: ["Solar Blade", "Divine Ray"],
     name: "Sunblade Mastery",
     cost: 3,
-    text: "Permanent. Solar Blade: 9 ub, +2 dmg per Verdict stripped. Divine Ray: 11 dmg, +3 Verdict.",
+    text: "Permanent. Solar Blade: 8 ub, +2 dmg per Verdict stripped. Divine Ray: 11 dmg, +3 Verdict.",
     trigger: { kind: "manual" },
     effect: {
       kind: "compound",
@@ -161,7 +161,7 @@ export const LIGHTBEARER_CARDS: Card[] = [
           kind: "ability-upgrade",
           scope: { kind: "ability-ids", ids: ["Solar Blade"] },
           modifications: [
-            { field: "base-damage", operation: "set", value: 9 },
+            { field: "base-damage", operation: "set", value: 8 },
             { field: "damage-conditional-bonus-bonus-per-unit", operation: "set", value: 2 },
           ],
           permanent: true,

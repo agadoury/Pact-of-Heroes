@@ -72,14 +72,14 @@ export const PYROMANCER_CARDS: Card[] = [
       occupiesSlot: true,
       name: "Ember Strike Mastery",
       cost: 2,
-      text: "Permanent. Ember Strike damage becomes 4/6/8. Cinder applied increases to 2.",
+      text: "Permanent. Ember Strike damage becomes 5/7/9. Cinder applied increases to 2.",
       trigger: { kind: "manual" },
       effect: {
         kind: "ability-upgrade",
         scope: { kind: "ability-ids", ids: ["Ember Strike"] },
         permanent: true,
         modifications: [
-          { field: "scaling-damage-base",   operation: "set", value: 4 },
+          { field: "scaling-damage-base",   operation: "set", value: 5 },
           { field: "applied-status-stacks", operation: "set", value: 2 },
         ],
       },
@@ -208,7 +208,7 @@ export const PYROMANCER_CARDS: Card[] = [
       occupiesSlot: true,
       name: "Mountain's Patience",
       cost: 3,
-      text: "Permanent. Magma Shield: -4 dmg + 2 Cinder. Disperse: 2 Cinder on negation. Ash Mirror: -7 dmg + strip 2.",
+      text: "Permanent. Magma Shield: -5 dmg + 2 Cinder. Disperse: 2 Cinder on negation. Ash Mirror: -7 dmg + strip 2.",
       trigger: { kind: "manual" },
       effect: {
         kind: "ability-upgrade",
@@ -216,7 +216,7 @@ export const PYROMANCER_CARDS: Card[] = [
         permanent: true,
         modifications: [
           // Magma Shield — gated by 1+ ember.
-          { field: "reduce-damage-amount", operation: "set", value: 4,
+          { field: "reduce-damage-amount", operation: "set", value: 5,
             conditional: { kind: "combo-symbol-count", symbol: "pyromancer:ember", count: 1 } },
           { field: "reduce-damage-apply-to-attacker-stacks", operation: "set", value: 2,
             conditional: { kind: "combo-symbol-count", symbol: "pyromancer:ember", count: 1 } },
@@ -255,13 +255,13 @@ export const PYROMANCER_CARDS: Card[] = [
       cardCategory: "signature",
       name: "Crater Wind",
       cost: 3,
-      text: "Until end of match, Cinder detonations deal 12 instead of 8.",
+      text: "Until end of match, Cinder detonations deal 14 instead of 10.",
       trigger: { kind: "manual" },
       effect: {
         kind: "persistent-buff",
         id: "crater-wind",
         target: "pyromancer:cinder",
-        modifier: { field: "detonation-amount", operation: "set", value: 12 },
+        modifier: { field: "detonation-amount", operation: "set", value: 14 },
         discardOn: { kind: "match-ends" },
       },
       flavor: "When the wind comes, the mountain answers louder.",
