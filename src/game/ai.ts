@@ -15,7 +15,7 @@
  */
 
 import type { Action, GameState, PlayerId, StatusId } from "./types";
-import { ROLL_ATTEMPTS } from "./types";
+import { ROLL_ATTEMPTS, HAND_CAP } from "./types";
 import { getHero } from "../content";
 import { evaluateLadder, pickKeepMask, symbolsOnDice, comboMatchesFaces } from "./dice";
 import { stacksOf, getStatusDef } from "./status";
@@ -547,8 +547,8 @@ function decideMainPost(state: GameState, ai: PlayerId): Action {
   if (me.cp >= 1 && me.hand.find(c => c.id === "generic/focus" && c.cost === 0)) {
     return { kind: "play-card", card: "generic/focus" };
   }
-  // Sell extras if we're way over hand cap.
-  if (me.hand.length >= 6) return { kind: "sell-card", card: me.hand[0].id };
+  // Sell extras if we're at/over hand cap.
+  if (me.hand.length >= HAND_CAP) return { kind: "sell-card", card: me.hand[0].id };
   return { kind: "end-turn" };
 }
 

@@ -1054,7 +1054,7 @@ export interface ApplyResult { state: GameState; events: GameEvent[]; }
 
 export const HP_CAP_BONUS = 10;
 export const CP_CAP       = 15;
-export const HAND_CAP     = 6;
+export const HAND_CAP     = 5;
 export const STARTING_HAND= 4;
 export const STARTING_HP  = 30;
 export const STARTING_CP  = 2;

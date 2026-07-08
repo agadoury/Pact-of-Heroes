@@ -69,7 +69,7 @@ Each turn moves through 8 phases in fixed order. The transitions happen in `src/
 | `offensive-roll` | Active player rolls dice (up to 3 attempts; can lock/unlock between rolls; can play `roll-phase` cards). When the player ends their roll, engine emits `offensive-pick-prompt` listing every matched ability and halts via `state.pendingOffensiveChoice`. The player **picks** which ability to fire (or passes) via `select-offensive-ability`. | **Yes — lock dice, play cards, then pick which attack to fire** |
 | `defensive-roll` | **Interactive (defender's pause window).** Engine emits `attack-intended` and halts via `state.pendingAttack`. The defender picks one defense from their drafted defensive loadout (`activeDefense`) (or "take it"); the engine rolls the chosen defense's dice count once **inside the same dispatch** (no rerolls, no separate roll action, no `pendingDefenseRoll`), evaluates, applies any reduction, then resolves the original ability's damage. Both players may play `roll-phase` and `instant` cards during this window. The phase is a *defender* state during the attacker's turn — the active player never enters it on their own behalf. | **Yes — defender picks a defense via `select-defense`** (or the AI driver does so off-turn) |
 | `main-post` | Post-resolution window. Player can play `main-phase` cards, sell cards. Ends turn manually. | **Yes — must tap END TURN** |
-| `discard` | Auto-sell every card over hand cap (6) for +1 CP each, swap active player, transition into the new active player's `upkeep`. | No |
+| `discard` | Auto-sell every card over hand cap (5) for +1 CP each, swap active player, transition into the new active player's `upkeep`. | No |
 
 ### Phase enter handlers
 

@@ -37,7 +37,7 @@ re-derive them.
 
 ## Constants — engine wins
 
-- `HAND_CAP = 6` (bible says 8; wrong)
+- `HAND_CAP = 5` (bible says 8; wrong — capped 6 → 5 in the 2026-07 tuning pass)
 - `STARTING_HP = 30`, `HP_CAP_BONUS = 10` (max HP = 40 via over-heals)
 - `STARTING_CP = 2`, `CP_CAP = 15`
 - `STARTING_HAND = 4`
