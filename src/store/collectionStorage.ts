@@ -8,15 +8,18 @@
  * when the player spends Renown in the customization hub.
  *
  * Renown is earned per finished match with the hero you played:
- * +3 on a win, +1 on a loss. Awarding is idempotent per match (keyed on
- * the match's seed + winner + turn) so re-renders / revisits can't
- * double-pay.
+ * +3 on a win, +1 on a loss, plus performance bonuses — named finishes
+ * (Flawless/Clutch/Comeback +2, Critical Victory +3, Surgeon/Stomp/
+ * Grinder +1, wins only) and +1 for firing your ultimate (win or lose).
+ * Awarding is idempotent per match (keyed on the match's seed + winner +
+ * turn) so re-renders / revisits can't double-pay.
  *
  * Pure functions, no React. Same fail-soft localStorage posture as
  * deckStorage / loadoutStorage.
  */
 
 import type { AbilityDef, Card, CardId, HeroId } from "@/game/types";
+import type { MatchDescriptor } from "@/game/match-summary";
 import { getHero, getCardCatalog } from "@/content";
 
 const STORAGE_KEY = "pact-of-heroes:collection:v1";
@@ -26,6 +29,18 @@ export const RENOWN_WIN = 3;
 export const RENOWN_LOSS = 1;
 /** A head start so the first unlock is one match away, not five. */
 export const RENOWN_STARTING = 3;
+/** Extra Renown for a named finish (the match summary's descriptor). */
+export const RENOWN_DESCRIPTOR_BONUS: Partial<Record<MatchDescriptor, number>> = {
+  "CRITICAL VICTORY": 3,
+  "FLAWLESS": 2,
+  "CLUTCH": 2,
+  "COMEBACK": 2,
+  "SURGEON": 1,
+  "STOMP": 1,
+  "GRINDER": 1,
+};
+/** Firing your ultimate is a career moment — paid win or lose. */
+export const RENOWN_ULTIMATE_BONUS = 1;
 
 interface HeroCollectionEntry {
   renown: number;                 // spendable balance
@@ -141,13 +156,42 @@ export function getCollection(heroId: HeroId): HeroCollection {
 
 // ── Mutations ────────────────────────────────────────────────────────────────
 
+export interface RenownAward {
+  total: number;
+  /** Ordered lines for the summary screen, e.g. Win +3 · Flawless +2. */
+  breakdown: Array<{ label: string; amount: number }>;
+}
+
+/** Compute the Renown owed for a finished match, with a per-line
+ *  breakdown: base win/loss, a named-finish bonus (descriptor), and an
+ *  ultimate-fired bonus (paid win or lose — career moments count). */
+export function computeRenownAward(
+  won: boolean,
+  perf?: { descriptor?: MatchDescriptor; ultimatesFired?: number },
+): RenownAward {
+  const breakdown: RenownAward["breakdown"] = [
+    won ? { label: "Victory", amount: RENOWN_WIN } : { label: "Fought", amount: RENOWN_LOSS },
+  ];
+  if (won && perf?.descriptor) {
+    const bonus = RENOWN_DESCRIPTOR_BONUS[perf.descriptor] ?? 0;
+    if (bonus > 0) {
+      const label = perf.descriptor.charAt(0) + perf.descriptor.slice(1).toLowerCase();
+      breakdown.push({ label, amount: bonus });
+    }
+  }
+  if ((perf?.ultimatesFired ?? 0) > 0) {
+    breakdown.push({ label: "Ultimate fired", amount: RENOWN_ULTIMATE_BONUS });
+  }
+  return { total: breakdown.reduce((s2, b) => s2 + b.amount, 0), breakdown };
+}
+
 /** Award match Renown to the hero the viewer played. Idempotent per
  *  `matchKey` — returns the amount actually awarded (0 when re-invoked). */
-export function awardMatchRenown(heroId: HeroId, won: boolean, matchKey: string): number {
+export function awardMatchRenown(heroId: HeroId, amount: number, matchKey: string): number {
   const root = readRoot();
   if (root.lastAwardKey === matchKey) return 0;
+  if (amount <= 0) return 0;
   const entry = root.perHero[heroId] ?? emptyEntry();
-  const amount = won ? RENOWN_WIN : RENOWN_LOSS;
   root.perHero = {
     ...root.perHero,
     [heroId]: {

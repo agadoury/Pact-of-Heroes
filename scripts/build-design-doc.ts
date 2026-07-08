@@ -334,7 +334,9 @@ Any card can be <strong>sold for +1 CP</strong> instead of played. Hand cap ${HA
 <p><strong>Collection &amp; Renown:</strong> the recommended loadout and deck are
 owned from the start; every alternate ability and card is collectible. Playing
 matches earns per-hero <em>Renown</em> (+3 win / +1 loss, awarded on the match
-summary), spent in the Collection hub (hero → Customize) to unlock alternates —
+summary — plus performance bonuses: Critical Victory +3; Flawless, Clutch, or
+Comeback finishes +2; Surgeon/Stomp/Grinder +1; and +1 for firing your ultimate,
+win or lose), spent in the Collection hub (hero → Customize) to unlock alternates —
 abilities price at 4/6/8/12 by tier, cards at 3–8 by category. The hub is a
 slot-based builder: tap any ladder or deck slot to open its option tray, equip
 owned items instantly, unlock locked ones in place. Every change persists

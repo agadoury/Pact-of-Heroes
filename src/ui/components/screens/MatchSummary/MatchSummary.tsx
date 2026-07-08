@@ -14,7 +14,7 @@ import { buildMatchSummary } from '@/game/match-summary'
 import { useGameStore } from '@/store/gameStore'
 import { useUIStore } from '@/ui/store/uiStore'
 import { clearMatchState } from '@/ui/store/matchPersistence'
-import { awardMatchRenown, hasAffordableUnlock } from '@/store/collectionStorage'
+import { awardMatchRenown, computeRenownAward, hasAffordableUnlock, type RenownAward } from '@/store/collectionStorage'
 import { Button } from '@/ui/components/atoms/Button'
 import { AmbientBackdrop } from '@/ui/components/shared/AmbientBackdrop'
 import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
@@ -97,17 +97,23 @@ export function MatchSummary(): JSX.Element {
   }, [state, navigate])
 
   // Renown award — once per match (idempotent by seed+winner key), to the
-  // hero the viewer played. Drives the collection nudge below.
-  const [renownGain, setRenownGain] = useState(0)
+  // hero the viewer played. Named finishes (Flawless, Clutch, ...) and a
+  // fired ultimate pay bonuses; the breakdown renders below the stats.
+  const [renownAward, setRenownAward] = useState<RenownAward | null>(null)
   const [unlockReady, setUnlockReady] = useState(false)
   useEffect(() => {
     if (!state?.winner || state.winner === 'draw') return
     const myHeroId = state.players[viewerId].hero
     const key = `${state.rngSeed}:${state.turn}:${state.winner}`
-    const gained = awardMatchRenown(myHeroId, state.winner === viewerId, key)
-    if (gained > 0) setRenownGain(gained)
+    const won = state.winner === viewerId
+    const award = computeRenownAward(won, {
+      descriptor: won ? summary?.descriptor : undefined,
+      ultimatesFired: summary?.ultimatesFired[viewerId] ?? 0,
+    })
+    const gained = awardMatchRenown(myHeroId, award.total, key)
+    if (gained > 0) setRenownAward(award)
     setUnlockReady(hasAffordableUnlock(myHeroId))
-  }, [state, viewerId])
+  }, [state, viewerId, summary])
 
   if (!state) return <div className={s.container} />
 
@@ -182,10 +188,12 @@ export function MatchSummary(): JSX.Element {
           </div>
         ))}
       </div>
-      {renownGain > 0 ? (
+      {renownAward ? (
         <div className={s.renownRow}>
-          <span className={s.renownGain}>+{renownGain} Renown</span>
-          <span className={s.renownHero}>{myHero}</span>
+          <span className={s.renownGain}>+{renownAward.total} Renown</span>
+          <span className={s.renownBreakdown}>
+            {renownAward.breakdown.map(b => `${b.label} +${b.amount}`).join(' · ')}
+          </span>
         </div>
       ) : null}
       <div className={s.actions}>

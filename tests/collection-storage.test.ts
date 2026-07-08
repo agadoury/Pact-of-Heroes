@@ -3,9 +3,9 @@
  */
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import {
-  getCollection, awardMatchRenown, unlockAbility, unlockCard,
+  getCollection, awardMatchRenown, computeRenownAward, unlockAbility, unlockCard,
   hasAffordableUnlock, clearAllCollections, abilityPrice, cardPrice,
-  RENOWN_WIN, RENOWN_LOSS, RENOWN_STARTING,
+  RENOWN_WIN, RENOWN_LOSS, RENOWN_STARTING, RENOWN_ULTIMATE_BONUS,
 } from "../src/store/collectionStorage";
 import { getHero, getCardCatalog } from "../src/content";
 
@@ -54,12 +54,28 @@ describe("collection defaults", () => {
 
 describe("renown awards", () => {
   it("pays win/loss amounts and is idempotent per match key", () => {
-    expect(awardMatchRenown("berserker", true, "match-1")).toBe(RENOWN_WIN);
-    expect(awardMatchRenown("berserker", true, "match-1")).toBe(0);   // same match
-    expect(awardMatchRenown("berserker", false, "match-2")).toBe(RENOWN_LOSS);
+    expect(awardMatchRenown("berserker", RENOWN_WIN, "match-1")).toBe(RENOWN_WIN);
+    expect(awardMatchRenown("berserker", RENOWN_WIN, "match-1")).toBe(0);   // same match
+    expect(awardMatchRenown("berserker", RENOWN_LOSS, "match-2")).toBe(RENOWN_LOSS);
     const c = getCollection("berserker");
     expect(c.renown).toBe(RENOWN_STARTING + RENOWN_WIN + RENOWN_LOSS);
     expect(c.earnedLifetime).toBe(c.renown);
+  });
+
+  it("computeRenownAward pays performance bonuses with a breakdown", () => {
+    const plain = computeRenownAward(true);
+    expect(plain.total).toBe(RENOWN_WIN);
+    const flawless = computeRenownAward(true, { descriptor: "FLAWLESS" });
+    expect(flawless.total).toBe(RENOWN_WIN + 2);
+    expect(flawless.breakdown.some(b => b.label === "Flawless")).toBe(true);
+    const ultLoss = computeRenownAward(false, { ultimatesFired: 1 });
+    expect(ultLoss.total).toBe(RENOWN_LOSS + RENOWN_ULTIMATE_BONUS);
+    // Descriptor bonuses never pay on a loss.
+    const descLoss = computeRenownAward(false, { descriptor: "FLAWLESS" });
+    expect(descLoss.total).toBe(RENOWN_LOSS);
+    // Plain VICTORY descriptor adds nothing.
+    const victory = computeRenownAward(true, { descriptor: "VICTORY" });
+    expect(victory.total).toBe(RENOWN_WIN);
   });
 });
 
@@ -69,7 +85,7 @@ describe("unlocks", () => {
     // Fund enough renown.
     let k = 0;
     while (getCollection("berserker").renown < abilityPrice(target)) {
-      awardMatchRenown("berserker", true, `m-${k++}`);
+      awardMatchRenown("berserker", RENOWN_WIN, `m-${k++}`);
     }
     const before = getCollection("berserker").renown;
     expect(unlockAbility("berserker", target)).toBe(true);
