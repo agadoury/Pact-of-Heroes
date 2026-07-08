@@ -21,6 +21,9 @@ export interface SignatureChipProps {
   isApplying?:  boolean
   isConsuming?: boolean
   isDetonating?: boolean
+  /** Tap handler — receives the chip's anchor point (center-top of its
+   *  rect) for tooltip placement. Renders as a real <button> when set. */
+  onTap?:       (anchor: { x: number; y: number }) => void
   className?:   string
 }
 
@@ -37,27 +40,47 @@ export function SignatureChip({
   isApplying,
   isConsuming,
   isDetonating,
+  onTap,
   className,
 }: SignatureChipProps): JSX.Element {
   const fusePct = Math.min(100, (count / 6) * 100)
   const style: CSSProperties = { ['--fuse' as string]: `${fusePct}` }
-  return (
-    <span
-      className={clsx(
-        s.chip,
-        s[kind],
-        threshold && s.threshold,
-        isApplying && s.applying,
-        isConsuming && s.consuming,
-        isDetonating && s.detonating,
-        className,
-      )}
-      style={style}
-      aria-label={`${kind} ${count}`}
-    >
+  const cls = clsx(
+    s.chip,
+    s[kind],
+    threshold && s.threshold,
+    isApplying && s.applying,
+    isConsuming && s.consuming,
+    isDetonating && s.detonating,
+    className,
+  )
+  const inner = (
+    <>
       {kind === 'cinder' ? <span className={s.fuseRing} /> : null}
       <Icon name={ICON_BY_KIND[kind]} size={13} />
       {count > 0 ? <span className={s.badge}>{count}</span> : null}
+    </>
+  )
+  if (onTap) {
+    return (
+      <button
+        type="button"
+        data-status-chip
+        className={cls}
+        style={style}
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect()
+          onTap({ x: r.left + r.width / 2, y: r.top })
+        }}
+        aria-label={`${kind} ${count} — tap for details`}
+      >
+        {inner}
+      </button>
+    )
+  }
+  return (
+    <span className={cls} style={style} aria-label={`${kind} ${count}`}>
+      {inner}
     </span>
   )
 }

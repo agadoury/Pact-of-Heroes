@@ -10,7 +10,13 @@
   background: rgba(0, 0, 0, 0.35);
   flex-shrink: 0;
   color: var(--bone);
+  /* Also rendered as <button> when tappable — neutralize UA styles. */
+  padding: 0;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
+
+button.chip { cursor: pointer; }
 
 .badge {
   position: absolute;

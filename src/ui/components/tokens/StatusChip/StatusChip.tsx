@@ -20,6 +20,9 @@ export interface StatusChipProps {
   isApplying?: boolean
   isExpiring?: boolean
   isTicking?:  boolean
+  /** Tap handler — receives the chip's anchor point (center-top of its
+   *  rect) for tooltip placement. Renders as a real <button> when set. */
+  onTap?:      (anchor: { x: number; y: number }) => void
   className?:  string
 }
 
@@ -59,26 +62,46 @@ export function StatusChip({
   isApplying,
   isExpiring,
   isTicking,
+  onTap,
   className,
 }: StatusChipProps): JSX.Element {
   const icon = ICON_BY_EFFECT[effect] ?? 'star'
   const kindClass = CLASS_BY_EFFECT[effect] ?? 'default'
-  return (
-    <span
-      className={clsx(
-        s.chip,
-        s[kindClass],
-        isApplying && s.applying,
-        isExpiring && s.expiring,
-        isTicking  && s.ticking,
-        className,
-      )}
-      aria-label={`${String(effect)} ${count ?? ''}`}
-    >
+  const cls = clsx(
+    s.chip,
+    s[kindClass],
+    isApplying && s.applying,
+    isExpiring && s.expiring,
+    isTicking  && s.ticking,
+    className,
+  )
+  const inner = (
+    <>
       <Icon name={icon} size={13} />
       {count != null && count > 0 ? (
         <span className={s.badge}>{count}</span>
       ) : null}
+    </>
+  )
+  if (onTap) {
+    return (
+      <button
+        type="button"
+        data-status-chip
+        className={cls}
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect()
+          onTap({ x: r.left + r.width / 2, y: r.top })
+        }}
+        aria-label={`${String(effect)} ${count ?? ''} — tap for details`}
+      >
+        {inner}
+      </button>
+    )
+  }
+  return (
+    <span className={cls} aria-label={`${String(effect)} ${count ?? ''}`}>
+      {inner}
     </span>
   )
 }

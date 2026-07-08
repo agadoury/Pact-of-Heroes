@@ -9,7 +9,14 @@
   border: 1.5px solid currentColor;
   flex-shrink: 0;
   transition: box-shadow 250ms ease, transform 250ms ease;
+  /* Also rendered as <button> when tappable — neutralize UA styles. */
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
+
+button.chip { cursor: pointer; }
 
 .chip::before {
   content: '';
