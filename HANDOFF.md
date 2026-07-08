@@ -10,6 +10,10 @@ of work.
 
 ---
 
+> Game reference: `docs/design-bible.html` — the single consolidated design
+> doc (rules, heroes, abilities, cards, tokens, balance). Data sections are
+> generated from `src/content`; regenerate via `npx tsx scripts/build-design-doc.ts`.
+
 ## What Pact of Heroes is
 
 A 1v1 dice-and-card duel. Mobile-first (390×844 portrait target). Installable

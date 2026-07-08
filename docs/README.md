@@ -1,5 +1,12 @@
 # Documentation
 
+> **📖 The canonical game reference is [`design-bible.html`](./design-bible.html)** — one
+> document covering the entire game as it plays today: rules, systems, all three
+> heroes with full ability catalogs and card pools, status tokens, balance state,
+> and the visual/UX language. Its data sections are **generated from the live
+> content registry** — regenerate with `npx tsx scripts/build-design-doc.ts`
+> after any content change. The pages below remain as engineering deep-dives.
+
 Route by what you're trying to do. Each row links to the doc you should read first; that doc cross-links to siblings.
 
 ## I'm a player
