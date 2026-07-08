@@ -104,3 +104,35 @@
   margin-top: var(--space-4);
 }
 .actions button { height: 44px; }
+
+/* Renown award row */
+.renownRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  justify-content: center;
+  margin: 10px 0 2px;
+  animation: renown-pop 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: 600ms;
+}
+.renownGain {
+  font-family: var(--font-family-display);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--gold-bright);
+  text-shadow: 0 0 12px rgba(240, 198, 104, 0.6);
+}
+.renownHero {
+  font-family: var(--font-family-tech);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--bone-dim);
+}
+@keyframes renown-pop {
+  0%   { opacity: 0; transform: scale(0.6); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .renownRow { animation: none; }
+}

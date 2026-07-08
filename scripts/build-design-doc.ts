@@ -331,6 +331,14 @@ Any card can be <strong>sold for +1 CP</strong> instead of played. Hand cap ${HA
 <tr><td class="name">mastery</td><td>Main phase; permanent, fills its ladder slot</td><td>Cleave Mastery, Volcanic Awakening, Cathedral Light</td></tr>
 <tr><td class="name">instant</td><td>Reactive window on a qualifying event (brief countdown)</td><td>Counterstrike, Phoenix Veil, Aegis of Dawn</td></tr>
 </tbody></table>
+<p><strong>Collection &amp; Renown:</strong> the recommended loadout and deck are
+owned from the start; every alternate ability and card is collectible. Playing
+matches earns per-hero <em>Renown</em> (+3 win / +1 loss, awarded on the match
+summary), spent in the Collection hub (hero → Customize) to unlock alternates —
+abilities price at 4/6/8/12 by tier, cards at 3–8 by category. The hub is a
+slot-based builder: tap any ladder or deck slot to open its option tray, equip
+owned items instantly, unlock locked ones in place. Every change persists
+immediately; decks are composition-valid by construction.</p>
 <p><strong>Masteries are the deck's engine-building spine:</strong> they permanently
 rewrite ability numbers (damage, stacks, heals, damage types), sometimes
 conditionally on the firing roll ("undefendable with all 5 axes"). Unconditional

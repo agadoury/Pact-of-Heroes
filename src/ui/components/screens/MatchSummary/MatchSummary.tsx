@@ -6,7 +6,7 @@
  * Bible reference: Part 7.7.
  */
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { HeroId } from '@/game/types'
 import { STARTING_HP } from '@/game/types'
@@ -14,6 +14,7 @@ import { buildMatchSummary } from '@/game/match-summary'
 import { useGameStore } from '@/store/gameStore'
 import { useUIStore } from '@/ui/store/uiStore'
 import { clearMatchState } from '@/ui/store/matchPersistence'
+import { awardMatchRenown, hasAffordableUnlock } from '@/store/collectionStorage'
 import { Button } from '@/ui/components/atoms/Button'
 import { AmbientBackdrop } from '@/ui/components/shared/AmbientBackdrop'
 import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
@@ -95,6 +96,19 @@ export function MatchSummary(): JSX.Element {
     }
   }, [state, navigate])
 
+  // Renown award — once per match (idempotent by seed+winner key), to the
+  // hero the viewer played. Drives the collection nudge below.
+  const [renownGain, setRenownGain] = useState(0)
+  const [unlockReady, setUnlockReady] = useState(false)
+  useEffect(() => {
+    if (!state?.winner || state.winner === 'draw') return
+    const myHeroId = state.players[viewerId].hero
+    const key = `${state.rngSeed}:${state.turn}:${state.winner}`
+    const gained = awardMatchRenown(myHeroId, state.winner === viewerId, key)
+    if (gained > 0) setRenownGain(gained)
+    setUnlockReady(hasAffordableUnlock(myHeroId))
+  }, [state, viewerId])
+
   if (!state) return <div className={s.container} />
 
   const myHp   = state.players[viewerId].hp
@@ -168,8 +182,19 @@ export function MatchSummary(): JSX.Element {
           </div>
         ))}
       </div>
+      {renownGain > 0 ? (
+        <div className={s.renownRow}>
+          <span className={s.renownGain}>+{renownGain} Renown</span>
+          <span className={s.renownHero}>{myHero}</span>
+        </div>
+      ) : null}
       <div className={s.actions}>
-        <Button variant="primary" onClick={rematch} iconRight="chevron-right">Rematch</Button>
+        {unlockReady ? (
+          <Button variant="primary" onClick={() => { clearMatchState(); reset(); useUIStore.getState().resetForMatch(); heroPair.current = null; navigate(`/heroes/${myHero}/customize`) }} iconRight="chevron-right">
+            Collection · unlock ready
+          </Button>
+        ) : null}
+        <Button variant={unlockReady ? 'default' : 'primary'} onClick={rematch} iconRight="chevron-right">Rematch</Button>
         <Button variant="default" onClick={newHero}>New Hero</Button>
         <Button variant="default" onClick={goHome}>Return Home</Button>
       </div>
