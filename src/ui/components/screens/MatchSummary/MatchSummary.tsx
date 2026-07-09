@@ -14,7 +14,11 @@ import { buildMatchSummary } from '@/game/match-summary'
 import { useGameStore } from '@/store/gameStore'
 import { useUIStore } from '@/ui/store/uiStore'
 import { clearMatchState } from '@/ui/store/matchPersistence'
-import { awardMatchRenown, computeRenownAward, hasAffordableUnlock, recordRankWin, type RenownAward } from '@/store/collectionStorage'
+import {
+  awardMatchRenown, computeRenownAward, hasAffordableUnlock, recordRankWin,
+  getStreaks, getNextUnlockTarget, STREAK_BONUS_AT,
+  type RenownAward, type NextUnlockTarget,
+} from '@/store/collectionStorage'
 import { Button } from '@/ui/components/atoms/Button'
 import { AmbientBackdrop } from '@/ui/components/shared/AmbientBackdrop'
 import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
@@ -106,27 +110,54 @@ export function MatchSummary(): JSX.Element {
   // fired ultimate pay bonuses; the breakdown renders below the stats.
   const [renownAward, setRenownAward] = useState<RenownAward | null>(null)
   const [unlockReady, setUnlockReady] = useState(false)
+  const [streakBeat, setStreakBeat] = useState<{ kind: 'alive' | 'ended'; count: number } | null>(null)
+  const [nextUnlock, setNextUnlock] = useState<NextUnlockTarget | null>(null)
   useEffect(() => {
     if (!state?.winner || state.winner === 'draw') return
     const myHeroId = state.players[viewerId].hero
     const key = `${state.rngSeed}:${state.turn}:${state.winner}`
     const won = state.winner === viewerId
+    // Streak read BEFORE the award mutates it — the projected value (this
+    // result included) drives the On Fire bonus and the summary chip.
+    const preStreak = getStreaks(myHeroId).hero
+    const projectedStreak = won ? preStreak + 1 : 0
     const award = computeRenownAward(won, {
       descriptor: won ? summary?.descriptor : undefined,
       ultimatesFired: summary?.ultimatesFired[viewerId] ?? 0,
+      streak: projectedStreak,
     }, matchMode === 'vs-ai' ? { rank: aiRank, sealed: sealedBy != null } : undefined)
-    const gained = awardMatchRenown(myHeroId, award.total, key)
-    if (gained > 0) {
+    const gained = awardMatchRenown(myHeroId, award.total, key, won)
+    const fresh = gained > 0 || (award.total === 0 && sealedBy != null && !won)
+    if (fresh) {
+      // A sealed loss pays 0 — still show the forfeited line so the gamble
+      // reads on the summary instead of silently vanishing.
       setRenownAward(award)
-      // Rank wins feed the Nightmare unlock. `gained > 0` doubles as the
+      if (won && projectedStreak >= 2) setStreakBeat({ kind: 'alive', count: projectedStreak })
+      if (!won && preStreak >= 2) setStreakBeat({ kind: 'ended', count: preStreak })
+      // Rank wins feed the Nightmare unlock. `fresh` doubles as the
       // idempotency gate — re-renders award 0 and skip the record too.
-      if (won && matchMode === 'vs-ai') recordRankWin(myHeroId, aiRank)
+      if (won && gained > 0 && matchMode === 'vs-ai') recordRankWin(myHeroId, aiRank)
     }
-    // A sealed loss pays 0 — still show the forfeited line so the gamble
-    // reads on the summary instead of silently vanishing.
-    if (award.total === 0 && sealedBy != null && !won) setRenownAward(award)
+    setNextUnlock(getNextUnlockTarget(myHeroId))
     setUnlockReady(hasAffordableUnlock(myHeroId))
   }, [state, viewerId, summary, aiRank, sealedBy, matchMode])
+
+  // Renown count-up — the total ticks up instead of appearing pre-summed.
+  const [renownShown, setRenownShown] = useState(0)
+  useEffect(() => {
+    if (!renownAward || renownAward.total <= 0) { setRenownShown(renownAward?.total ?? 0); return }
+    const total = renownAward.total
+    const DURATION_MS = 700
+    let raf = 0
+    const start = performance.now()
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / DURATION_MS)
+      setRenownShown(Math.round(total * (1 - Math.pow(1 - t, 2))))
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [renownAward])
 
   if (!state) return <div className={s.container} />
 
@@ -205,12 +236,36 @@ export function MatchSummary(): JSX.Element {
           </div>
         ))}
       </div>
+      {streakBeat ? (
+        <div className={clsx(s.streakChip, streakBeat.kind === 'ended' && s.streakEnded)}>
+          {streakBeat.kind === 'alive'
+            ? `🔥 ${streakBeat.count} in a row${streakBeat.count >= STREAK_BONUS_AT ? ' · on fire' : ''}`
+            : `Streak ended at ${streakBeat.count}`}
+        </div>
+      ) : null}
       {renownAward ? (
         <div className={s.renownRow}>
-          <span className={s.renownGain}>+{renownAward.total} Renown</span>
+          <span className={s.renownGain}>+{renownShown} Renown</span>
           <span className={s.renownBreakdown}>
             {renownAward.breakdown.map(b => `${b.label} +${b.amount}`).join(' · ')}
           </span>
+        </div>
+      ) : null}
+      {nextUnlock ? (
+        <div className={s.nextUnlock}>
+          <div className={s.nextUnlockLabel}>
+            <span>Next unlock · {nextUnlock.name}</span>
+            <span className={s.nextUnlockCount}>
+              {Math.min(nextUnlock.renown, nextUnlock.price)}/{nextUnlock.price}
+              {nextUnlock.renown >= nextUnlock.price ? ' · ready' : ''}
+            </span>
+          </div>
+          <div className={s.nextUnlockTrack}>
+            <div
+              className={clsx(s.nextUnlockFill, nextUnlock.renown >= nextUnlock.price && s.nextUnlockFull)}
+              style={{ width: `${Math.min(100, Math.round((nextUnlock.renown / nextUnlock.price) * 100))}%` }}
+            />
+          </div>
         </div>
       ) : null}
       <div className={s.actions}>

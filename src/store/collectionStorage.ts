@@ -43,6 +43,9 @@ export const RENOWN_DESCRIPTOR_BONUS: Partial<Record<MatchDescriptor, number>> =
 };
 /** Firing your ultimate is a career moment — paid win or lose. */
 export const RENOWN_ULTIMATE_BONUS = 1;
+/** "On Fire" — extra Renown per win once a streak reaches the threshold. */
+export const RENOWN_STREAK_BONUS = 1;
+export const STREAK_BONUS_AT = 3;
 
 interface HeroCollectionEntry {
   renown: number;                 // spendable balance
@@ -52,6 +55,10 @@ interface HeroCollectionEntry {
   /** Wins per Pact Rank — Nightmare unlocks at 5 Champion wins. Optional
    *  for pre-existing saves. */
   rankWins?: Partial<Record<AiRank, number>>;
+  /** Win Streak Embers — consecutive wins with this hero. Optional for
+   *  pre-existing saves. */
+  currentStreak?: number;
+  bestStreak?: number;
 }
 
 /** Champion wins required (per hero) before Nightmare opens. */
@@ -62,6 +69,8 @@ interface StorageRoot {
   perHero: Partial<Record<HeroId, HeroCollectionEntry>>;
   /** Idempotency key of the last awarded match. */
   lastAwardKey: string | null;
+  /** Consecutive wins across all heroes. Optional for pre-existing saves. */
+  globalStreak?: number;
 }
 
 function emptyEntry(): HeroCollectionEntry {
@@ -83,6 +92,7 @@ function readRoot(): StorageRoot {
       version: SCHEMA_VERSION,
       perHero: parsed.perHero ?? {},
       lastAwardKey: parsed.lastAwardKey ?? null,
+      globalStreak: parsed.globalStreak ?? 0,
     };
   } catch {
     return emptyRoot();
@@ -177,7 +187,7 @@ export interface RenownAward {
  *  Nightmare ×2) and Seal the Pact (×2 on a win, forfeits the loss pay). */
 export function computeRenownAward(
   won: boolean,
-  perf?: { descriptor?: MatchDescriptor; ultimatesFired?: number },
+  perf?: { descriptor?: MatchDescriptor; ultimatesFired?: number; streak?: number },
   stakes?: { rank?: AiRank; sealed?: boolean },
 ): RenownAward {
   // A sealed loss pays nothing — the pact was forfeited. This is the
@@ -198,6 +208,10 @@ export function computeRenownAward(
   }
   if ((perf?.ultimatesFired ?? 0) > 0) {
     breakdown.push({ label: "Ultimate fired", amount: RENOWN_ULTIMATE_BONUS });
+  }
+  // On Fire — a live streak (including this win) at the threshold pays out.
+  if (won && (perf?.streak ?? 0) >= STREAK_BONUS_AT) {
+    breakdown.push({ label: `On fire ×${perf!.streak}`, amount: RENOWN_STREAK_BONUS });
   }
 
   let total = breakdown.reduce((s2, b) => s2 + b.amount, 0);
@@ -244,23 +258,71 @@ export function isNightmareUnlocked(heroId: HeroId): boolean {
 }
 
 /** Award match Renown to the hero the viewer played. Idempotent per
- *  `matchKey` — returns the amount actually awarded (0 when re-invoked). */
-export function awardMatchRenown(heroId: HeroId, amount: number, matchKey: string): number {
+ *  `matchKey` — returns the amount actually awarded (0 when re-invoked).
+ *  When `won` is provided the match result also drives the Win Streak
+ *  Embers (per-hero + global) — including a 0-Renown sealed loss, which
+ *  must still break the streak. */
+export function awardMatchRenown(heroId: HeroId, amount: number, matchKey: string, won?: boolean): number {
   const root = readRoot();
   if (root.lastAwardKey === matchKey) return 0;
-  if (amount <= 0) return 0;
+  if (amount <= 0 && won === undefined) return 0;
   const entry = root.perHero[heroId] ?? emptyEntry();
-  root.perHero = {
-    ...root.perHero,
-    [heroId]: {
-      ...entry,
-      renown: entry.renown + amount,
-      earnedLifetime: entry.earnedLifetime + amount,
-    },
+  const gained = Math.max(0, amount);
+  const next: HeroCollectionEntry = {
+    ...entry,
+    renown: entry.renown + gained,
+    earnedLifetime: entry.earnedLifetime + gained,
   };
+  if (won !== undefined) {
+    const streak = won ? (entry.currentStreak ?? 0) + 1 : 0;
+    next.currentStreak = streak;
+    next.bestStreak = Math.max(entry.bestStreak ?? 0, streak);
+    root.globalStreak = won ? (root.globalStreak ?? 0) + 1 : 0;
+  }
+  root.perHero = { ...root.perHero, [heroId]: next };
   root.lastAwardKey = matchKey;
   writeRoot(root);
-  return amount;
+  return gained;
+}
+
+// ── Win Streak Embers + Next Unlock target ──────────────────────────────────
+
+export interface StreakInfo { hero: number; best: number; global: number }
+
+export function getStreaks(heroId: HeroId): StreakInfo {
+  const root = readRoot();
+  const e = root.perHero[heroId];
+  return {
+    hero: e?.currentStreak ?? 0,
+    best: e?.bestStreak ?? 0,
+    global: root.globalStreak ?? 0,
+  };
+}
+
+export interface NextUnlockTarget {
+  kind: "ability" | "card";
+  name: string;
+  price: number;
+  /** Current spendable balance — the bar's fill numerator. */
+  renown: number;
+}
+
+/** The cheapest locked collectible — the Next Unlock Bar's goal. Null once
+ *  the hero's catalog is fully owned. */
+export function getNextUnlockTarget(heroId: HeroId): NextUnlockTarget | null {
+  const hero = getHero(heroId);
+  const c = getCollection(heroId);
+  const candidates: Array<{ kind: "ability" | "card"; name: string; price: number }> = [];
+  for (const a of [...hero.abilityCatalog, ...(hero.defensiveCatalog ?? [])]) {
+    if (!c.ownedAbilities.has(a.name)) candidates.push({ kind: "ability", name: a.name, price: abilityPrice(a) });
+  }
+  for (const card of getCardCatalog(heroId)) {
+    if (!c.ownedCards.has(card.id as CardId)) candidates.push({ kind: "card", name: card.name, price: cardPrice(card) });
+  }
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => a.price - b.price || a.name.localeCompare(b.name));
+  const target = candidates[0]!;
+  return { ...target, renown: c.renown };
 }
 
 /** Spend Renown to unlock an ability. Returns true on success (false when

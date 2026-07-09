@@ -39,6 +39,11 @@ export const DURATION = {
   ultimateHold:        2700,
   ultimateTakeoverOut: 400,
 
+  // Killing blow (the produced ending — see KillingBlowTakeover)
+  killingBlowIn:      300,   // crimson number slam
+  killingBlowHold:    1150,  // freeze on the final hit
+  killingBlowStinger: 1700,  // VICTORY / DEFEAT wipe with descriptor stamp
+
   // Dice
   diceTumble:   600,   // Rolling animation
   diceSettle:   150,   // Dice settle after roll

@@ -16,15 +16,20 @@ import { hasResumableMatch, loadMatchState, clearMatchState } from '@/ui/store/m
 import { useGameStore } from '@/store/gameStore'
 import { useUIStore } from '@/ui/store/uiStore'
 import { loadDefaultHero, loadLastRank } from '@/store/deckStorage'
-import { isNightmareUnlocked } from '@/store/collectionStorage'
+import { isNightmareUnlocked, getStreaks } from '@/store/collectionStorage'
 import { getRegisteredHeroIds } from '@/content'
 import s from './HomeScreen.module.css'
 
 export function HomeScreen(): JSX.Element {
   const navigate = useNavigate()
   const [canResume, setCanResume] = useState(false)
+  // Win Streak Embers — the global streak stares at you between sessions.
+  const [streak, setStreak] = useState(0)
 
-  useEffect(() => { setCanResume(hasResumableMatch()) }, [])
+  useEffect(() => {
+    setCanResume(hasResumableMatch())
+    setStreak(getStreaks(loadDefaultHero() ?? 'berserker').global)
+  }, [])
 
   const resume = () => {
     const saved = loadMatchState()
@@ -92,7 +97,7 @@ export function HomeScreen(): JSX.Element {
             </Button>
           ) : (
             <Button variant="primary" onClick={quickMatch} weight={0}>
-              ⚡ Quick Match
+              {streak >= 2 ? `⚡ Quick Match · 🔥${streak}` : '⚡ Quick Match'}
             </Button>
           )}
           <Button

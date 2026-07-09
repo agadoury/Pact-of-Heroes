@@ -1,0 +1,159 @@
+.takeover {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-full-screen-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  animation: kb-fade-in 250ms ease-out;
+}
+
+.outcome-victory {
+  background:
+    radial-gradient(ellipse at 50% 42%,
+      rgba(240, 198, 104, 0.28) 0%,
+      rgba(212, 165, 72, 0.08) 30%,
+      rgba(0, 0, 0, 0.97) 72%),
+    linear-gradient(180deg, #14100a 0%, #050510 100%);
+}
+.outcome-defeat,
+.outcome-draw {
+  background:
+    radial-gradient(ellipse at 50% 42%,
+      rgba(150, 40, 40, 0.22) 0%,
+      rgba(60, 20, 20, 0.1) 30%,
+      rgba(0, 0, 0, 0.97) 72%),
+    linear-gradient(180deg, #120808 0%, #050510 100%);
+}
+
+/* ── Act 1: the blow ─────────────────────────────────────────────────── */
+.blow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  animation: kb-shake 420ms cubic-bezier(0.36, 0.07, 0.19, 0.97) 120ms;
+}
+.abilityName {
+  font-family: var(--font-family-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bone);
+  animation: kb-fade-in 150ms ease-out both;
+}
+.damage {
+  font-family: var(--font-family-display);
+  font-size: 108px;
+  font-weight: 900;
+  line-height: 1;
+  color: #e5484d;
+  text-shadow:
+    0 0 28px rgba(229, 72, 77, 0.75),
+    0 4px 0 rgba(0, 0, 0, 0.6);
+  animation: kb-slam 260ms cubic-bezier(0.34, 1.56, 0.64, 1) 80ms both;
+}
+.finalLabel {
+  font-family: var(--font-family-display);
+  font-size: 11px;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: rgba(229, 72, 77, 0.85);
+  animation: kb-fade-in 200ms ease-out 420ms both;
+}
+
+/* ── Act 2: the stinger ──────────────────────────────────────────────── */
+.stinger {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  animation: kb-fade-in 220ms ease-out;
+}
+.portrait {
+  width: 132px;
+  height: 164px;
+  border: 2.5px solid var(--gold);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow:
+    0 0 32px rgba(240, 198, 104, 0.4),
+    0 8px 28px rgba(0, 0, 0, 0.8);
+  animation: kb-slam 240ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.outcome-defeat .portrait,
+.outcome-draw .portrait {
+  border-color: rgba(140, 140, 150, 0.6);
+  box-shadow: 0 0 24px rgba(80, 80, 90, 0.5), 0 8px 28px rgba(0, 0, 0, 0.8);
+  filter: saturate(0.35) brightness(0.8);
+}
+.word {
+  font-family: var(--font-family-display);
+  font-size: 44px;
+  font-weight: 900;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  animation: kb-slam 260ms cubic-bezier(0.34, 1.56, 0.64, 1) 140ms both;
+}
+.outcome-victory .word {
+  color: var(--gold-bright);
+  text-shadow: 0 0 24px rgba(240, 198, 104, 0.8);
+}
+.outcome-defeat .word,
+.outcome-draw .word {
+  color: #b8b8c0;
+  text-shadow: 0 0 16px rgba(120, 120, 130, 0.6);
+}
+.descriptor {
+  padding: 4px 16px;
+  border: 1.5px solid var(--gold-bright);
+  border-radius: 4px;
+  font-family: var(--font-family-display);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  background: rgba(240, 198, 104, 0.08);
+  transform: rotate(-3deg);
+  animation: kb-stamp 240ms cubic-bezier(0.34, 1.8, 0.64, 1) 420ms both;
+}
+.blurb {
+  font-family: var(--font-family-body);
+  font-size: 15px;
+  font-style: italic;
+  color: var(--bone-dim);
+  max-width: 80%;
+  text-align: center;
+  animation: kb-fade-in 220ms ease-out 640ms both;
+}
+
+@keyframes kb-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes kb-slam {
+  0%   { opacity: 0; transform: scale(2.1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes kb-stamp {
+  0%   { opacity: 0; transform: rotate(-3deg) scale(1.8); }
+  100% { opacity: 1; transform: rotate(-3deg) scale(1); }
+}
+@keyframes kb-shake {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-5px, 3px); }
+  30% { transform: translate(5px, -3px); }
+  45% { transform: translate(-4px, -2px); }
+  60% { transform: translate(4px, 2px); }
+  75% { transform: translate(-2px, 1px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blow, .damage, .word, .portrait, .descriptor { animation: kb-fade-in 300ms ease-out both; }
+}

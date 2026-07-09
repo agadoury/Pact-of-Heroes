@@ -38,6 +38,9 @@ import { AbilityLadder } from '@/ui/components/ladder/AbilityLadder'
 import { StatusTrack } from '@/ui/components/tokens/StatusTrack'
 import { FieldOfPlay } from '@/ui/components/fop/FieldOfPlay'
 import { UltimateTakeover } from '@/ui/components/fop/UltimateTakeover'
+import { KillingBlowTakeover, type KillingBlowData } from '@/ui/components/fop/KillingBlowTakeover'
+import { buildMatchSummary } from '@/game/match-summary'
+import { STARTING_HP } from '@/game/types'
 import { DefensiveOverlay } from '@/ui/components/overlays/DefensiveOverlay'
 import { SpendOverlay } from '@/ui/components/overlays/SpendOverlay'
 import type { SpendYield } from '@/ui/components/overlays/SpendOverlay'
@@ -277,15 +280,61 @@ export function MatchScreen(): JSX.Element {
   const hitFlashPlayer = useJuiceStore(j => j.hitFlashPlayer)
   const hitFlashAt     = useJuiceStore(j => j.hitFlashAt)
 
-  // Redirect to summary when match ends — after the last cinematic drains
-  // so lethal hits land on screen before the cut.
+  // The produced ending: when the match ends and the last cinematic
+  // drains, hijack the screen with the Killing Blow Takeover (crimson
+  // final hit → VICTORY/DEFEAT stinger with the descriptor), then cut to
+  // the summary. Concessions skip straight to the stinger.
   const resolutionsIdle = !currentRes
+  const [killingBlow, setKillingBlow] = useState<KillingBlowData | null>(null)
   useEffect(() => {
-    if (state?.phase === 'match-end' && resolutionsIdle) {
-      const t = window.setTimeout(() => navigate('/summary'), 600)
-      return () => window.clearTimeout(t)
-    }
-  }, [state?.phase, resolutionsIdle, navigate])
+    if (state?.phase !== 'match-end' || !resolutionsIdle) return
+    if (killingBlow) return
+    const t = window.setTimeout(() => {
+      const g = useGameStore.getState()
+      const live = g.state
+      if (!live?.winner) { navigate('/summary'); return }
+      const vId = useUIStore.getState().viewerId
+      const summary = buildMatchSummary(g.matchLog, {
+        winner: live.winner, turns: live.turn, startingHp: STARTING_HP,
+      })
+      // The final hit: last damage the loser took, scanned only within the
+      // final turn so a concede can't surface a stale hit from earlier.
+      // No qualifying hit (concede) → damage 0 skips Act 1.
+      let damage = 0
+      let abilityLabel: string | null = null
+      const loser = live.winner === 'p1' ? 'p2' : live.winner === 'p2' ? 'p1' : null
+      let lastTurnStart = 0
+      for (let i = g.matchLog.length - 1; i >= 0; i--) {
+        if (g.matchLog[i]?.t === 'turn-started') { lastTurnStart = i; break }
+      }
+      for (let i = g.matchLog.length - 1; i >= lastTurnStart; i--) {
+        const ev = g.matchLog[i]
+        if (!ev || !loser) break
+        if (ev.t === 'damage-dealt' && ev.to === loser) { damage = ev.amount; break }
+        if (ev.t === 'status-ticked' && ev.effect === 'damage' && ev.holder === loser) {
+          damage = ev.amount
+          abilityLabel = ev.status.split(':').pop() ?? ev.status
+          break
+        }
+      }
+      if (damage > 0 && loser && !abilityLabel) {
+        for (let i = g.matchLog.length - 1; i >= lastTurnStart; i--) {
+          const ev = g.matchLog[i]
+          if (ev?.t === 'ability-triggered' && ev.player === live.winner) { abilityLabel = ev.abilityName; break }
+          if (ev?.t === 'status-detonated' && ev.holder === loser) { abilityLabel = `${ev.status.split(':').pop()} detonation`; break }
+        }
+      }
+      setKillingBlow({
+        outcome: live.winner === 'draw' ? 'draw' : live.winner === vId ? 'victory' : 'defeat',
+        descriptor: summary.descriptor,
+        blurb: summary.descriptorBlurb,
+        damage,
+        abilityLabel,
+        winnerHero: live.winner === 'draw' ? null : live.players[live.winner].hero,
+      })
+    }, 350)
+    return () => window.clearTimeout(t)
+  }, [state?.phase, resolutionsIdle, killingBlow, navigate])
 
   // Play the intro cinematic once per fresh match. The shown-marker
   // persists (keyed by match seed) so a turn-1 match resumed after a
@@ -862,6 +911,12 @@ export function MatchScreen(): JSX.Element {
           bark:         ULT_BARKS[activeSnapshot.hero] ?? 'The pact holds.',
           damage:       currentRes?.scene.kind === 'ability' ? (currentRes.scene.data.damage ?? 0) : 0,
         }}
+      />
+
+      <KillingBlowTakeover
+        active={!!killingBlow}
+        data={killingBlow}
+        onComplete={() => navigate('/summary')}
       />
 
       <MatchIntro

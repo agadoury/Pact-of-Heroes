@@ -410,3 +410,181 @@
   .tray, .trayBackdrop, .pop, .shake, .renownValue { animation: none; }
   .burst::after { animation: none; opacity: 0; }
 }
+
+/* ── Rite of Unlocking — full-screen reveal ceremony ─────────────────── */
+.rite {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 32px;
+  background:
+    radial-gradient(ellipse at 50% 42%,
+      color-mix(in srgb, var(--accent) 22%, transparent) 0%,
+      color-mix(in srgb, var(--accent) 6%, transparent) 30%,
+      rgba(4, 4, 12, 0.97) 74%),
+    linear-gradient(180deg, #0a0a16 0%, #050510 100%);
+  animation: riteIn 220ms ease-out;
+  cursor: pointer;
+}
+
+.riteBurst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  filter: blur(2px);
+  animation: riteBurst 600ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+  pointer-events: none;
+}
+
+.riteRing {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 220px;
+  height: 220px;
+  margin: -110px 0 0 -110px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  animation: riteRing 900ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
+  pointer-events: none;
+}
+
+.riteCrest {
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 45%, transparent);
+  animation: riteCrackIn 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.riteCrest > svg { display: block; }
+
+.riteCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: 280px;
+  padding: 18px 22px 16px;
+  border-radius: 14px;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  background: rgba(14, 14, 26, 0.92);
+  box-shadow:
+    0 0 32px color-mix(in srgb, var(--accent) 30%, transparent),
+    0 12px 40px rgba(0, 0, 0, 0.7);
+  animation: riteFlip 420ms cubic-bezier(0.34, 1.4, 0.64, 1) 260ms both;
+}
+
+.riteArt {
+  display: inline-flex;
+  width: 84px;
+  height: 84px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.riteArt > svg { width: 100%; height: 100%; display: block; }
+
+.riteTier {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  font-family: var(--font-family-display);
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.riteName {
+  font-family: var(--font-family-display);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--bone-bright);
+  text-align: center;
+}
+
+.riteMeta {
+  font-family: var(--font-family-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.riteText {
+  font-family: var(--font-family-body);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--bone-dim);
+  text-align: center;
+}
+
+.riteStamp {
+  padding: 3px 18px;
+  border: 1.5px solid var(--gold-bright);
+  border-radius: 4px;
+  font-family: var(--font-family-display);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  background: rgba(240, 198, 104, 0.07);
+  transform: rotate(-2.5deg);
+  animation: riteStamp 260ms cubic-bezier(0.34, 1.8, 0.64, 1) 700ms both;
+}
+
+.riteHint {
+  position: absolute;
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  font-family: var(--font-family-body);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--bone-dim);
+  opacity: 0.7;
+  animation: riteIn 300ms ease-out 1100ms both;
+}
+
+@keyframes riteIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes riteBurst {
+  0%   { transform: scale(1); opacity: 1; }
+  100% { transform: scale(40); opacity: 0; }
+}
+@keyframes riteRing {
+  0%   { transform: scale(0.3); opacity: 0.9; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes riteCrackIn {
+  0%   { transform: scale(0.4) rotate(-8deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+@keyframes riteFlip {
+  0%   { transform: rotateY(90deg) scale(0.85); opacity: 0; }
+  100% { transform: rotateY(0) scale(1); opacity: 1; }
+}
+@keyframes riteStamp {
+  0%   { opacity: 0; transform: rotate(-2.5deg) scale(1.9); }
+  100% { opacity: 1; transform: rotate(-2.5deg) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .riteBurst, .riteRing { animation: none; opacity: 0; }
+  .riteCrest, .riteCard, .riteStamp, .riteHint { animation: riteIn 300ms ease-out both; }
+}

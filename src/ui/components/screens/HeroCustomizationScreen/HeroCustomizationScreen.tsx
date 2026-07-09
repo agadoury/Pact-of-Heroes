@@ -102,6 +102,12 @@ export function HeroCustomizationScreen(): JSX.Element {
   const [equipPulse, setEquipPulse] = useState<string | null>(null)
   const [burstItem, setBurstItem] = useState<string | null>(null)
   const [shakeItem, setShakeItem] = useState<string | null>(null)
+  // Rite of Unlocking — the full-screen reveal ceremony a spend deserves.
+  const [ceremony, setCeremony] = useState<
+    | { kind: 'ability'; ability: AbilityDef }
+    | { kind: 'card'; card: Card }
+    | null
+  >(null)
 
   // Instant persistence — state is valid by construction.
   useEffect(() => {
@@ -175,9 +181,8 @@ export function HeroCustomizationScreen(): JSX.Element {
 
   const tryUnlockAbility = (ability: AbilityDef) => {
     if (unlockAbility(heroId, ability)) {
-      setBurstItem(`a:${ability.name}`)
       refreshCollection()
-      window.setTimeout(() => setBurstItem(null), 700)
+      setCeremony({ kind: 'ability', ability })
     } else {
       setShakeItem(`a:${ability.name}`)
       window.setTimeout(() => setShakeItem(null), 450)
@@ -186,14 +191,31 @@ export function HeroCustomizationScreen(): JSX.Element {
 
   const tryUnlockCard = (card: Card) => {
     if (unlockCard(heroId, card)) {
-      setBurstItem(`c:${card.id}`)
       refreshCollection()
-      window.setTimeout(() => setBurstItem(null), 700)
+      setCeremony({ kind: 'card', card })
     } else {
       setShakeItem(`c:${card.id}`)
       window.setTimeout(() => setShakeItem(null), 450)
     }
   }
+
+  // Ceremony dismisses on tap or after its beat, handing off to the
+  // tray's existing burst pulse so the item lands glowing in place.
+  const closeCeremony = () => {
+    setCeremony(prev => {
+      if (!prev) return null
+      const key = prev.kind === 'ability' ? `a:${prev.ability.name}` : `c:${prev.card.id}`
+      setBurstItem(key)
+      window.setTimeout(() => setBurstItem(null), 700)
+      return null
+    })
+  }
+  useEffect(() => {
+    if (!ceremony) return
+    const t = window.setTimeout(closeCeremony, 2300)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ceremony])
 
   // ── tray contents for the open slot ────────────────────────────────────
   const trayAbilities: readonly AbilityDef[] | null = useMemo(() => {
@@ -383,6 +405,44 @@ export function HeroCustomizationScreen(): JSX.Element {
               })}
             </div>
           </div>
+        </div>
+      ) : null}
+
+      {/* ── Rite of Unlocking — the reveal ceremony ──────────────────── */}
+      {ceremony ? (
+        <div
+          className={s.rite}
+          style={{ ['--accent' as string]: hero.accentColor }}
+          onClick={closeCeremony}
+          data-testid="rite-of-unlocking"
+        >
+          <span className={s.riteBurst} aria-hidden="true" />
+          <span className={s.riteRing} aria-hidden="true" />
+          <div className={s.riteCrest} aria-hidden="true">
+            <HeroPortraitArt heroId={heroId} size={64} />
+          </div>
+          <div className={s.riteCard}>
+            {ceremony.kind === 'card' ? (
+              <span className={s.riteArt}><CardArt cardId={ceremony.card.id} /></span>
+            ) : (
+              <span className={clsx(s.riteTier, s[`t${ceremony.ability.tier}`])}>
+                T{ceremony.ability.tier}
+              </span>
+            )}
+            <div className={s.riteName}>
+              {ceremony.kind === 'card' ? ceremony.card.name : ceremony.ability.name}
+            </div>
+            <div className={s.riteMeta}>
+              {ceremony.kind === 'card'
+                ? `${ceremony.card.cost} CP · ${DECK_SHAPE.find(d => d.category === ceremony.card.cardCategory)?.label ?? ceremony.card.cardCategory}`
+                : comboText(ceremony.ability.combo)}
+            </div>
+            <div className={s.riteText}>
+              {ceremony.kind === 'card' ? ceremony.card.text : ceremony.ability.shortText}
+            </div>
+          </div>
+          <div className={s.riteStamp}>Unlocked</div>
+          <div className={s.riteHint}>Tap to continue</div>
         </div>
       ) : null}
     </div>

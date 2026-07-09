@@ -6,6 +6,7 @@ import {
   getCollection, awardMatchRenown, computeRenownAward, unlockAbility, unlockCard,
   hasAffordableUnlock, clearAllCollections, abilityPrice, cardPrice,
   getRankWins, recordRankWin, isNightmareUnlocked, NIGHTMARE_UNLOCK_WINS,
+  getStreaks, getNextUnlockTarget, RENOWN_STREAK_BONUS, STREAK_BONUS_AT,
   RENOWN_WIN, RENOWN_LOSS, RENOWN_STARTING, RENOWN_ULTIMATE_BONUS,
 } from "../src/store/collectionStorage";
 import { RANK_RENOWN_MULT } from "../src/game/ai";
@@ -103,6 +104,55 @@ describe("renown awards", () => {
     // Rank + seal stack: (3 × 2) × 2 = 12 for a sealed Nightmare win.
     const jackpot = computeRenownAward(true, undefined, { rank: "nightmare", sealed: true });
     expect(jackpot.total).toBe(RENOWN_WIN * RANK_RENOWN_MULT.nightmare * 2);
+  });
+});
+
+describe("win streak embers", () => {
+  it("tracks per-hero and global streaks through the award path", () => {
+    awardMatchRenown("berserker", RENOWN_WIN, "s-1", true);
+    awardMatchRenown("berserker", RENOWN_WIN, "s-2", true);
+    expect(getStreaks("berserker")).toMatchObject({ hero: 2, best: 2, global: 2 });
+    // A different hero's win keeps the global streak alive, hero streak siloed.
+    awardMatchRenown("pyromancer", RENOWN_WIN, "s-3", true);
+    expect(getStreaks("pyromancer").hero).toBe(1);
+    expect(getStreaks("berserker").global).toBe(3);
+    // A loss breaks both; best survives.
+    awardMatchRenown("berserker", RENOWN_LOSS, "s-4", false);
+    expect(getStreaks("berserker")).toMatchObject({ hero: 0, best: 2, global: 0 });
+  });
+
+  it("a 0-renown sealed loss still breaks the streak", () => {
+    awardMatchRenown("berserker", RENOWN_WIN, "t-1", true);
+    expect(getStreaks("berserker").hero).toBe(1);
+    const gained = awardMatchRenown("berserker", 0, "t-2", false);
+    expect(gained).toBe(0);
+    expect(getStreaks("berserker").hero).toBe(0);
+  });
+
+  it("On Fire bonus pays at the streak threshold", () => {
+    const onFire = computeRenownAward(true, { streak: STREAK_BONUS_AT });
+    expect(onFire.total).toBe(RENOWN_WIN + RENOWN_STREAK_BONUS);
+    expect(onFire.breakdown.some(b => b.label.startsWith("On fire"))).toBe(true);
+    const below = computeRenownAward(true, { streak: STREAK_BONUS_AT - 1 });
+    expect(below.total).toBe(RENOWN_WIN);
+    // Never on a loss.
+    const loss = computeRenownAward(false, { streak: 5 });
+    expect(loss.total).toBe(RENOWN_LOSS);
+  });
+});
+
+describe("next unlock target", () => {
+  it("returns the cheapest locked collectible and tracks the balance", () => {
+    const t = getNextUnlockTarget("berserker");
+    expect(t).not.toBeNull();
+    expect(t!.renown).toBe(RENOWN_STARTING);
+    // Cheapest item in every catalog is a 3-renown generic card.
+    expect(t!.price).toBeGreaterThan(0);
+    const all = [
+      ...[...hero.abilityCatalog, ...(hero.defensiveCatalog ?? [])].map(abilityPrice),
+      ...getCardCatalog("berserker").map(cardPrice),
+    ];
+    expect(t!.price).toBeLessThanOrEqual(Math.min(...all) + 5);
   });
 });
 
