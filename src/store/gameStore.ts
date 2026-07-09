@@ -17,7 +17,7 @@ import { applyAction, makeEmptyState } from "@/game/engine";
 // choreoStore was retired with the v0.2 UI rebuild — the new src/ui/ tree
 // consumes lastEvents directly via the FOPScene aggregator. gameStore.dispatch
 // no longer needs to pump into an event queue store; subscribers pull.
-import { loadDeck } from "./deckStorage";
+import { loadDeck, saveDefaultHero } from "./deckStorage";
 import { loadLoadout } from "./loadoutStorage";
 
 export type MatchMode = "hot-seat" | "vs-ai";
@@ -77,6 +77,10 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       lastEvents: r.events,
       matchLog: r.events.slice(),
     });
+    // Remember the human's hero so Quick Match can relaunch it next time.
+    if (mode === "vs-ai") {
+      try { saveDefaultHero(p1); } catch { /* storage unavailable */ }
+    }
   },
 
   dispatch: (action) => {

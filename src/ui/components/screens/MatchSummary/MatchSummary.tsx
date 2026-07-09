@@ -147,7 +147,10 @@ export function MatchSummary(): JSX.Element {
     if (!pair) { goHome(); return }
     clearMatchState()
     reset()
-    useUIStore.getState().resetForMatch()
+    const ui = useUIStore.getState()
+    ui.resetForMatch()
+    // Seamless rematch — straight back into turn 1, no VS cinematic.
+    ui.setSkipIntroOnce(true)
     heroPair.current = null
     startMatch({ p1: pair.p1, p2: pair.p2, mode: 'vs-ai' })
     navigate('/play')

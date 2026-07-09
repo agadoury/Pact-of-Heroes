@@ -70,6 +70,13 @@ export interface UIState {
   activityLogOpen:       boolean
   activityLogLastReadId: string | null
 
+  // Swift Play — hold-to-fast-forward during the opponent's beats. While
+  // true, AI think delays and resolution sequence timers run compressed.
+  fastForward: boolean
+  // One-shot flag: the next match mount skips the VS intro (rematch /
+  // Quick Match). Consumed by MatchScreen; survives resetForMatch.
+  skipIntroOnce: boolean
+
   // Actions
   setViewer: (playerId: PlayerId) => void
   setResolutionPhase: (phase: ResolutionPhase) => void
@@ -82,6 +89,8 @@ export interface UIState {
   selectSpendOption: (id: string | null) => void
   focusCard: (id: string | null) => void
   setReducedMotionOverride: (v: 'auto' | 'on' | 'off') => void
+  setFastForward: (on: boolean) => void
+  setSkipIntroOnce: (on: boolean) => void
   openActivityLog: () => void
   closeActivityLog: () => void
   reset: () => void
@@ -109,6 +118,8 @@ const INITIAL: Omit<UIState, keyof UIStoreActions> = {
   reducedMotionOverride: 'auto',
   activityLogOpen:       false,
   activityLogLastReadId: null,
+  fastForward:           false,
+  skipIntroOnce:         false,
 }
 
 type UIStoreActions = {
@@ -124,6 +135,8 @@ type UIStoreActions = {
   selectSpendOption:        UIState['selectSpendOption']
   focusCard:                UIState['focusCard']
   setReducedMotionOverride: UIState['setReducedMotionOverride']
+  setFastForward:           UIState['setFastForward']
+  setSkipIntroOnce:         UIState['setSkipIntroOnce']
   openActivityLog:          UIState['openActivityLog']
   closeActivityLog:         UIState['closeActivityLog']
   reset:                    UIState['reset']
@@ -163,6 +176,10 @@ export const useUIStore = create<UIState>((set) => ({
 
   setReducedMotionOverride: (v) => set({ reducedMotionOverride: v }),
 
+  setFastForward: (fastForward) => set({ fastForward }),
+
+  setSkipIntroOnce: (skipIntroOnce) => set({ skipIntroOnce }),
+
   openActivityLog:  () => set({ activityLogOpen: true }),
   closeActivityLog: () => set({ activityLogOpen: false }),
 
@@ -181,6 +198,9 @@ export const useUIStore = create<UIState>((set) => ({
     selectedSpendOptionId: null,
     focusedCardId:         null,
     activityLogOpen:       false,
+    fastForward:           false,
+    // NOTE: skipIntroOnce is deliberately preserved — rematch/Quick Match
+    // set it around resetForMatch and MatchScreen consumes it on mount.
   }),
 }))
 

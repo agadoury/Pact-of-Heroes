@@ -94,14 +94,12 @@ async function playMatch(page, matchIdx) {
   await page.waitForFunction(() => !!window.__poh, { timeout: 15000 })
 
   // Vary the matchup a bit across runs.
-  const heroCards = page.locator('[class*=heroCard]')
-  await heroCards.first().waitFor({ timeout: 10000 })
+  const pickRows = page.locator('[class*=pickRow]')
+  await pickRows.first().waitFor({ timeout: 10000 })
   const youIdx = matchIdx % 3
   const oppIdx = (matchIdx + 1) % 3
-  const youCards = page.locator('section', { hasText: 'You' }).first().locator('[class*=heroCard]')
-  const oppCards = page.locator('section', { hasText: 'Opponent' }).first().locator('[class*=heroCard]')
-  await youCards.nth(youIdx).click()
-  await oppCards.nth(oppIdx).click()
+  await pickRows.nth(0).locator('[class*=pickCard]').nth(youIdx).click()
+  await pickRows.nth(1).locator('[class*=pickCard]').nth(oppIdx).click()
 
   await clickButton(page, 'Begin Match')
   await page.waitForFunction(() => !!window.__poh?.game.getState().state, { timeout: 10000 })

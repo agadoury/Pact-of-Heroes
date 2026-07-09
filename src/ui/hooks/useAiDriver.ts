@@ -104,7 +104,10 @@ export function useAiDriver(aiPlayer: PlayerId | null): void {
         rejectedStreak = 0
       }
 
-      schedule(THINK_MS + Math.random() * THINK_JITTER_MS)
+      // Swift Play: while the viewer holds fast-forward, the AI thinks 3×
+      // faster — the pacing compression is matched in useResolutionDriver.
+      const think = THINK_MS + Math.random() * THINK_JITTER_MS
+      schedule(useUIStore.getState().fastForward ? think / 3 : think)
     }
 
     // Re-kick on any store change when no tick is already scheduled. The

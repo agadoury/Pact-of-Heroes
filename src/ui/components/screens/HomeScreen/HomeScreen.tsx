@@ -15,6 +15,8 @@ import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
 import { hasResumableMatch, loadMatchState, clearMatchState } from '@/ui/store/matchPersistence'
 import { useGameStore } from '@/store/gameStore'
 import { useUIStore } from '@/ui/store/uiStore'
+import { loadDefaultHero } from '@/store/deckStorage'
+import { getRegisteredHeroIds } from '@/content'
 import s from './HomeScreen.module.css'
 
 export function HomeScreen(): JSX.Element {
@@ -44,6 +46,23 @@ export function HomeScreen(): JSX.Element {
     navigate('/heroes')
   }
 
+  // Quick Match — one tap into battle: your last-played hero (or the
+  // Berserker on a fresh install) against a random other hero, no select
+  // screen, no intro cinematic.
+  const quickMatch = () => {
+    const heroIds = getRegisteredHeroIds()
+    const mine = loadDefaultHero() ?? 'berserker'
+    const others = heroIds.filter(id => id !== mine)
+    const opponent = others[Math.floor(Math.random() * others.length)] ?? heroIds[0]!
+    clearMatchState()
+    const ui = useUIStore.getState()
+    ui.setViewer('p1')
+    ui.resetForMatch()
+    ui.setSkipIntroOnce(true)
+    useGameStore.getState().startMatch({ p1: mine, p2: opponent, mode: 'vs-ai' })
+    navigate('/play')
+  }
+
   return (
     <div className={s.page}>
       <AmbientBackdrop tone="gold" intensity="standard" />
@@ -63,13 +82,17 @@ export function HomeScreen(): JSX.Element {
             <Button variant="primary" onClick={resume} weight={0}>
               Resume Match
             </Button>
-          ) : null}
+          ) : (
+            <Button variant="primary" onClick={quickMatch} weight={0}>
+              ⚡ Quick Match
+            </Button>
+          )}
           <Button
-            variant={canResume ? 'default' : 'primary'}
+            variant="default"
             onClick={canResume ? discardAndNew : () => navigate('/heroes')}
             weight={0}
           >
-            {canResume ? 'New Match (discard)' : 'New Match'}
+            {canResume ? 'New Match (discard)' : 'Choose Heroes'}
           </Button>
           <Button variant="default" onClick={() => navigate('/hero-book')} weight={0}>
             Hero Book

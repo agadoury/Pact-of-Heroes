@@ -53,6 +53,7 @@ import { MatchMenu } from '@/ui/components/overlays/MatchMenu'
 import { MatchIntro } from '@/ui/components/screens/MatchIntro'
 import { getHero } from '@/content'
 import { canPlay } from '@/game/cards'
+import { pendingActorFor } from '@/game/ai'
 import { derivePhaseDisplay } from '@/ui/selectors/phaseDisplay'
 import { deriveLadder } from '@/ui/selectors/ladder'
 import { deriveStatusTrack } from '@/ui/selectors/statusTrack'
@@ -100,6 +101,52 @@ export function MatchScreen(): JSX.Element {
   // Match-intro cinematic — plays once per match on first mount with state.
   const introShownFor = useRef<string | null>(null)
   const [introActive, setIntroActive] = useState(false)
+
+  // Swift Play — hold anywhere on the screen while the opponent acts to
+  // fast-forward its beats (3×). Short taps (<220ms) pass through
+  // untouched; the hold never arms while the engine waits on the viewer.
+  const fastForward = useUIStore(u => u.fastForward)
+  const ffHoldTimer = useRef<number | null>(null)
+  useEffect(() => {
+    const HOLD_MS = 220
+    const release = () => {
+      if (ffHoldTimer.current != null) {
+        window.clearTimeout(ffHoldTimer.current)
+        ffHoldTimer.current = null
+      }
+      const us = useUIStore.getState()
+      if (us.fastForward) us.setFastForward(false)
+    }
+    const onDown = () => {
+      if (ffHoldTimer.current != null) window.clearTimeout(ffHoldTimer.current)
+      ffHoldTimer.current = window.setTimeout(() => {
+        ffHoldTimer.current = null
+        const gs = useGameStore.getState().state
+        const us = useUIStore.getState()
+        if (!gs || gs.winner || gs.phase === 'match-end') return
+        if (pendingActorFor(gs) === us.viewerId) return
+        us.setFastForward(true)
+      }, HOLD_MS)
+    }
+    window.addEventListener('pointerdown', onDown)
+    window.addEventListener('pointerup', release)
+    window.addEventListener('pointercancel', release)
+    return () => {
+      window.removeEventListener('pointerdown', onDown)
+      window.removeEventListener('pointerup', release)
+      window.removeEventListener('pointercancel', release)
+      release()
+    }
+  }, [])
+
+  // Auto-release fast-forward the moment the engine needs the viewer —
+  // a decision window must never open at compressed speed.
+  const pendingActor = state && !state.winner ? pendingActorFor(state) : null
+  useEffect(() => {
+    if (pendingActor !== viewerId) return
+    const us = useUIStore.getState()
+    if (us.fastForward) us.setFastForward(false)
+  }, [pendingActor, viewerId])
 
   // When the player taps Activate on a specific ability, remember which one.
   // If the ensuing advance-phase triggers a multi-ability picker, we auto-pick
@@ -230,8 +277,16 @@ export function MatchScreen(): JSX.Element {
     const marker = String(state.rngSeed)
     if (introShownFor.current === marker) return
     introShownFor.current = marker
+    const KEY = 'pact-of-heroes:intro-shown'
+    // Seamless rematch / Quick Match: consume the one-shot skip flag and
+    // mark the intro as shown so a mid-match reload doesn't replay it.
+    const us = useUIStore.getState()
+    if (us.skipIntroOnce) {
+      us.setSkipIntroOnce(false)
+      try { localStorage.setItem(KEY, marker) } catch { /* best effort */ }
+      return
+    }
     try {
-      const KEY = 'pact-of-heroes:intro-shown'
       if (localStorage.getItem(KEY) === marker) return
       localStorage.setItem(KEY, marker)
     } catch { /* storage unavailable — play it */ }
@@ -838,6 +893,10 @@ export function MatchScreen(): JSX.Element {
           navigate('/')
         }}
       />
+
+      {fastForward ? (
+        <div className={s.ffChip} aria-live="polite">▶▶ Fast-forward</div>
+      ) : null}
 
       <ActivityLog />
       <TurnBanner />

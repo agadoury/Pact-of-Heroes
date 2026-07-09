@@ -119,6 +119,11 @@ export function useResolutionDriver(): void {
     const scene = useUIStore.getState().currentResolution?.scene ?? null
     const sequence = sequenceFor(scene)
 
+    // Swift Play: while the viewer holds fast-forward, scenes play 3×
+    // faster. Sampled at scene start — scenes are short (≤~3s), so a hold
+    // that begins mid-scene compresses everything from the next scene on.
+    const speed = useUIStore.getState().fastForward ? 3 : 1
+
     for (const step of sequence) {
       const id = window.setTimeout(() => {
         const st = useUIStore.getState()
@@ -127,7 +132,7 @@ export function useResolutionDriver(): void {
           // Advance to the next queued resolution (or land in idle).
           st.advanceResolutionQueue()
         }
-      }, step.at)
+      }, step.at / speed)
       timers.current.push(id)
     }
 
