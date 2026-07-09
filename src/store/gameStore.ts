@@ -12,7 +12,7 @@
  * next AI action.
  */
 import { create } from "zustand";
-import type { Action, CardId, GameEvent, GameState, HeroId, LoadoutSelection, PlayerId } from "@/game/types";
+import type { Action, CardId, GameEvent, GameState, HeroId, LoadoutSelection, MatchModifiers, PlayerId } from "@/game/types";
 import { applyAction, makeEmptyState } from "@/game/engine";
 import type { AiRank } from "@/game/ai";
 import { NIGHTMARE_BLOOD_PACT } from "@/game/ai";
@@ -54,12 +54,31 @@ interface GameStoreState {
     p1Loadout?: LoadoutSelection; p2Loadout?: LoadoutSelection;
     /** Pact Rank of the AI opponent (vs-ai only). Default: champion. */
     aiRank?: AiRank;
+    /** Start-state rule-bends (Daily Pact mutators). Layered with the
+     *  Nightmare blood pact when both apply. */
+    modifiers?: MatchModifiers;
   }) => void;
   dispatch: (action: Action) => void;
   /** Seal the Pact — once per match, either duelist doubles the stakes.
    *  First seal wins; later calls are no-ops. */
   sealPact: (player: PlayerId) => void;
   reset: () => void;
+}
+
+/** Additively merge two start-state modifier sets (per player, per field). */
+function mergeModifiers(a?: MatchModifiers, b?: MatchModifiers): MatchModifiers | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  const merged: MatchModifiers = {};
+  for (const field of ["hp", "cp", "cards"] as const) {
+    const fa = a[field]; const fb = b[field];
+    if (!fa && !fb) continue;
+    merged[field] = {
+      p1: (fa?.p1 ?? 0) + (fb?.p1 ?? 0),
+      p2: (fa?.p2 ?? 0) + (fb?.p2 ?? 0),
+    };
+  }
+  return merged;
 }
 
 export const useGameStore = create<GameStoreState>((set, get) => ({
@@ -71,7 +90,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   aiRank: "champion",
   sealedBy: null,
 
-  startMatch: ({ p1, p2, mode, seed, coin, p1Deck, p2Deck, p1Loadout, p2Loadout, aiRank }) => {
+  startMatch: ({ p1, p2, mode, seed, coin, p1Deck, p2Deck, p1Loadout, p2Loadout, aiRank, modifiers: extraModifiers }) => {
     const empty = makeEmptyState();
     const matchSeed = seed ?? (Date.now() & 0xffff);
     const winner = coin ?? (Math.random() < 0.5 ? "p1" : "p2");
@@ -81,10 +100,12 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const resolvedP2Loadout = p2Loadout ?? loadLoadout(p2) ?? undefined;
     // Nightmare's blood pact: the AI seat starts with a small, advertised
     // material edge — the rank's teeth on top of its sharper profile.
-    const modifiers =
+    // Daily Pact mutators (extraModifiers) layer additively on top.
+    const bloodPact =
       mode === "vs-ai" && aiRank === "nightmare"
         ? { hp: { p2: NIGHTMARE_BLOOD_PACT.hp }, cp: { p2: NIGHTMARE_BLOOD_PACT.cp } }
         : undefined;
+    const modifiers = mergeModifiers(extraModifiers, bloodPact);
     const r = applyAction(empty, {
       kind: "start-match", seed: matchSeed, p1, p2, coinFlipWinner: winner,
       p1Deck: resolvedP1Deck, p2Deck: resolvedP2Deck,

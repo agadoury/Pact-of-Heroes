@@ -19,6 +19,7 @@ import {
   getStreaks, getNextUnlockTarget, STREAK_BONUS_AT,
   type RenownAward, type NextUnlockTarget,
 } from '@/store/collectionStorage'
+import { featuredHero, isFirstDawnAvailable, claimFirstDawn } from '@/store/dailyStorage'
 import { Button } from '@/ui/components/atoms/Button'
 import { AmbientBackdrop } from '@/ui/components/shared/AmbientBackdrop'
 import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
@@ -121,12 +122,16 @@ export function MatchSummary(): JSX.Element {
     // result included) drives the On Fire bonus and the summary chip.
     const preStreak = getStreaks(myHeroId).hero
     const projectedStreak = won ? preStreak + 1 : 0
+    const firstDawn = won && isFirstDawnAvailable()
     const award = computeRenownAward(won, {
       descriptor: won ? summary?.descriptor : undefined,
       ultimatesFired: summary?.ultimatesFired[viewerId] ?? 0,
       streak: projectedStreak,
+      firstDawn,
+      featured: myHeroId === featuredHero(),
     }, matchMode === 'vs-ai' ? { rank: aiRank, sealed: sealedBy != null } : undefined)
     const gained = awardMatchRenown(myHeroId, award.total, key, won)
+    if (gained > 0 && firstDawn) claimFirstDawn()
     const fresh = gained > 0 || (award.total === 0 && sealedBy != null && !won)
     if (fresh) {
       // A sealed loss pays 0 — still show the forfeited line so the gamble

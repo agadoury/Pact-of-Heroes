@@ -117,3 +117,91 @@
 @media (prefers-reduced-motion: reduce) {
   .centerFrame, .parade, .title, .crest { animation: none; }
 }
+
+/* ── The Daily Pact card ─────────────────────────────────────────────── */
+.daily {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: min(320px, 88%);
+  margin: 4px 0 10px;
+  padding: 12px 16px 11px;
+  border-radius: 12px;
+  border: 1px solid rgba(240, 198, 104, 0.4);
+  background:
+    radial-gradient(ellipse at 50% 0%,
+      rgba(240, 198, 104, 0.1) 0%, transparent 65%),
+    rgba(14, 14, 26, 0.78);
+  box-shadow: 0 0 18px rgba(240, 198, 104, 0.12);
+  color: var(--bone);
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+.daily:active { transform: scale(0.985); }
+.daily:hover {
+  border-color: rgba(240, 198, 104, 0.7);
+  box-shadow: 0 0 26px rgba(240, 198, 104, 0.22);
+}
+
+.dailyEyebrow {
+  font-family: var(--font-family-display);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+}
+
+.dailyName {
+  font-family: var(--font-family-display);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--gold-bright);
+}
+
+.dailyBlurb {
+  font-family: var(--font-family-body);
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--bone-dim);
+  text-align: center;
+}
+
+.dailyChips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.dailyChip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 165, 72, 0.25);
+  background: rgba(212, 165, 72, 0.07);
+  font-family: var(--font-family-display);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+
+.dailyChip.dawnLive {
+  border-color: rgba(253, 224, 136, 0.6);
+  color: #fde088;
+  background: rgba(253, 224, 136, 0.09);
+  animation: dawnGlow 1600ms ease-in-out infinite;
+}
+
+@keyframes dawnGlow {
+  0%, 100% { box-shadow: 0 0 4px rgba(253, 224, 136, 0.25); }
+  50%      { box-shadow: 0 0 12px rgba(253, 224, 136, 0.55); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dailyChip.dawnLive { animation: none; }
+}

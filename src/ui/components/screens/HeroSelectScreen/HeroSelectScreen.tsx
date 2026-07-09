@@ -16,6 +16,7 @@ import type { AiRank } from '@/game/ai'
 import { RANK_RENOWN_MULT } from '@/game/ai'
 import { getHero, getRegisteredHeroIds } from '@/content'
 import { getCollection, getRankWins, isNightmareUnlocked, NIGHTMARE_UNLOCK_WINS } from '@/store/collectionStorage'
+import { featuredHero, RENOWN_FEATURED_BONUS } from '@/store/dailyStorage'
 import { loadLastRank } from '@/store/deckStorage'
 import { useGameStore } from '@/store/gameStore'
 import { useUIStore } from '@/ui/store/uiStore'
@@ -126,6 +127,9 @@ export function HeroSelectScreen(): JSX.Element {
               style={{ ['--card-accent' as string]: h.accentColor }}
               data-testid={`pick-${h.id}`}
             >
+              {h.id === featuredHero() ? (
+                <span className={s.featuredLaurel}>★ +{RENOWN_FEATURED_BONUS}</span>
+              ) : null}
               <span className={s.pickPortrait}><HeroPortraitArt heroId={h.id} size={84} /></span>
               <span className={s.pickName}>{h.name.replace('The ', '')}</span>
             </button>

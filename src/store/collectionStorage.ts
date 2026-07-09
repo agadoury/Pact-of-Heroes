@@ -22,6 +22,7 @@ import type { AbilityDef, Card, CardId, HeroId } from "@/game/types";
 import type { MatchDescriptor } from "@/game/match-summary";
 import type { AiRank } from "@/game/ai";
 import { RANK_RENOWN_MULT } from "@/game/ai";
+import { RENOWN_FIRST_DAWN, RENOWN_FEATURED_BONUS } from "@/store/dailyStorage";
 import { getHero, getCardCatalog } from "@/content";
 
 const STORAGE_KEY = "pact-of-heroes:collection:v1";
@@ -187,7 +188,13 @@ export interface RenownAward {
  *  Nightmare ×2) and Seal the Pact (×2 on a win, forfeits the loss pay). */
 export function computeRenownAward(
   won: boolean,
-  perf?: { descriptor?: MatchDescriptor; ultimatesFired?: number; streak?: number },
+  perf?: {
+    descriptor?: MatchDescriptor; ultimatesFired?: number; streak?: number;
+    /** First win of the calendar day (+5, wins only). */
+    firstDawn?: boolean;
+    /** Playing the featured hero of the week (+2, win or lose). */
+    featured?: boolean;
+  },
   stakes?: { rank?: AiRank; sealed?: boolean },
 ): RenownAward {
   // A sealed loss pays nothing — the pact was forfeited. This is the
@@ -212,6 +219,13 @@ export function computeRenownAward(
   // On Fire — a live streak (including this win) at the threshold pays out.
   if (won && (perf?.streak ?? 0) >= STREAK_BONUS_AT) {
     breakdown.push({ label: `On fire ×${perf!.streak}`, amount: RENOWN_STREAK_BONUS });
+  }
+  // Daily & Weekly Pact bonuses.
+  if (won && perf?.firstDawn) {
+    breakdown.push({ label: "First Dawn", amount: RENOWN_FIRST_DAWN });
+  }
+  if (perf?.featured) {
+    breakdown.push({ label: "Featured hero", amount: RENOWN_FEATURED_BONUS });
   }
 
   let total = breakdown.reduce((s2, b) => s2 + b.amount, 0);

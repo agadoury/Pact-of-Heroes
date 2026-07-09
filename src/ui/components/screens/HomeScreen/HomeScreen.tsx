@@ -7,7 +7,7 @@
  * Bible reference: Part 8.2.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/ui/components/atoms/Button'
 import { AmbientBackdrop } from '@/ui/components/shared/AmbientBackdrop'
@@ -17,7 +17,9 @@ import { useGameStore } from '@/store/gameStore'
 import { useUIStore } from '@/ui/store/uiStore'
 import { loadDefaultHero, loadLastRank } from '@/store/deckStorage'
 import { isNightmareUnlocked, getStreaks } from '@/store/collectionStorage'
-import { getRegisteredHeroIds } from '@/content'
+import { dailyPact, isFirstDawnAvailable, RENOWN_FIRST_DAWN, RENOWN_FEATURED_BONUS } from '@/store/dailyStorage'
+import { getRegisteredHeroIds, getHero } from '@/content'
+import { clsx } from '@/ui/util/clsx'
 import s from './HomeScreen.module.css'
 
 export function HomeScreen(): JSX.Element {
@@ -26,10 +28,34 @@ export function HomeScreen(): JSX.Element {
   // Win Streak Embers — the global streak stares at you between sessions.
   const [streak, setStreak] = useState(0)
 
+  // The Daily Pact — today's mutator, fixed seed, featured hero.
+  const pact = useMemo(() => dailyPact(), [])
+  const [dawnAvailable, setDawnAvailable] = useState(false)
+
   useEffect(() => {
     setCanResume(hasResumableMatch())
     setStreak(getStreaks(loadDefaultHero() ?? 'berserker').global)
+    setDawnAvailable(isFirstDawnAvailable())
   }, [])
+
+  // Take the Pact: play AS the featured hero against a deterministic
+  // rival under today's rule-bend and fixed seed — retrying = solving it.
+  const playDaily = () => {
+    const others = getRegisteredHeroIds().filter(id => id !== pact.featured)
+    const opponent = others[pact.seed % others.length] ?? others[0]!
+    clearMatchState()
+    const ui = useUIStore.getState()
+    ui.setViewer('p1')
+    ui.resetForMatch()
+    ui.setSkipIntroOnce(true)
+    useGameStore.getState().startMatch({
+      p1: pact.featured, p2: opponent, mode: 'vs-ai',
+      seed: pact.seed, coin: pact.coin,
+      aiRank: 'champion',
+      modifiers: pact.mutator.modifiers,
+    })
+    navigate('/play')
+  }
 
   const resume = () => {
     const saved = loadMatchState()
@@ -89,6 +115,21 @@ export function HomeScreen(): JSX.Element {
         <h1 className={s.title}>Pact of Heroes</h1>
         <div className={s.subtitle}>Three Heroes. One Pact.</div>
         <div className={s.crest} aria-hidden="true">◆</div>
+
+        {/* ── The Daily Pact — the appointment card ─────────────────── */}
+        <button className={s.daily} onClick={playDaily} data-testid="daily-pact">
+          <span className={s.dailyEyebrow}>— The Daily Pact —</span>
+          <span className={s.dailyName}>{pact.mutator.name}</span>
+          <span className={s.dailyBlurb}>{pact.mutator.blurb}</span>
+          <span className={s.dailyChips}>
+            <span className={clsx(s.dailyChip, dawnAvailable && s.dawnLive)}>
+              ☀ First Dawn {dawnAvailable ? `+${RENOWN_FIRST_DAWN} on the table` : 'claimed'}
+            </span>
+            <span className={s.dailyChip}>
+              ★ {getHero(pact.featured).name} +{RENOWN_FEATURED_BONUS}
+            </span>
+          </span>
+        </button>
 
         <div className={s.buttons}>
           {canResume ? (
