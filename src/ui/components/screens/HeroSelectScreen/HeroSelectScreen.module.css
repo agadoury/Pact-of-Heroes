@@ -1,159 +1,249 @@
 .page {
-  position: relative;
-  width: 100%;
-  min-height: 100dvh;
-  padding: var(--space-6);
-  overflow-y: auto;
-  background: linear-gradient(180deg,
-    var(--night-stone) 0%,
-    var(--night-deep) 100%);
-  color: var(--bone);
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  background: linear-gradient(180deg, #0d0d1a 0%, #0a0a14 100%);
+  color: var(--bone);
+  overflow: hidden;
+  position: relative;
 }
-
-.page > *:not(:first-child) { position: relative; z-index: 1; }
 
 .header {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  padding-bottom: var(--space-4);
-  border-bottom: 1px solid var(--frame-stroke);
+  gap: 14px;
+  padding: 16px 18px 8px;
+  position: relative;
+  z-index: 2;
 }
-
 .back {
-  font-family: var(--font-family-tech);
-  font-size: 10px;
-  color: var(--bone-dim);
-  cursor: pointer;
-  padding: var(--space-2) var(--space-4);
-}
-.back:hover { color: var(--gold-bright); }
-
-.title {
-  flex: 1;
-  text-align: center;
-  font-family: var(--font-family-display);
-  font-size: 14px;
-  letter-spacing: 0.2em;
-  color: var(--gold-bright);
-  text-transform: uppercase;
-}
-
-.section h2 {
-  font-family: var(--font-family-display);
-  font-size: 10px;
-  letter-spacing: 0.4em;
-  color: var(--gold);
-  text-transform: uppercase;
-  margin-bottom: var(--space-3);
-}
-
-.heroRow {
-  display: flex;
-  gap: var(--space-4);
-  overflow-x: auto;
-  padding-bottom: var(--space-2);
-}
-
-.heroCard {
-  flex-shrink: 0;
-  width: 110px;
-  min-height: 158px;
-  padding: var(--space-4);
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
-  border: 2px solid var(--frame-stroke);
-  background: linear-gradient(180deg,
-    color-mix(in srgb, var(--accent) 22%, var(--night-stone)),
-    var(--night-mid));
+  width: 34px;
+  height: 34px;
   color: var(--bone);
+  font-size: 20px;
+  line-height: 1;
   cursor: pointer;
+  flex-shrink: 0;
+}
+.eyebrow {
+  font-family: var(--font-family-tech);
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.title {
+  font-family: var(--font-family-display);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+}
+
+.scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 16px 0;
+  position: relative;
+  z-index: 1;
+}
+.scrollPad { height: 12px; }
+
+/* ── showcase ───────────────────────────────────────────────────────── */
+.showcase {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  gap: var(--space-3);
-  transition: border-color 200ms, transform 200ms, box-shadow 200ms;
+  text-align: center;
+  gap: 7px;
+  padding: 14px 12px 16px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  background:
+    radial-gradient(130% 120% at 50% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+  overflow: hidden;
+  animation: show-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.heroCard:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
-.heroCard:hover  { border-color: var(--accent); }
-.selected {
-  border: 3px solid var(--gold);
+@keyframes show-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.showGlow {
+  position: absolute;
+  top: -30%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  height: 200px;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 24%, transparent), transparent);
+  pointer-events: none;
+}
+.showPortrait {
+  width: 116px;
+  height: 116px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--accent);
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--accent) 50%, transparent),
+    0 0 0 5px color-mix(in srgb, var(--accent) 12%, transparent);
+  position: relative;
+}
+.showPortrait > svg { display: block; width: 100%; height: 100%; }
+.showName {
+  font-family: var(--font-family-display);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent);
+  position: relative;
+}
+.showQuote {
+  font-family: var(--font-family-body);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--bone-dim);
+  position: relative;
+}
+.showSig {
+  font-family: var(--font-family-body);
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--bone);
+  position: relative;
+  max-width: 320px;
+}
+.showSig strong { color: var(--accent); font-family: var(--font-family-display); }
+.showMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  position: relative;
+  margin-top: 2px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-family: var(--font-family-tech);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+.renownPill { color: var(--gold-bright); border-color: var(--gold); }
+.customizeLink {
+  background: none;
+  border: none;
+  color: var(--gold-bright);
+  font-family: var(--font-family-tech);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+/* ── pickers ────────────────────────────────────────────────────────── */
+.sectionEyebrow {
+  font-family: var(--font-family-tech);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+  margin: 14px 2px 8px;
+}
+.pickRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.pickCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px 9px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--bone);
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 200ms ease, transform 130ms ease;
+}
+.pickCard:active { transform: scale(0.97); }
+.pickCard.picked {
+  border-color: var(--card-accent);
+  box-shadow:
+    0 0 16px color-mix(in srgb, var(--card-accent) 35%, transparent),
+    inset 0 0 20px color-mix(in srgb, var(--card-accent) 10%, transparent);
   transform: translateY(-2px);
 }
-
-.opponentCard {
-  min-height: 120px;
-  width: 90px;
+.pickPortrait {
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid color-mix(in srgb, var(--card-accent) 70%, transparent);
+  display: inline-flex;
 }
-
-.heroName {
+.pickPortrait > svg { display: block; }
+.pickName {
   font-family: var(--font-family-display);
   font-size: 11px;
   font-weight: 700;
-  color: var(--accent);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  text-align: center;
 }
+.pickCard.picked .pickName { color: var(--card-accent); }
+.oppCard { padding: 8px 4px 7px; }
 
-.heroArchetype {
-  font-family: var(--font-family-body);
-  font-size: 10px;
-  font-style: italic;
-  color: var(--bone);
-  text-transform: capitalize;
+/* ── VS divider ─────────────────────────────────────────────────────── */
+.vsRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 0;
 }
-
-.heroComplexity {
+.vsRule {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212, 165, 72, 0.5), transparent);
+}
+.vs {
   font-family: var(--font-family-display);
-  font-size: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
   color: var(--gold-bright);
+  text-shadow: 0 0 12px rgba(240, 198, 104, 0.5);
 }
 
-.detail {
-  padding: var(--space-6);
-  border-top: 1px solid var(--frame-stroke);
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 6px;
-}
-
-.detailQuote {
-  font-family: var(--font-family-body);
-  font-size: 14px;
-  font-style: italic;
-  color: var(--bone-bright);
-  margin-bottom: var(--space-4);
-}
-
-.detailSig {
-  font-family: var(--font-family-body);
-  font-size: 12px;
-  color: var(--bone);
-}
-
-.detailSig strong {
-  color: var(--gold-bright);
-  font-weight: 700;
-}
-
-.detailSigDesc {
-  margin-top: var(--space-2);
-  font-style: italic;
-  color: var(--bone-dim);
-}
-
+/* ── actions ────────────────────────────────────────────────────────── */
 .actions {
   display: flex;
-  justify-content: center;
-  padding: var(--space-4) 0;
-  margin-top: auto;
+  gap: 10px;
+  padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, transparent, rgba(10, 10, 20, 0.92) 30%);
+  position: relative;
+  z-index: 2;
 }
+.actions > * { flex: 1; }
 
-.actions button {
-  width: 100%;
-  max-width: 280px;
-  height: 48px;
+@media (prefers-reduced-motion: reduce) {
+  .showcase { animation: none; }
+  .pickCard.picked { transform: none; }
 }

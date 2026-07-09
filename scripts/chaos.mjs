@@ -110,10 +110,9 @@ async function cardModalAction(page, cardId, action, s) {
 async function playMatch(page, matchIdx, { doResumeTest }) {
   await page.goto(`${BASE}/heroes`)
   await page.waitForFunction(() => !!window.__poh, { timeout: 15000 })
-  const you = page.locator('section', { hasText: 'You' }).first().locator('[class*=heroCard]')
-  const opp = page.locator('section', { hasText: 'Opponent' }).first().locator('[class*=heroCard]')
-  await you.nth(matchIdx % 3).click()
-  await opp.nth((matchIdx + 1) % 3).click()
+  const pickRows = page.locator('[class*=pickRow]')
+  await pickRows.nth(0).locator('[class*=pickCard]').nth(matchIdx % 3).click()
+  await pickRows.nth(1).locator('[class*=pickCard]').nth((matchIdx + 1) % 3).click()
   await page.getByRole('button', { name: 'Begin Match' }).click()
   await page.waitForFunction(() => !!window.__poh?.game.getState().state, { timeout: 10000 })
   log(`match ${matchIdx + 1} started (${matchIdx % 3} vs ${(matchIdx + 1) % 3})`)
