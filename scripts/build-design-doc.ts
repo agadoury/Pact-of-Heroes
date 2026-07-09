@@ -222,6 +222,7 @@ const html = `<!doctype html>
   <li><a href="#tokens">Status tokens</a></li>
   <li><a href="#cards">The card system</a></li>
   <li><a href="#economy">Economy &amp; tempo</a></li>
+  <li><a href="#metagame">Stakes, ranks &amp; the Daily Pact</a></li>
   <li><a href="#hero-berserker">The Berserker</a> · <a href="#hero-pyromancer">The Pyromancer</a> · <a href="#hero-lightbearer">The Lightbearer</a></li>
   <li><a href="#generic">Generic card pool</a></li>
   <li><a href="#balance">Balance state &amp; methodology</a></li>
@@ -335,12 +336,15 @@ Any card can be <strong>sold for +1 CP</strong> instead of played. Hand cap ${HA
 owned from the start; every alternate ability and card is collectible. Playing
 matches earns per-hero <em>Renown</em> (+3 win / +1 loss, awarded on the match
 summary — plus performance bonuses: Critical Victory +3; Flawless, Clutch, or
-Comeback finishes +2; Surgeon/Stomp/Grinder +1; and +1 for firing your ultimate,
-win or lose), spent in the Collection hub (hero → Customize) to unlock alternates —
-abilities price at 4/6/8/12 by tier, cards at 3–8 by category. The hub is a
-slot-based builder: tap any ladder or deck slot to open its option tray, equip
-owned items instantly, unlock locked ones in place. Every change persists
-immediately; decks are composition-valid by construction.</p>
+Comeback finishes +2; Surgeon/Stomp/Grinder +1; +1 for firing your ultimate,
+win or lose; and the stakes/daily layers in <a href="#metagame">§9</a>), spent in
+the Collection hub (hero → Customize) to unlock alternates — abilities price at
+4/6/8/12 by tier, cards at 3–8 by category. The hub is a slot-based builder: tap
+any ladder or deck slot to open its option tray, equip owned items instantly,
+unlock locked ones in place through the <em>Rite of Unlocking</em> (a full-screen
+reveal ceremony in the hero's accent). Every change persists immediately; decks
+are composition-valid by construction. The summary screen aims the next match:
+a <em>Next Unlock Bar</em> tracks progress toward the cheapest locked item.</p>
 <p><strong>Masteries are the deck's engine-building spine:</strong> they permanently
 rewrite ability numbers (damage, stacks, heals, damage types), sometimes
 conditionally on the firing roll ("undefendable with all 5 axes"). Unconditional
@@ -360,6 +364,58 @@ Lightbearer earns +1 whenever a judged opponent attacks.</li>
 cannon races), Lightbearer ~13–14 (attrition). Damage throughput is tuned flat
 (~30–33 dealt per match per hero) with sustain as the differentiator.</li>
 </ul>
+
+<h2 id="metagame">9 · Stakes, ranks &amp; the Daily Pact</h2>
+<p>The meta-game turns every queue into a decision. All of it is meta-layer or
+start-state only — the engine stays a pure <code>applyAction</code> function.</p>
+<h3>Pact Ranks — the stakes dial</h3>
+<p>Three named opponents on HeroSelect, all driving the same heuristic brain
+through an <code>AiProfile</code> (commit tier, instant threat gate, bank-spend caps,
+card cushion, reachability samples, lethal commit probability):</p>
+<table><thead><tr><th>Rank</th><th>Renown</th><th>Character</th><th>Mirror-sim winrate*</th></tr></thead><tbody>
+<tr><td class="name">Squire</td><td>×1</td><td>Commits on any firing combo, hoards instants</td><td>32.8%</td></tr>
+<tr><td class="name">Champion</td><td>×1.5</td><td>The baseline tuning the game ships with</td><td>49.3%</td></tr>
+<tr><td class="name">Nightmare</td><td>×2</td><td>Sharper on every knob + an advertised <em>blood pact</em> (+3 HP, +1 CP start-state edge)</td><td>59.4%</td></tr>
+</tbody></table>
+<p style="font-size:13px">*vs a champion-strength opponent, 720 matches per rank. Nightmare unlocks
+per hero after 5 Champion wins; the rank multiplier applies to wins only and
+renders as an explicit breakdown line.</p>
+<h3>Seal the Pact — the mid-match gamble</h3>
+<p>Once per match, either duelist can <strong>Seal</strong> (two-tap gold chip under the
+phase banner): a sealed win pays <em>double</em> Renown, a sealed loss forfeits even
+the +1 "Fought" consolation. The AI seals from turn 3 when clearly ahead
+(Champion at a 7+ HP lead, Nightmare presses 4+; Squire never seals), forcing a
+read: fight through it or exit cheap. Concede is a smart retreat, not a shame
+button.</p>
+<h3>Win Streak Embers</h3>
+<p>Per-hero and global win streaks persist across sessions. Streaks at 3+ pay an
+<em>On Fire</em> +1 line; the summary shows the flame chip ("3 in a row") or the
+honest frost beat ("Streak ended at 5"); the Home Quick Match button carries the
+ember count. A sealed 0-Renown loss still breaks the streak.</p>
+<h3>The Daily &amp; Weekly Pact — the appointment engine</h3>
+<ul>
+<li><strong>First Dawn:</strong> the first win each calendar day pays +5 Renown; a
+glowing dawn chip on the Home card tracks whether it's still on the table.</li>
+<li><strong>Featured Hero of the Week:</strong> an ISO-week hash spotlights one hero
+(+2 Renown every match, win or lose, gold laurel on HeroSelect) — the rotation
+that pulls players across the roster.</li>
+<li><strong>The Daily Pact:</strong> a date hash picks a named rule-bend (Blood Tithe
+−6 HP, Dawn Vigil +6 HP, War Chest +2 CP, Full Quiver +2 cards, Lean Winter
+−1 CP, The Bare Pact) plus a <em>fixed</em> dice seed, coin flip, and rival for the
+whole day — retrying the daily is solving the seed. Mutators ride the engine's
+<code>modifiers</code> start-state field (flat HP/CP/card deltas per player), the same
+infrastructure that powers Nightmare's blood pact.</li>
+</ul>
+<h3>Cadence — Swift Play &amp; the produced ending</h3>
+<p><strong>Swift Play:</strong> hold anywhere during the opponent's beats to
+fast-forward (3× AI think + 3× scene timers); never arms while the engine waits
+on you and auto-releases when a decision window opens. <strong>Quick Match</strong>
+(Home) relaunches your last hero at your last rank against a random rival with
+no select screen and no intro; Rematch does the same from the summary. The match
+ends with the <strong>Killing Blow Takeover</strong>: a two-act hijack — freeze on the
+final hit (oversized crimson number), then a gold VICTORY / ashen DEFEAT stinger
+stamped with the named finish (CLUTCH lands over the corpse, not the next
+screen).</p>
 
 ${HERO_ORDER.map(heroSection).join("\n")}
 
