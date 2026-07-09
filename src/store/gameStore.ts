@@ -14,10 +14,12 @@
 import { create } from "zustand";
 import type { Action, CardId, GameEvent, GameState, HeroId, LoadoutSelection, PlayerId } from "@/game/types";
 import { applyAction, makeEmptyState } from "@/game/engine";
+import type { AiRank } from "@/game/ai";
+import { NIGHTMARE_BLOOD_PACT } from "@/game/ai";
 // choreoStore was retired with the v0.2 UI rebuild — the new src/ui/ tree
 // consumes lastEvents directly via the FOPScene aggregator. gameStore.dispatch
 // no longer needs to pump into an event queue store; subscribers pull.
-import { loadDeck, saveDefaultHero } from "./deckStorage";
+import { loadDeck, saveDefaultHero, saveLastRank } from "./deckStorage";
 import { loadLoadout } from "./loadoutStorage";
 
 export type MatchMode = "hot-seat" | "vs-ai";
@@ -31,6 +33,11 @@ interface GameStoreState {
   lastEvents: GameEvent[];
   /** Full event log accumulated since match start — used by match-summary. */
   matchLog: GameEvent[];
+  /** Pact Rank of the AI opponent — drives its AiProfile + Renown payout. */
+  aiRank: AiRank;
+  /** Seal the Pact — who sealed (doubling the match stakes), if anyone.
+   *  Meta-layer only: the engine never sees it. */
+  sealedBy: PlayerId | null;
 
   // Actions
   startMatch: (opts: {
@@ -45,8 +52,13 @@ interface GameStoreState {
      *  hero's `recommendedLoadout` when no saved selection exists or it
      *  fails validation. */
     p1Loadout?: LoadoutSelection; p2Loadout?: LoadoutSelection;
+    /** Pact Rank of the AI opponent (vs-ai only). Default: champion. */
+    aiRank?: AiRank;
   }) => void;
   dispatch: (action: Action) => void;
+  /** Seal the Pact — once per match, either duelist doubles the stakes.
+   *  First seal wins; later calls are no-ops. */
+  sealPact: (player: PlayerId) => void;
   reset: () => void;
 }
 
@@ -56,8 +68,10 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   aiPlayer: null,
   lastEvents: [],
   matchLog: [],
+  aiRank: "champion",
+  sealedBy: null,
 
-  startMatch: ({ p1, p2, mode, seed, coin, p1Deck, p2Deck, p1Loadout, p2Loadout }) => {
+  startMatch: ({ p1, p2, mode, seed, coin, p1Deck, p2Deck, p1Loadout, p2Loadout, aiRank }) => {
     const empty = makeEmptyState();
     const matchSeed = seed ?? (Date.now() & 0xffff);
     const winner = coin ?? (Math.random() < 0.5 ? "p1" : "p2");
@@ -65,10 +79,17 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const resolvedP2Deck = p2Deck ?? loadDeck(p2) ?? undefined;
     const resolvedP1Loadout = p1Loadout ?? loadLoadout(p1) ?? undefined;
     const resolvedP2Loadout = p2Loadout ?? loadLoadout(p2) ?? undefined;
+    // Nightmare's blood pact: the AI seat starts with a small, advertised
+    // material edge — the rank's teeth on top of its sharper profile.
+    const modifiers =
+      mode === "vs-ai" && aiRank === "nightmare"
+        ? { hp: { p2: NIGHTMARE_BLOOD_PACT.hp }, cp: { p2: NIGHTMARE_BLOOD_PACT.cp } }
+        : undefined;
     const r = applyAction(empty, {
       kind: "start-match", seed: matchSeed, p1, p2, coinFlipWinner: winner,
       p1Deck: resolvedP1Deck, p2Deck: resolvedP2Deck,
       p1Loadout: resolvedP1Loadout, p2Loadout: resolvedP2Loadout,
+      modifiers,
     });
     set({
       state: r.state,
@@ -76,10 +97,15 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       aiPlayer: mode === "vs-ai" ? "p2" : null,
       lastEvents: r.events,
       matchLog: r.events.slice(),
+      aiRank: aiRank ?? "champion",
+      sealedBy: null,
     });
-    // Remember the human's hero so Quick Match can relaunch it next time.
+    // Remember the human's hero + rank so Quick Match can relaunch them.
     if (mode === "vs-ai") {
-      try { saveDefaultHero(p1); } catch { /* storage unavailable */ }
+      try {
+        saveDefaultHero(p1);
+        saveLastRank(aiRank ?? "champion");
+      } catch { /* storage unavailable */ }
     }
   },
 
@@ -94,7 +120,13 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     }));
   },
 
+  sealPact: (player) => {
+    if (get().sealedBy) return;
+    if (!get().state || get().state?.winner) return;
+    set({ sealedBy: player });
+  },
+
   reset: () => {
-    set({ state: null, mode: "hot-seat", aiPlayer: null, lastEvents: [], matchLog: [] });
+    set({ state: null, mode: "hot-seat", aiPlayer: null, lastEvents: [], matchLog: [], aiRank: "champion", sealedBy: null });
   },
 }));

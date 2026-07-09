@@ -5,7 +5,8 @@
  * Bible reference: Part 7.10.
  */
 
-import type { GameEvent, GameState } from '@/game/types'
+import type { GameEvent, GameState, PlayerId } from '@/game/types'
+import type { AiRank } from '@/game/ai'
 import { useGameStore } from '@/store/gameStore'
 
 const STORAGE_KEY = 'pact-of-heroes:match:v1'
@@ -19,21 +20,35 @@ interface SavedMatch {
    *  (damage totals, descriptor) covers the WHOLE match, not just the
    *  post-resume slice. Optional for pre-existing saves. */
   matchLog?: GameEvent[]
+  /** Pact Rank + Seal state — the match's stakes must survive a resume.
+   *  Optional for pre-existing saves (default: champion, unsealed). */
+  aiRank?: AiRank
+  sealedBy?: PlayerId | null
 }
 
 let debounceTimer: number | null = null
 let bridgeUnsub: (() => void) | null = null
 
-export function saveMatchState(state: GameState, matchLog: readonly GameEvent[] = []): void {
+export function saveMatchState(
+  state: GameState,
+  matchLog: readonly GameEvent[] = [],
+  stakes?: { aiRank: AiRank; sealedBy: PlayerId | null },
+): void {
   try {
-    const payload: SavedMatch = { savedAt: Date.now(), state, matchLog: matchLog.slice() }
+    const payload: SavedMatch = {
+      savedAt: Date.now(),
+      state,
+      matchLog: matchLog.slice(),
+      aiRank: stakes?.aiRank,
+      sealedBy: stakes?.sealedBy ?? null,
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
   } catch {
     // Storage full / disabled — silent no-op; the match continues in memory.
   }
 }
 
-export function loadMatchState(): { state: GameState; matchLog: GameEvent[] } | null {
+export function loadMatchState(): { state: GameState; matchLog: GameEvent[]; aiRank: AiRank; sealedBy: PlayerId | null } | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
@@ -47,7 +62,12 @@ export function loadMatchState(): { state: GameState; matchLog: GameEvent[] } | 
       clearMatchState()
       return null
     }
-    return { state: parsed.state, matchLog: parsed.matchLog ?? [] }
+    return {
+      state: parsed.state,
+      matchLog: parsed.matchLog ?? [],
+      aiRank: parsed.aiRank ?? 'champion',
+      sealedBy: parsed.sealedBy ?? null,
+    }
   } catch {
     return null
   }
@@ -74,7 +94,7 @@ export function wireMatchPersistence(): () => void {
     if (debounceTimer != null) window.clearTimeout(debounceTimer)
     debounceTimer = window.setTimeout(() => {
       const g = useGameStore.getState()
-      if (g.state) saveMatchState(g.state, g.matchLog)
+      if (g.state) saveMatchState(g.state, g.matchLog, { aiRank: g.aiRank, sealedBy: g.sealedBy })
     }, DEBOUNCE_MS)
   })
   return bridgeUnsub

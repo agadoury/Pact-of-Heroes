@@ -20,6 +20,8 @@
 
 import type { AbilityDef, Card, CardId, HeroId } from "@/game/types";
 import type { MatchDescriptor } from "@/game/match-summary";
+import type { AiRank } from "@/game/ai";
+import { RANK_RENOWN_MULT } from "@/game/ai";
 import { getHero, getCardCatalog } from "@/content";
 
 const STORAGE_KEY = "pact-of-heroes:collection:v1";
@@ -47,7 +49,13 @@ interface HeroCollectionEntry {
   earnedLifetime: number;
   unlockedAbilities: string[];    // catalog ability names beyond the recommended set
   unlockedCards: CardId[];        // card ids beyond the recommended deck
+  /** Wins per Pact Rank — Nightmare unlocks at 5 Champion wins. Optional
+   *  for pre-existing saves. */
+  rankWins?: Partial<Record<AiRank, number>>;
 }
+
+/** Champion wins required (per hero) before Nightmare opens. */
+export const NIGHTMARE_UNLOCK_WINS = 5;
 
 interface StorageRoot {
   version: number;
@@ -163,12 +171,21 @@ export interface RenownAward {
 }
 
 /** Compute the Renown owed for a finished match, with a per-line
- *  breakdown: base win/loss, a named-finish bonus (descriptor), and an
- *  ultimate-fired bonus (paid win or lose — career moments count). */
+ *  breakdown: base win/loss, a named-finish bonus (descriptor), an
+ *  ultimate-fired bonus (paid win or lose — career moments count), plus
+ *  the stakes layer: the Pact Rank multiplier (Champion ×1.5 /
+ *  Nightmare ×2) and Seal the Pact (×2 on a win, forfeits the loss pay). */
 export function computeRenownAward(
   won: boolean,
   perf?: { descriptor?: MatchDescriptor; ultimatesFired?: number },
+  stakes?: { rank?: AiRank; sealed?: boolean },
 ): RenownAward {
+  // A sealed loss pays nothing — the pact was forfeited. This is the
+  // gamble that makes sealing a real decision, not a free upside.
+  if (stakes?.sealed && !won) {
+    return { total: 0, breakdown: [{ label: "Sealed pact forfeited", amount: 0 }] };
+  }
+
   const breakdown: RenownAward["breakdown"] = [
     won ? { label: "Victory", amount: RENOWN_WIN } : { label: "Fought", amount: RENOWN_LOSS },
   ];
@@ -182,7 +199,48 @@ export function computeRenownAward(
   if ((perf?.ultimatesFired ?? 0) > 0) {
     breakdown.push({ label: "Ultimate fired", amount: RENOWN_ULTIMATE_BONUS });
   }
-  return { total: breakdown.reduce((s2, b) => s2 + b.amount, 0), breakdown };
+
+  let total = breakdown.reduce((s2, b) => s2 + b.amount, 0);
+
+  // Pact Rank multiplier — wins only (losing to Nightmare still pays the
+  // base "Fought" +1, not a multiplied consolation).
+  const mult = stakes?.rank ? RANK_RENOWN_MULT[stakes.rank] : 1;
+  if (won && mult > 1) {
+    const withRank = Math.round(total * mult);
+    const rankLabel = stakes!.rank!.charAt(0).toUpperCase() + stakes!.rank!.slice(1);
+    breakdown.push({ label: `${rankLabel} ×${mult}`, amount: withRank - total });
+    total = withRank;
+  }
+
+  // Seal the Pact — a sealed win pays double, whoever sealed it.
+  if (stakes?.sealed && won) {
+    breakdown.push({ label: "Pact sealed ×2", amount: total });
+    total *= 2;
+  }
+
+  return { total, breakdown };
+}
+
+// ── Pact Ranks: per-hero rank wins + Nightmare unlock ───────────────────────
+
+export function getRankWins(heroId: HeroId): Partial<Record<AiRank, number>> {
+  return readRoot().perHero[heroId]?.rankWins ?? {};
+}
+
+/** Record a win against a given rank (call once per won match — the
+ *  caller's award idempotency gates re-invocation). */
+export function recordRankWin(heroId: HeroId, rank: AiRank): void {
+  const root = readRoot();
+  const entry = root.perHero[heroId] ?? emptyEntry();
+  const rankWins = { ...(entry.rankWins ?? {}) };
+  rankWins[rank] = (rankWins[rank] ?? 0) + 1;
+  root.perHero = { ...root.perHero, [heroId]: { ...entry, rankWins } };
+  writeRoot(root);
+}
+
+/** Nightmare opens per-hero after enough Champion wins — a rank you earn. */
+export function isNightmareUnlocked(heroId: HeroId): boolean {
+  return (getRankWins(heroId).champion ?? 0) >= NIGHTMARE_UNLOCK_WINS;
 }
 
 /** Award match Renown to the hero the viewer played. Idempotent per

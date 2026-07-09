@@ -925,6 +925,21 @@ export interface GameState {
 export interface LogEntry { turn: number; phase: Phase; text: string; t: number; }
 
 // ── Actions ─────────────────────────────────────────────────────────────────
+/** Start-state rule-bends applied at `start-match`, after the standard
+ *  setup (including second-player compensation). Shared infrastructure:
+ *  Pact Rank handicaps (Nightmare's blood pact) and the Daily Pact
+ *  mutators both ride this — the engine stays a pure function of the
+ *  action. All fields are flat deltas; omitted players are untouched. */
+export interface MatchModifiers {
+  /** Starting-HP delta. Also raises `hpStart` (so low-HP triggers scale)
+   *  and `hpCap`. */
+  hp?: Partial<Record<PlayerId, number>>;
+  /** Starting-CP delta. */
+  cp?: Partial<Record<PlayerId, number>>;
+  /** Extra starting cards drawn. */
+  cards?: Partial<Record<PlayerId, number>>;
+}
+
 export type Action =
   | { kind: "start-match"; seed: number; p1: HeroId; p2: HeroId; coinFlipWinner: PlayerId;
       /** Optional custom decks per player. Each array is a 12-element list of
@@ -935,7 +950,9 @@ export type Action =
        *  2-defense selection of ability names that must resolve via the
        *  hero's `abilityCatalog` / `defensiveCatalog`. When omitted (or
        *  invalid), the engine falls back to that hero's `recommendedLoadout`. */
-      p1Loadout?: LoadoutSelection; p2Loadout?: LoadoutSelection }
+      p1Loadout?: LoadoutSelection; p2Loadout?: LoadoutSelection;
+      /** Optional start-state rule-bends — see `MatchModifiers`. */
+      modifiers?: MatchModifiers }
   | { kind: "advance-phase" }
   | { kind: "toggle-die-lock"; die: 0 | 1 | 2 | 3 | 4 }
   | { kind: "roll-dice" }

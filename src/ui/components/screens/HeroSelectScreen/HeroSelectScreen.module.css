@@ -247,3 +247,60 @@
   .showcase { animation: none; }
   .pickCard.picked { transform: none; }
 }
+
+/* ── Pact Rank picker ───────────────────────────────────────────────── */
+.rankRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+.rankCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 9px 4px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(212, 165, 72, 0.18);
+  background: rgba(16, 16, 28, 0.72);
+  color: var(--bone);
+  cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+.rankCard.rankPicked {
+  border-color: var(--gold-bright);
+  box-shadow:
+    0 0 14px rgba(240, 198, 104, 0.28),
+    inset 0 0 16px rgba(240, 198, 104, 0.08);
+  transform: translateY(-2px);
+}
+.rankCard.rankLocked {
+  opacity: 0.55;
+  cursor: default;
+}
+.rankName {
+  font-family: var(--font-family-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.rankCard.rankPicked .rankName { color: var(--gold-bright); }
+.rankMult {
+  font-family: var(--font-family-display);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--gold-bright);
+}
+.rankHint {
+  font-family: var(--font-family-body);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  color: var(--bone-dim);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rankCard.rankPicked { transform: none; }
+}

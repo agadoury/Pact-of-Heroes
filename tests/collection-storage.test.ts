@@ -5,8 +5,10 @@ import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import {
   getCollection, awardMatchRenown, computeRenownAward, unlockAbility, unlockCard,
   hasAffordableUnlock, clearAllCollections, abilityPrice, cardPrice,
+  getRankWins, recordRankWin, isNightmareUnlocked, NIGHTMARE_UNLOCK_WINS,
   RENOWN_WIN, RENOWN_LOSS, RENOWN_STARTING, RENOWN_ULTIMATE_BONUS,
 } from "../src/store/collectionStorage";
+import { RANK_RENOWN_MULT } from "../src/game/ai";
 import { getHero, getCardCatalog } from "../src/content";
 
 // vitest runs in `node` environment; install a minimal localStorage shim so
@@ -76,6 +78,42 @@ describe("renown awards", () => {
     // Plain VICTORY descriptor adds nothing.
     const victory = computeRenownAward(true, { descriptor: "VICTORY" });
     expect(victory.total).toBe(RENOWN_WIN);
+  });
+
+  it("applies the Pact Rank multiplier to wins only", () => {
+    const champ = computeRenownAward(true, undefined, { rank: "champion" });
+    expect(champ.total).toBe(Math.round(RENOWN_WIN * RANK_RENOWN_MULT.champion));
+    expect(champ.breakdown.some(b => b.label.startsWith("Champion"))).toBe(true);
+    const nightmare = computeRenownAward(true, undefined, { rank: "nightmare" });
+    expect(nightmare.total).toBe(RENOWN_WIN * RANK_RENOWN_MULT.nightmare);
+    const squire = computeRenownAward(true, undefined, { rank: "squire" });
+    expect(squire.total).toBe(RENOWN_WIN);
+    // Losses always pay the base "Fought" +1 — no multiplied consolation.
+    const nightmareLoss = computeRenownAward(false, undefined, { rank: "nightmare" });
+    expect(nightmareLoss.total).toBe(RENOWN_LOSS);
+  });
+
+  it("Seal the Pact doubles a win and forfeits a loss", () => {
+    const sealedWin = computeRenownAward(true, undefined, { sealed: true });
+    expect(sealedWin.total).toBe(RENOWN_WIN * 2);
+    expect(sealedWin.breakdown.some(b => b.label === "Pact sealed ×2")).toBe(true);
+    const sealedLoss = computeRenownAward(false, { ultimatesFired: 2 }, { sealed: true });
+    expect(sealedLoss.total).toBe(0);
+    expect(sealedLoss.breakdown.some(b => b.label === "Sealed pact forfeited")).toBe(true);
+    // Rank + seal stack: (3 × 2) × 2 = 12 for a sealed Nightmare win.
+    const jackpot = computeRenownAward(true, undefined, { rank: "nightmare", sealed: true });
+    expect(jackpot.total).toBe(RENOWN_WIN * RANK_RENOWN_MULT.nightmare * 2);
+  });
+});
+
+describe("pact ranks", () => {
+  it("Nightmare unlocks per hero after enough Champion wins", () => {
+    expect(isNightmareUnlocked("berserker")).toBe(false);
+    for (let i = 0; i < NIGHTMARE_UNLOCK_WINS; i++) recordRankWin("berserker", "champion");
+    expect(getRankWins("berserker").champion).toBe(NIGHTMARE_UNLOCK_WINS);
+    expect(isNightmareUnlocked("berserker")).toBe(true);
+    // Siloed per hero.
+    expect(isNightmareUnlocked("pyromancer")).toBe(false);
   });
 });
 

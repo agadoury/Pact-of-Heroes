@@ -27,7 +27,7 @@
 import { useEffect } from 'react'
 import { useGameStore } from '@/store/gameStore'
 import { useUIStore } from '@/ui/store/uiStore'
-import { nextAiAction, pendingActorFor } from '@/game/ai'
+import { nextAiAction, pendingActorFor, AI_PROFILES } from '@/game/ai'
 import type { PlayerId } from '@/game/types'
 
 /** Base delay between AI actions (ms) — reads as deliberate, not robotic. */
@@ -72,9 +72,29 @@ export function useAiDriver(aiPlayer: PlayerId | null): void {
       // Is the engine actually waiting on the AI?
       if (pendingActorFor(state) !== aiPlayer) return
 
+      const profile = AI_PROFILES[gs.aiRank]
+
+      // Seal the Pact — once per match, at the start of its own turn,
+      // when clearly ahead. Nightmare presses smaller leads; Squire
+      // never seals. Meta-layer only: no engine dispatch.
+      if (
+        !gs.sealedBy
+        && profile.id !== 'squire'
+        && state.activePlayer === aiPlayer
+        && state.phase === 'main-pre'
+        && state.turn >= 3
+      ) {
+        const me = state.players[aiPlayer]
+        const opp = state.players[aiPlayer === 'p1' ? 'p2' : 'p1']
+        const lead = me.hp - opp.hp
+        if (lead >= (profile.id === 'nightmare' ? 4 : 7)) {
+          gs.sealPact(aiPlayer)
+        }
+      }
+
       let action
       try {
-        action = nextAiAction(state, aiPlayer)
+        action = nextAiAction(state, aiPlayer, profile)
       } catch (err) {
         console.error('[ai-driver] nextAiAction threw — AI halted:', err)
         halted = true

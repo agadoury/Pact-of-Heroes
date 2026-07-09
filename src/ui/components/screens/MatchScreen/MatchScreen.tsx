@@ -54,6 +54,7 @@ import { MatchIntro } from '@/ui/components/screens/MatchIntro'
 import { getHero } from '@/content'
 import { canPlay } from '@/game/cards'
 import { pendingActorFor } from '@/game/ai'
+import { clsx } from '@/ui/util/clsx'
 import { derivePhaseDisplay } from '@/ui/selectors/phaseDisplay'
 import { deriveLadder } from '@/ui/selectors/ladder'
 import { deriveStatusTrack } from '@/ui/selectors/statusTrack'
@@ -160,6 +161,24 @@ export function MatchScreen(): JSX.Element {
   useEffect(() => {
     preferredAbilityIdx.current = null
   }, [currentTurn])
+
+  // Seal the Pact — once per match either duelist doubles the stakes.
+  // Two-tap protection (a mistap zeroes your loss payout); the arm
+  // auto-expires. The AI's seal lands as a toast so it reads as a move.
+  const sealedBy  = useGameStore(g => g.sealedBy)
+  const sealPact  = useGameStore(g => g.sealPact)
+  const matchMode = useGameStore(g => g.mode)
+  const [sealArmed, setSealArmed] = useState(false)
+  useEffect(() => {
+    if (!sealArmed) return
+    const t = window.setTimeout(() => setSealArmed(false), 3000)
+    return () => window.clearTimeout(t)
+  }, [sealArmed])
+  useEffect(() => {
+    if (!sealedBy) return
+    if (sealedBy === viewerId) toast('info', 'Pact sealed — the stakes are doubled')
+    else toast('warn', 'Your rival seals the pact — win double, or lose it all')
+  }, [sealedBy, viewerId])
 
   // Two-tap Skip Turn protection — first tap arms, second tap (within the
   // window) executes the full pass. The arm auto-expires.
@@ -896,6 +915,25 @@ export function MatchScreen(): JSX.Element {
 
       {fastForward ? (
         <div className={s.ffChip} aria-live="polite">▶▶ Fast-forward</div>
+      ) : null}
+
+      {matchMode === 'vs-ai' && !state.winner && state.phase !== 'match-end' ? (
+        sealedBy ? (
+          <div className={clsx(s.sealChip, s.sealDone)} aria-live="polite">◆ Sealed ×2</div>
+        ) : (
+          <button
+            type="button"
+            className={clsx(s.sealChip, sealArmed && s.sealArmed)}
+            onClick={() => {
+              if (!sealArmed) { setSealArmed(true); return }
+              setSealArmed(false)
+              sealPact(viewerId)
+            }}
+            aria-label="Seal the Pact — double the stakes"
+          >
+            {sealArmed ? 'Seal ×2 — sure?' : '◇ Seal'}
+          </button>
+        )
       ) : null}
 
       <ActivityLog />

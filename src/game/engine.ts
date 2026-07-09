@@ -22,6 +22,7 @@ import type {
   HeroId,
   HeroSnapshot,
   LoadoutSelection,
+  MatchModifiers,
   PlayerId,
 } from "./types";
 import { resolveLoadout } from "./loadout";
@@ -48,7 +49,7 @@ export function applyAction(state: GameState, action: Action): ApplyResult {
   const events: GameEvent[] = [];
 
   switch (action.kind) {
-    case "start-match":     events.push(...startMatch(next, action.seed, action.p1, action.p2, action.coinFlipWinner, action.p1Deck, action.p2Deck, action.p1Loadout, action.p2Loadout)); break;
+    case "start-match":     events.push(...startMatch(next, action.seed, action.p1, action.p2, action.coinFlipWinner, action.p1Deck, action.p2Deck, action.p1Loadout, action.p2Loadout, action.modifiers)); break;
     case "advance-phase":   events.push(...advancePhase(next)); break;
     case "toggle-die-lock": events.push(...toggleDieLock(next, action.die)); break;
     case "roll-dice":       events.push(...rollAction(next)); break;
@@ -86,6 +87,7 @@ function startMatch(
   state: GameState, seed: number, p1: HeroId, p2: HeroId, coin: PlayerId,
   p1Deck?: ReadonlyArray<CardId>, p2Deck?: ReadonlyArray<CardId>,
   p1Loadout?: LoadoutSelection, p2Loadout?: LoadoutSelection,
+  modifiers?: MatchModifiers,
 ): GameEvent[] {
   state.rngSeed = seed;
   state.rngCursor = 1;          // skip 0 so coinFlip is deterministic but consumed.
@@ -122,6 +124,27 @@ function startMatch(
   state.players[second].cp += 1;
   events.push({ t: "cp-changed", player: second, delta: 1, total: state.players[second].cp });
   events.push(...drawCards(state, state.players[second], 1));
+
+  // Start-state modifiers (Pact Rank handicaps, Daily Pact mutators) —
+  // applied last so they layer on top of the standard compensation.
+  if (modifiers) {
+    for (const pid of ["p1", "p2"] as const) {
+      const snap = state.players[pid];
+      const hpDelta = modifiers.hp?.[pid] ?? 0;
+      if (hpDelta !== 0) {
+        snap.hp = Math.max(1, snap.hp + hpDelta);
+        snap.hpStart = Math.max(1, snap.hpStart + hpDelta);
+        snap.hpCap = Math.max(snap.hp, snap.hpCap + hpDelta);
+      }
+      const cpDelta = modifiers.cp?.[pid] ?? 0;
+      if (cpDelta !== 0) {
+        snap.cp = Math.max(0, snap.cp + cpDelta);
+        events.push({ t: "cp-changed", player: pid, delta: cpDelta, total: snap.cp });
+      }
+      const extraCards = modifiers.cards?.[pid] ?? 0;
+      if (extraCards > 0) events.push(...drawCards(state, snap, extraCards));
+    }
+  }
 
   // Enter the first phase: upkeep for the start player.
   state.phase = "pre-match";

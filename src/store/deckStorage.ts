@@ -26,10 +26,12 @@ interface StorageRoot {
   version: number;
   perHero: Partial<Record<HeroId, PerHeroEntry>>;
   defaultHero: HeroId | null;
+  /** Last Pact Rank the player queued into — Quick Match reuses it. */
+  lastRank?: string | null;
 }
 
 function emptyRoot(): StorageRoot {
-  return { version: SCHEMA_VERSION, perHero: {}, defaultHero: null };
+  return { version: SCHEMA_VERSION, perHero: {}, defaultHero: null, lastRank: null };
 }
 
 function readRoot(): StorageRoot {
@@ -43,6 +45,7 @@ function readRoot(): StorageRoot {
       version: SCHEMA_VERSION,
       perHero: parsed.perHero ?? {},
       defaultHero: parsed.defaultHero ?? null,
+      lastRank: parsed.lastRank ?? null,
     };
   } catch {
     return emptyRoot();
@@ -95,6 +98,18 @@ export function loadDefaultHero(): HeroId | null {
 export function saveDefaultHero(heroId: HeroId): void {
   const root = readRoot();
   root.defaultHero = heroId;
+  writeRoot(root);
+}
+
+/** Last Pact Rank queued into (Quick Match reuses it). Stored as a plain
+ *  string to keep this layer decoupled from the AI module's types. */
+export function loadLastRank(): string | null {
+  return readRoot().lastRank ?? null;
+}
+
+export function saveLastRank(rank: string): void {
+  const root = readRoot();
+  root.lastRank = rank;
   writeRoot(root);
 }
 

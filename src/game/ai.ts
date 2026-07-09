@@ -21,6 +21,90 @@ import { evaluateLadder, pickKeepMask, symbolsOnDice, comboMatchesFaces } from "
 import { stacksOf, getStatusDef } from "./status";
 import { canPlay, resolveAbilityFor } from "./cards";
 
+// ── Pact Ranks: AI difficulty profiles ──────────────────────────────────────
+/** Named opponent rank the player queues into. */
+export type AiRank = "squire" | "champion" | "nightmare";
+
+/** The knobs that differentiate the three ranks. Champion is the baseline
+ *  tuning the game shipped with; Squire defangs it, Nightmare sharpens it.
+ *  Every number here was previously a hardcoded constant in this file. */
+export interface AiProfile {
+  id: AiRank;
+  /** Commit as soon as a combo at this ladder row (0-based) is firing —
+   *  lower = settles for weaker tiers instead of fishing for upgrades. */
+  commitTier: number;
+  /** Reach for defensive Instants when incoming damage ≥ this (a lethal
+   *  hit always qualifies regardless). */
+  instantThreatGate: number;
+  /** Max signature-bank tokens spent per offensive attack. */
+  offensiveSpendCap: number;
+  /** Defensive bank spend leaves this much damage to the defense roll —
+   *  lower = mitigates harder, spends its bank lethally. */
+  defenseSpendSlack: number;
+  /** CP cushion above cost required before playing unlisted hero cards. */
+  unlistedCardCushion: number;
+  /** Monte-Carlo samples for ladder reachability — more = sharper reads. */
+  reachabilitySamples: number;
+  /** Commit to a lethal line when its reach probability ≥ this — lower =
+   *  smells blood earlier and goes for the kill. */
+  lethalCommitProb: number;
+  /** When already firing at the commit tier with attempts left, keep
+   *  fishing for a HIGHER row reachable with ≥ this probability. The
+   *  firing combo's dice are locked, so the fish is risk-free upside —
+   *  null = never fish (commit immediately, the baseline behaviour). */
+  fishHigherProb: number | null;
+}
+
+export const AI_PROFILES: Record<AiRank, AiProfile> = {
+  squire: {
+    id: "squire",
+    commitTier: 0,          // takes the first combo it hits — never fishes
+    instantThreatGate: 9,   // hoards its Instants until near-lethal
+    offensiveSpendCap: 2,
+    defenseSpendSlack: 5,
+    unlistedCardCushion: 5, // plays fewer tech cards
+    reachabilitySamples: 80,
+    lethalCommitProb: 0.5,  // barely notices kill windows
+    fishHigherProb: null,
+  },
+  champion: {
+    id: "champion",
+    commitTier: 2,
+    instantThreatGate: 6,
+    offensiveSpendCap: 4,
+    defenseSpendSlack: 3,
+    unlistedCardCushion: 3,
+    reachabilitySamples: 200,
+    lethalCommitProb: 0.3,
+    fishHigherProb: null,
+  },
+  nightmare: {
+    id: "nightmare",
+    commitTier: 2,
+    instantThreatGate: 4,   // reaches for answers on medium hits
+    offensiveSpendCap: 6,   // dumps its bank into closes
+    defenseSpendSlack: 2,   // mitigates harder (but keeps Judgment fuel)
+    unlistedCardCushion: 2, // plays most of its deck
+    reachabilitySamples: 400,
+    lethalCommitProb: 0.15, // smells blood two rolls out
+    fishHigherProb: 0.35,   // rerolls free dice at a reachable T3/T4
+  },
+};
+
+/** Renown payout multiplier per rank — the stakes dial. */
+export const RANK_RENOWN_MULT: Record<AiRank, number> = {
+  squire: 1,
+  champion: 1.5,
+  nightmare: 2,
+};
+
+/** Nightmare's blood pact — a transparent material edge (start-state
+ *  modifiers on the AI's seat) layered on its sharper play. The heuristic
+ *  brain is near its behavioural ceiling (mirror sims put profile-only
+ *  Nightmare ≈ Champion), so the rank's teeth come from here; the UI
+ *  advertises it so it reads as a boss, not a cheat. */
+export const NIGHTMARE_BLOOD_PACT = { hp: 3, cp: 1 } as const;
+
 // ── Pending-prompt routing ───────────────────────────────────────────────────
 /** Which player must act next? Pending prompts pre-empt the active player's
  *  normal phase flow — the engine is halted until the prompt's holder
@@ -40,7 +124,11 @@ export function pendingActorFor(state: GameState): PlayerId {
 /** Decide the AI's next action. Returns `null` when the AI has nothing to
  *  do right now (not its turn and no prompt targets it) — callers must not
  *  dispatch in that case. */
-export function nextAiAction(state: GameState, ai: PlayerId): Action | null {
+export function nextAiAction(
+  state: GameState,
+  ai: PlayerId,
+  profile: AiProfile = AI_PROFILES.champion,
+): Action | null {
   // §Lightbearer: bankable spend prompt. Offensive-resolution: spend
   // generously when the attack is likely to land (we already committed
   // to firing) — every token banks +2 dmg / +1 heal. Defensive: spend
@@ -50,17 +138,17 @@ export function nextAiAction(state: GameState, ai: PlayerId): Action | null {
   if (state.pendingBankSpend && state.pendingBankSpend.holder === ai) {
     const pbs = state.pendingBankSpend;
     if (pbs.context === "offensive-resolution") {
-      // Spend up to 4 tokens per attack — caps the burst, leaves some
-      // bank for the next turn. Career-moment closes can spend more.
-      const want = Math.min(pbs.available, 4);
+      // Cap the burst per attack, leaving some bank for the next turn —
+      // Nightmare's higher cap dumps the bank into closes.
+      const want = Math.min(pbs.available, profile.offensiveSpendCap);
       return { kind: "spend-bank", amount: want };
     }
     if (pbs.context === "defensive-resolution") {
-      // Leave room for the defense roll we're about to make (~3 typical
-      // reduction) and never spend into chip damage — the bank feeds
-      // Judgment of the Sun.
+      // Leave room for the defense roll we're about to make (profile
+      // slack ≈ its typical reduction) and never spend into chip damage —
+      // the bank feeds Judgment of the Sun.
       const incoming = state.pendingAttack?.incomingAmount ?? 0;
-      const want = Math.min(pbs.available, Math.max(0, incoming - 3));
+      const want = Math.min(pbs.available, Math.max(0, incoming - profile.defenseSpendSlack));
       return want > 0 ? { kind: "spend-bank", amount: want } : { kind: "decline-bank-spend" };
     }
     return { kind: "decline-bank-spend" };
@@ -106,7 +194,7 @@ export function nextAiAction(state: GameState, ai: PlayerId): Action | null {
     const pa0 = state.pendingAttack;
     // Only reach for an Instant when the hit is heavy or would kill us —
     // burning a once-per-match negate on 3 chip damage reads as broken.
-    const threat = pa0.incomingAmount >= 6 || me.hp <= pa0.incomingAmount;
+    const threat = pa0.incomingAmount >= profile.instantThreatGate || me.hp <= pa0.incomingAmount;
     const instant = threat
       ? me.hand.find(c => c.kind === "instant" && instantMatchesPendingAttack(c, state) && canPlay(state, me, opponent, c))
       : undefined;
@@ -134,8 +222,8 @@ export function nextAiAction(state: GameState, ai: PlayerId): Action | null {
     case "pre-match":      return { kind: "advance-phase" };
     case "upkeep":
     case "income":         return { kind: "advance-phase" };
-    case "main-pre":       return decideMainPre(state, ai);
-    case "offensive-roll": return decideOffensiveRoll(state, ai);
+    case "main-pre":       return decideMainPre(state, ai, profile);
+    case "offensive-roll": return decideOffensiveRoll(state, ai, profile);
     case "defensive-roll": return { kind: "advance-phase" };
     case "main-post":      return decideMainPost(state, ai);
     case "discard":        return { kind: "advance-phase" };
@@ -223,7 +311,7 @@ function pickBestDefense(state: GameState, ai: PlayerId): number | null {
 }
 
 // ── Main pre-roll: play cards, then ROLL ────────────────────────────────────
-function decideMainPre(state: GameState, ai: PlayerId): Action {
+function decideMainPre(state: GameState, ai: PlayerId, profile: AiProfile): Action {
   const me = state.players[ai];
   const opponent = state.players[other(ai)];
   void opponent;
@@ -275,7 +363,7 @@ function decideMainPre(state: GameState, ai: PlayerId): Action {
   // (cost-affordable + simple state precondition) so the heuristic
   // doesn't over-fit; we want the cards to *fire* from the AI, not
   // necessarily fire optimally.
-  const heroCard = pickHeroMainPhaseCard(state, ai);
+  const heroCard = pickHeroMainPhaseCard(state, ai, profile);
   if (heroCard) return { kind: "play-card", card: heroCard };
 
   // 3) Sell the oldest card to fund next turn if hand is overflowing.
@@ -291,7 +379,7 @@ function decideMainPre(state: GameState, ai: PlayerId): Action {
 }
 
 // ── Offensive roll: lock dice contributing to best target tier ──────────────
-function decideOffensiveRoll(state: GameState, ai: PlayerId): Action {
+function decideOffensiveRoll(state: GameState, ai: PlayerId, profile: AiProfile): Action {
   const me = state.players[ai];
   const opponent = state.players[other(ai)];
   const hero = getHero(me.hero);
@@ -314,7 +402,7 @@ function decideOffensiveRoll(state: GameState, ai: PlayerId): Action {
       for (let i = 0; i < resolved.length; i++) {
         if (comboMatchesFaces(resolved[i].combo, faces)) firingTier = i;
       }
-      const targetTier = firingTier >= 0 ? firingTier : pickTargetTier(state, ai);
+      const targetTier = firingTier >= 0 ? firingTier : pickTargetTier(state, ai, profile);
 
       // One symbol short of the target combo? A set-die-face card (Iron
       // Focus) closes the gap — without this, a quarter of every deck
@@ -364,9 +452,29 @@ function decideOffensiveRoll(state: GameState, ai: PlayerId): Action {
           }
         }
       }
-      // Locks match the keep mask. Already firing tier 2+? Commit; otherwise
-      // burn the remaining attempt to fish for an upgrade.
-      if (firingTier >= 2) return { kind: "advance-phase" };
+      // Locks match the keep mask. Already firing at or above the
+      // profile's commit tier? Commit; otherwise burn the remaining
+      // attempt to fish for an upgrade. (Squire commits on ANY firing
+      // combo; Champion/Nightmare hold out for T3+.)
+      if (firingTier >= profile.commitTier) {
+        // Nightmare's edge: the firing combo's dice are locked, so
+        // rerolling the free dice can only upgrade the row. Keep fishing
+        // while a higher row is genuinely reachable.
+        if (profile.fishHigherProb != null && firingTier < me.activeOffense.length - 1) {
+          const rows = evaluateLadder(hero, me, me.rollAttemptsRemaining, {
+            opponentHp: opponent.hp,
+            pendingOpponentDamage: stacksOf(opponent, "burn"),
+            damageBonus: (me.signatureState["frenzy"] ?? 0) + me.nextAbilityBonusDamage,
+            reachabilitySamples: profile.reachabilitySamples,
+            reachabilitySeed: state.rngSeed,
+          });
+          const fishable = rows.slice(firingTier + 1).some(r =>
+            r.kind === "reachable" && r.probability >= profile.fishHigherProb!,
+          );
+          if (fishable) return { kind: "roll-dice" };
+        }
+        return { kind: "advance-phase" };
+      }
       return { kind: "roll-dice" };
     }
     // First attempt (rollAttemptsRemaining === ROLL_ATTEMPTS): just roll.
@@ -378,7 +486,7 @@ function decideOffensiveRoll(state: GameState, ai: PlayerId): Action {
   return { kind: "advance-phase" };
 }
 
-function pickTargetTier(state: GameState, ai: PlayerId): number {
+function pickTargetTier(state: GameState, ai: PlayerId, profile: AiProfile = AI_PROFILES.champion): number {
   const me = state.players[ai];
   const opponent = state.players[other(ai)];
   const hero = getHero(me.hero);
@@ -386,12 +494,13 @@ function pickTargetTier(state: GameState, ai: PlayerId): number {
     opponentHp: opponent.hp,
     pendingOpponentDamage: stacksOf(opponent, "burn"),
     damageBonus: (me.signatureState["frenzy"] ?? 0) + me.nextAbilityBonusDamage,
-    reachabilitySamples: 200,
+    reachabilitySamples: profile.reachabilitySamples,
     reachabilitySeed: state.rngSeed,
   });
-  // Lethal-with-≥30%-prob commitment override.
+  // Lethal commitment override — the profile decides how faint a kill
+  // scent is worth chasing.
   const lethal = rows.findIndex(r =>
-    (r.kind === "firing" || r.kind === "triggered" || (r.kind === "reachable" && r.probability >= 0.3))
+    (r.kind === "firing" || r.kind === "triggered" || (r.kind === "reachable" && r.probability >= profile.lethalCommitProb))
     && "lethal" in r && r.lethal,
   );
   if (lethal >= 0) return lethal;
@@ -429,7 +538,7 @@ void locksAreOptimal;
  *  Returns the card id to play (or null). Each entry tests affordability,
  *  card kind, and a card-specific precondition. Iterate the player's
  *  hand for the FIRST matching card so order = priority. */
-function pickHeroMainPhaseCard(state: GameState, ai: PlayerId): string | null {
+function pickHeroMainPhaseCard(state: GameState, ai: PlayerId, profile: AiProfile): string | null {
   const me = state.players[ai];
   const opp = state.players[other(ai)];
   for (const card of me.hand) {
@@ -488,9 +597,9 @@ function pickHeroMainPhaseCard(state: GameState, ai: PlayerId): string | null {
         break;
       default:
         // Unlisted hero card: play it when CP-rich — a 25% dead deck reads
-        // as a broken opponent. The +3 cushion keeps the AI from going
-        // broke on cards the whitelist hasn't hand-tuned.
-        if (me.cp >= card.cost + 3) return card.id;
+        // as a broken opponent. The profile cushion keeps the AI from
+        // going broke on cards the whitelist hasn't hand-tuned.
+        if (me.cp >= card.cost + profile.unlistedCardCushion) return card.id;
         break;
     }
   }

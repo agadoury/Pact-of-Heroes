@@ -15,7 +15,8 @@ import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
 import { hasResumableMatch, loadMatchState, clearMatchState } from '@/ui/store/matchPersistence'
 import { useGameStore } from '@/store/gameStore'
 import { useUIStore } from '@/ui/store/uiStore'
-import { loadDefaultHero } from '@/store/deckStorage'
+import { loadDefaultHero, loadLastRank } from '@/store/deckStorage'
+import { isNightmareUnlocked } from '@/store/collectionStorage'
 import { getRegisteredHeroIds } from '@/content'
 import s from './HomeScreen.module.css'
 
@@ -37,6 +38,8 @@ export function HomeScreen(): JSX.Element {
       aiPlayer: 'p2',
       lastEvents: [],
       matchLog: saved.matchLog,
+      aiRank: saved.aiRank,
+      sealedBy: saved.sealedBy,
     })
     navigate('/play')
   }
@@ -54,12 +57,17 @@ export function HomeScreen(): JSX.Element {
     const mine = loadDefaultHero() ?? 'berserker'
     const others = heroIds.filter(id => id !== mine)
     const opponent = others[Math.floor(Math.random() * others.length)] ?? heroIds[0]!
+    // Reuse the last Pact Rank; a Nightmare pick that isn't unlocked for
+    // this hero quietly downgrades to Champion.
+    const last = loadLastRank()
+    const rank = last === 'squire' || last === 'champion' || last === 'nightmare' ? last : 'champion'
+    const aiRank = rank === 'nightmare' && !isNightmareUnlocked(mine) ? 'champion' : rank
     clearMatchState()
     const ui = useUIStore.getState()
     ui.setViewer('p1')
     ui.resetForMatch()
     ui.setSkipIntroOnce(true)
-    useGameStore.getState().startMatch({ p1: mine, p2: opponent, mode: 'vs-ai' })
+    useGameStore.getState().startMatch({ p1: mine, p2: opponent, mode: 'vs-ai', aiRank })
     navigate('/play')
   }
 

@@ -12,8 +12,11 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { HeroId } from '@/game/types'
+import type { AiRank } from '@/game/ai'
+import { RANK_RENOWN_MULT } from '@/game/ai'
 import { getHero, getRegisteredHeroIds } from '@/content'
-import { getCollection } from '@/store/collectionStorage'
+import { getCollection, getRankWins, isNightmareUnlocked, NIGHTMARE_UNLOCK_WINS } from '@/store/collectionStorage'
+import { loadLastRank } from '@/store/deckStorage'
 import { useGameStore } from '@/store/gameStore'
 import { useUIStore } from '@/ui/store/uiStore'
 import { Button } from '@/ui/components/atoms/Button'
@@ -33,6 +36,10 @@ export function HeroSelectScreen(): JSX.Element {
   const heroes = getRegisteredHeroIds().map(id => getHero(id))
   const [selectedId, setSelectedId] = useState<HeroId | null>(heroes[0]?.id ?? null)
   const [opponentId, setOpponentId] = useState<HeroId | null>(heroes[1]?.id ?? null)
+  const [rank, setRank] = useState<AiRank>(() => {
+    const last = loadLastRank()
+    return last === 'squire' || last === 'champion' || last === 'nightmare' ? last : 'champion'
+  })
 
   const selected = selectedId ? getHero(selectedId) : null
   const collection = useMemo(
@@ -40,11 +47,23 @@ export function HeroSelectScreen(): JSX.Element {
     [selectedId],
   )
 
+  // Nightmare is earned per-hero — 5 Champion wins with the hero you're
+  // bringing. A locked pick silently downgrades to Champion at start.
+  const nightmareOpen = useMemo(
+    () => (selectedId ? isNightmareUnlocked(selectedId) : false),
+    [selectedId],
+  )
+  const championWins = useMemo(
+    () => (selectedId ? getRankWins(selectedId).champion ?? 0 : 0),
+    [selectedId],
+  )
+  const effectiveRank: AiRank = rank === 'nightmare' && !nightmareOpen ? 'champion' : rank
+
   const begin = () => {
     if (!selectedId || !opponentId) return
     setViewer('p1')
     useUIStore.getState().resetForMatch()
-    startMatch({ p1: selectedId, p2: opponentId, mode: 'vs-ai' })
+    startMatch({ p1: selectedId, p2: opponentId, mode: 'vs-ai', aiRank: effectiveRank })
     navigate('/play')
   }
 
@@ -133,6 +152,34 @@ export function HeroSelectScreen(): JSX.Element {
               <span className={s.pickName}>{h.name.replace('The ', '')}</span>
             </button>
           ))}
+        </div>
+
+        {/* ── Pact Rank — the stakes dial ───────────────────────────── */}
+        <div className={s.sectionEyebrow}>Pact Rank · Stakes</div>
+        <div className={s.rankRow}>
+          {(['squire', 'champion', 'nightmare'] as const).map(r => {
+            const locked = r === 'nightmare' && !nightmareOpen
+            return (
+              <button
+                key={r}
+                className={clsx(s.rankCard, effectiveRank === r && s.rankPicked, locked && s.rankLocked)}
+                onClick={() => { if (!locked) setRank(r) }}
+                data-testid={`rank-${r}`}
+                aria-disabled={locked}
+              >
+                <span className={s.rankName}>{r.charAt(0).toUpperCase() + r.slice(1)}</span>
+                <span className={s.rankMult}>
+                  {locked ? '🔒' : `×${RANK_RENOWN_MULT[r]}`}
+                </span>
+                <span className={s.rankHint}>
+                  {r === 'squire' ? 'Takes what it rolls'
+                    : r === 'champion' ? 'The standard duel'
+                    : locked ? `${championWins}/${NIGHTMARE_UNLOCK_WINS} Champion wins`
+                    : 'Blood pact: +3 HP, +1 CP'}
+                </span>
+              </button>
+            )
+          })}
         </div>
         <div className={s.scrollPad} />
       </div>

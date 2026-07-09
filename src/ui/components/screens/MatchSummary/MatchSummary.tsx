@@ -14,7 +14,7 @@ import { buildMatchSummary } from '@/game/match-summary'
 import { useGameStore } from '@/store/gameStore'
 import { useUIStore } from '@/ui/store/uiStore'
 import { clearMatchState } from '@/ui/store/matchPersistence'
-import { awardMatchRenown, computeRenownAward, hasAffordableUnlock, type RenownAward } from '@/store/collectionStorage'
+import { awardMatchRenown, computeRenownAward, hasAffordableUnlock, recordRankWin, type RenownAward } from '@/store/collectionStorage'
 import { Button } from '@/ui/components/atoms/Button'
 import { AmbientBackdrop } from '@/ui/components/shared/AmbientBackdrop'
 import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
@@ -40,6 +40,9 @@ export function MatchSummary(): JSX.Element {
   const viewerId = useUIStore(u => u.viewerId)
   const reset    = useGameStore(g => g.reset)
   const startMatch = useGameStore(g => g.startMatch)
+  const aiRank   = useGameStore(g => g.aiRank)
+  const sealedBy = useGameStore(g => g.sealedBy)
+  const matchMode = useGameStore(g => g.mode)
 
   // Rich stats + the §10 descriptor (CLUTCH / FLAWLESS / COMEBACK / …)
   // computed from the full event log.
@@ -52,16 +55,18 @@ export function MatchSummary(): JSX.Element {
     })
   }, [matchLog, state?.winner, state?.turn])
 
-  // Snapshot the hero pair BEFORE the match state is reset by Rematch/New Hero.
-  const heroPair = useRef<{ p1: HeroId; p2: HeroId } | null>(null)
+  // Snapshot the hero pair + rank BEFORE the match state is reset by
+  // Rematch/New Hero — Rematch relaunches the same stakes.
+  const heroPair = useRef<{ p1: HeroId; p2: HeroId; rank: typeof aiRank } | null>(null)
   useEffect(() => {
     if (state && !heroPair.current) {
       heroPair.current = {
         p1: state.players.p1.hero,
         p2: state.players.p2.hero,
+        rank: aiRank,
       }
     }
-  }, [state])
+  }, [state, aiRank])
 
   const outcome = useMemo(() => {
     if (!state?.winner) return 'draw' as const
@@ -109,11 +114,19 @@ export function MatchSummary(): JSX.Element {
     const award = computeRenownAward(won, {
       descriptor: won ? summary?.descriptor : undefined,
       ultimatesFired: summary?.ultimatesFired[viewerId] ?? 0,
-    })
+    }, matchMode === 'vs-ai' ? { rank: aiRank, sealed: sealedBy != null } : undefined)
     const gained = awardMatchRenown(myHeroId, award.total, key)
-    if (gained > 0) setRenownAward(award)
+    if (gained > 0) {
+      setRenownAward(award)
+      // Rank wins feed the Nightmare unlock. `gained > 0` doubles as the
+      // idempotency gate — re-renders award 0 and skip the record too.
+      if (won && matchMode === 'vs-ai') recordRankWin(myHeroId, aiRank)
+    }
+    // A sealed loss pays 0 — still show the forfeited line so the gamble
+    // reads on the summary instead of silently vanishing.
+    if (award.total === 0 && sealedBy != null && !won) setRenownAward(award)
     setUnlockReady(hasAffordableUnlock(myHeroId))
-  }, [state, viewerId, summary])
+  }, [state, viewerId, summary, aiRank, sealedBy, matchMode])
 
   if (!state) return <div className={s.container} />
 
@@ -149,10 +162,11 @@ export function MatchSummary(): JSX.Element {
     reset()
     const ui = useUIStore.getState()
     ui.resetForMatch()
-    // Seamless rematch — straight back into turn 1, no VS cinematic.
+    // Seamless rematch — straight back into turn 1, no VS cinematic,
+    // same Pact Rank stakes.
     ui.setSkipIntroOnce(true)
     heroPair.current = null
-    startMatch({ p1: pair.p1, p2: pair.p2, mode: 'vs-ai' })
+    startMatch({ p1: pair.p1, p2: pair.p2, mode: 'vs-ai', aiRank: pair.rank })
     navigate('/play')
   }
   const newHero = () => {
