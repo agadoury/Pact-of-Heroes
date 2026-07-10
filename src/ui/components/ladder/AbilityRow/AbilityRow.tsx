@@ -12,6 +12,7 @@ import { clsx } from '@/ui/util/clsx'
 import type { LadderAbility } from '@/ui/types/ability'
 import { AbilityValueBadge, type AbilityValueBadgeVariant } from '../AbilityValueBadge'
 import { ComboGlyphStrip } from '../ComboGlyphStrip'
+import { comboNeedText } from '@/ui/util/comboText'
 import s from './AbilityRow.module.css'
 
 export interface AbilityRowProps {
@@ -43,6 +44,12 @@ export function AbilityRow({ ability, onTap, className }: AbilityRowProps): JSX.
         </div>
         {ability.willKill && ability.isUltimate ? (
           <div className={s.lethalCondition}>Lethal · will kill</div>
+        ) : state === 'near-eligible' ? (
+          // The teachable moment: one die short — say the distance in
+          // words instead of making players decode the pip strip.
+          <div className={s.need}>
+            {comboNeedText(ability.combo, ability.comboState) ?? ability.effectText}
+          </div>
         ) : (
           <div className={s.text}>{ability.effectText}</div>
         )}

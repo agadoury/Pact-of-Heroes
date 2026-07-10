@@ -20,6 +20,8 @@ export interface DefensiveOption {
   descriptor:  ComboDescriptor
   comboState:  ComboState
   diceCount:   number
+  /** Plain-language requirement — "Needs 2+ Shields · rolls 3 dice". */
+  requirement?: string
 }
 
 export interface DefensiveRowProps {
@@ -46,6 +48,9 @@ export function DefensiveRow({
       <div className={s.info}>
         <div className={s.name}>{option.name}</div>
         <div className={s.text}>{option.effectText}</div>
+        {option.requirement ? (
+          <div className={s.requirement}>{option.requirement}</div>
+        ) : null}
       </div>
       <ComboGlyphStrip
         descriptor={option.descriptor}

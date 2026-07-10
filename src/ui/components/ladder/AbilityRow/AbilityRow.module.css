@@ -166,3 +166,26 @@
   text-shadow: 0 0 4px rgba(240, 198, 104, 0.7);
   vertical-align: 1px;
 }
+
+/* Live combo distance — "1 more Axe" — shown when one die short. */
+.need {
+  font-family: var(--font-family-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: needPulse 1400ms ease-in-out infinite;
+}
+
+@keyframes needPulse {
+  0%, 100% { opacity: 0.75; }
+  50%      { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .need { animation: none; }
+}

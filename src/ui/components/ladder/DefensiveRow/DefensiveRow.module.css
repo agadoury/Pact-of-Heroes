@@ -64,3 +64,17 @@
   background: var(--dawn-bright);
   border-radius: 0 2px 2px 0;
 }
+
+/* Plain-language combo requirement under the effect text. */
+.requirement {
+  font-family: var(--font-family-display);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--frost, #6cb0e8);
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

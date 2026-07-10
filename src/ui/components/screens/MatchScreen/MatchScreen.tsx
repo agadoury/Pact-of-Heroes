@@ -59,6 +59,9 @@ import { canPlay } from '@/game/cards'
 import { pendingActorFor } from '@/game/ai'
 import { clsx } from '@/ui/util/clsx'
 import { haptic } from '@/ui/util/haptics'
+import { comboPlainText, comboNeedText } from '@/ui/util/comboText'
+import type { LadderAbility } from '@/ui/types/ability'
+import { getCoachSeen, recordCoachMatch, dismissCoach, COACH_MATCH_LIMIT } from '@/store/coachStorage'
 import { derivePhaseDisplay } from '@/ui/selectors/phaseDisplay'
 import { deriveLadder } from '@/ui/selectors/ladder'
 import { deriveStatusTrack } from '@/ui/selectors/statusTrack'
@@ -106,6 +109,9 @@ export function MatchScreen(): JSX.Element {
   // Match-intro cinematic — plays once per match on first mount with state.
   const introShownFor = useRef<string | null>(null)
   const [introActive, setIntroActive] = useState(false)
+
+  // Coach hints — one contextual line for the first few matches.
+  const [coachOn, setCoachOn] = useState(false)
 
   // Swift Play — hold anywhere on the screen while the opponent acts to
   // fast-forward its beats (3×). Short taps (<220ms) pass through
@@ -362,6 +368,11 @@ export function MatchScreen(): JSX.Element {
     const marker = String(state.rngSeed)
     if (introShownFor.current === marker) return
     introShownFor.current = marker
+    // Coach: count this match (idempotent per seed) and decide whether the
+    // hint chip teaches this one — first few matches only.
+    recordCoachMatch(marker)
+    const coach = getCoachSeen()
+    setCoachOn(!coach.dismissed && coach.matchesSeen <= COACH_MATCH_LIMIT)
     const KEY = 'pact-of-heroes:intro-shown'
     // Seamless rematch / Quick Match: consume the one-shot skip flag and
     // mark the intro as shown so a mid-match reload doesn't replay it.
@@ -459,14 +470,18 @@ export function MatchScreen(): JSX.Element {
   const defensiveOptions = useMemo(() => {
     if (!state?.pendingAttack || state.pendingAttack.defender !== viewerId) return []
     const self = state.players[viewerId]
-    return self.activeDefense.map((d) => ({
-      id:         d.name,
-      name:       d.name,
-      effectText: d.shortText,
-      descriptor: { kind: 'sigil' as const, symbols: comboSymbolList(d.combo) },
-      comboState: { status: 'ineligible' as const, pips: comboOutlinedPips(d.combo) },
-      diceCount:  d.defenseDiceCount ?? 3,
-    }))
+    return self.activeDefense.map((d) => {
+      const diceCount = d.defenseDiceCount ?? 3
+      return {
+        id:          d.name,
+        name:        d.name,
+        effectText:  d.shortText,
+        descriptor:  { kind: 'sigil' as const, symbols: comboSymbolList(d.combo) },
+        comboState:  { status: 'ineligible' as const, pips: comboOutlinedPips(d.combo) },
+        diceCount,
+        requirement: `Needs ${comboPlainText(d.combo)} · rolls ${diceCount} dice`,
+      }
+    })
   }, [state?.pendingAttack, state?.players, viewerId])
 
   const spendYields = useMemo<SpendYield[]>(() => {
@@ -742,6 +757,25 @@ export function MatchScreen(): JSX.Element {
   const opponentFlashActive = hitFlashPlayer === opponentId && performance.now() - hitFlashAt < 500
   const selfFlashActive     = hitFlashPlayer === viewerId    && performance.now() - hitFlashAt < 500
 
+  // One contextual coach line, only while quiet: no cinematic/intro/end,
+  // no inspection modal, and no prompt whose overlay reaches the action
+  // bar (offensive pick + instant prompts extend to the chip's anchor —
+  // the chip must never sit over their buttons).
+  const coachHint =
+    coachOn
+    && !currentRes && !introActive && !killingBlow
+    && state.phase !== 'match-end'
+    && uiOverlay === 'none'
+    && !state.pendingOffensiveChoice
+    && !(pendingRemoval && pendingRemoval.holder === viewerId)
+      ? deriveCoachHint({
+          state, isViewerTurn, viewerHasRolled, ladder,
+          underAttack: !!pendingAttackOnViewer,
+          attackDefendable,
+          hasBankSpend: !!viewerBankSpend,
+        })
+      : null
+
   return (
     <ScreenShake>
     <ScreenBands>
@@ -838,6 +872,19 @@ export function MatchScreen(): JSX.Element {
       </div>
 
       <div className={s.band} data-band="action-bar">
+        {coachHint ? (
+          <div className={s.coachChip} role="status">
+            <span className={s.coachText}>{coachHint}</span>
+            <button
+              type="button"
+              className={s.coachDismiss}
+              aria-label="Dismiss hints forever"
+              onClick={() => { dismissCoach(); setCoachOn(false) }}
+            >
+              ✕
+            </button>
+          </div>
+        ) : null}
         <ActionBar
           buttons={actionBar.map(b => ({
             ...b,
@@ -1053,6 +1100,52 @@ function effectNeedsFaceValue(effect: import('@/game/types').AbilityEffect): boo
     return effect.effects.some(effectNeedsFaceValue)
   }
   return false
+}
+
+/**
+ * The coach's one line — chosen by live game state, highest-priority
+ * situation first. Teaches the core loop (roll → lock → reroll → fire),
+ * defense picks, and Swift Play; retires after a few matches.
+ */
+function deriveCoachHint(a: {
+  state:           GameState
+  isViewerTurn:    boolean
+  viewerHasRolled: boolean
+  ladder:          LadderAbility[]
+  underAttack:     boolean
+  attackDefendable: boolean
+  hasBankSpend:    boolean
+}): string | null {
+  if (a.hasBankSpend) {
+    return 'Radiance can bend this moment — spend some with the stepper, or skip.'
+  }
+  if (a.underAttack) {
+    return a.attackDefendable
+      ? 'Pick a defense — it rolls its own dice and must land its combo. Or take the hit.'
+      : 'This hit cannot be defended. An Instant card from your hand can still answer it.'
+  }
+  if (!a.isViewerTurn) {
+    return 'Your rival is acting — press and hold anywhere to fast-forward.'
+  }
+  switch (a.state.phase) {
+    case 'main-pre':
+      return 'Play cards (they cost CP — the gold number), or tap Roll to attack.'
+    case 'offensive-roll': {
+      if (!a.viewerHasRolled) return 'Tap Roll — your dice decide which abilities fire.'
+      const firing = a.ladder.filter(r => r.comboState.status === 'eligible').pop()
+      if (firing) return `${firing.name} is lit — tap Fire, or reroll free dice for a bigger tier.`
+      const near = a.ladder.find(r => r.comboState.status === 'near-eligible')
+      if (near) {
+        const need = comboNeedText(near.combo, near.comboState)
+        if (need) return `${near.name} needs ${need.toLowerCase()} — LOCK your matches (tap dice), then Roll.`
+      }
+      return 'Tap dice to LOCK the ones matching a ladder combo, then Roll again.'
+    }
+    case 'main-post':
+      return 'Attack done — play another card, or End Turn.'
+    default:
+      return null
+  }
 }
 
 function comboSymbolList(combo: any): string[] {
