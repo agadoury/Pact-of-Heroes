@@ -17,6 +17,7 @@ import { clearMatchState } from '@/ui/store/matchPersistence'
 import {
   awardMatchRenown, computeRenownAward, hasAffordableUnlock, recordRankWin,
   getStreaks, getNextUnlockTarget, getMatchup, recordMatchup, STREAK_BONUS_AT,
+  recordFinish, getTitle,
   type RenownAward, type NextUnlockTarget,
 } from '@/store/collectionStorage'
 import { featuredHero, isFirstDawnAvailable, claimFirstDawn } from '@/store/dailyStorage'
@@ -114,6 +115,8 @@ export function MatchSummary(): JSX.Element {
   const [unlockReady, setUnlockReady] = useState(false)
   const [streakBeat, setStreakBeat] = useState<{ kind: 'alive' | 'ended'; count: number } | null>(null)
   const [nextUnlock, setNextUnlock] = useState<NextUnlockTarget | null>(null)
+  const [title, setTitle] = useState<string | null>(null)
+  const [titleForged, setTitleForged] = useState<string | null>(null)
   useEffect(() => {
     if (!state?.winner || state.winner === 'draw') return
     const myHeroId = state.players[viewerId].hero
@@ -149,7 +152,13 @@ export function MatchSummary(): JSX.Element {
       if (won && gained > 0 && matchMode === 'vs-ai') recordRankWin(myHeroId, aiRank)
       // Rivalry ledger — lifetime W/L per matchup, rendered on MatchIntro.
       recordMatchup(myHeroId, state.players[viewerId === 'p1' ? 'p2' : 'p1'].hero, won)
+      // Deeds: count the named finish; a threshold crossing forges a title.
+      if (won && summary?.descriptor) {
+        const forged = recordFinish(myHeroId, summary.descriptor)
+        if (forged) setTitleForged(forged.title)
+      }
     }
+    setTitle(getTitle(myHeroId))
     setNextUnlock(getNextUnlockTarget(myHeroId))
     setUnlockReady(hasAffordableUnlock(myHeroId))
   }, [state, viewerId, summary, aiRank, sealedBy, matchMode])
@@ -233,6 +242,11 @@ export function MatchSummary(): JSX.Element {
       <div className={s.heroPodium}>
         <HeroSilhouette heroId={myHero} size={92} variant="portrait" />
       </div>
+      {titleForged ? (
+        <div className={s.titleForged}>Title forged — {titleForged}</div>
+      ) : title ? (
+        <div className={s.heroTitle}>{title}</div>
+      ) : null}
       <div className={clsx(s.result, s[outcome])}>
         {outcome === 'victory'
           ? (summary?.descriptor ?? 'VICTORY')

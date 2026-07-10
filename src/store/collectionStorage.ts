@@ -66,6 +66,8 @@ interface HeroCollectionEntry {
    *  pre-existing saves. */
   currentStreak?: number;
   bestStreak?: number;
+  /** Deeds — counts of named finishes earned (wins only). Optional. */
+  finishCounts?: Partial<Record<string, number>>;
 }
 
 /** Champion wins required (per hero) before Nightmare opens. */
@@ -289,6 +291,58 @@ export function recordRankWin(heroId: HeroId, rank: AiRank): void {
 /** Nightmare opens per-hero after enough Champion wins — a rank you earn. */
 export function isNightmareUnlocked(heroId: HeroId): boolean {
   return (getRankWins(heroId).champion ?? 0) >= NIGHTMARE_UNLOCK_WINS;
+}
+
+// ── Deeds & Titles — named finishes forge identity ───────────────────────────
+
+export interface TitleDeed {
+  id: string;
+  /** The title forged, rendered as "The Berserker, <title>". */
+  title: string;
+  /** Which named finish counts toward it. */
+  descriptor: MatchDescriptor;
+  /** Finishes required to forge. */
+  count: number;
+}
+
+/** Ordered — later entries outrank earlier ones when several are forged. */
+export const TITLE_DEEDS: readonly TitleDeed[] = [
+  { id: "surgeon",     title: "the Precise",     descriptor: "SURGEON",          count: 5 },
+  { id: "grinder",     title: "the Relentless",  descriptor: "GRINDER",          count: 5 },
+  { id: "stomp",       title: "the Merciless",   descriptor: "STOMP",            count: 5 },
+  { id: "comeback",    title: "the Unbroken",    descriptor: "COMEBACK",         count: 3 },
+  { id: "flawless",    title: "the Untouchable", descriptor: "FLAWLESS",         count: 3 },
+  { id: "clutch",      title: "Deathless",       descriptor: "CLUTCH",           count: 5 },
+  { id: "critical",    title: "the Cataclysm",   descriptor: "CRITICAL VICTORY", count: 3 },
+];
+
+export function getFinishCounts(heroId: HeroId): Partial<Record<string, number>> {
+  return readRoot().perHero[heroId]?.finishCounts ?? {};
+}
+
+/** Count a named finish (wins only; caller's award idempotency gates
+ *  re-invocation). Returns any NEWLY forged title, for the gold stamp. */
+export function recordFinish(heroId: HeroId, descriptor: MatchDescriptor): TitleDeed | null {
+  if (descriptor === "VICTORY") return null;
+  const root = readRoot();
+  const entry = root.perHero[heroId] ?? emptyEntry();
+  const counts = { ...(entry.finishCounts ?? {}) };
+  const next = (counts[descriptor] ?? 0) + 1;
+  counts[descriptor] = next;
+  root.perHero = { ...root.perHero, [heroId]: { ...entry, finishCounts: counts } };
+  writeRoot(root);
+  const deed = TITLE_DEEDS.find(d => d.descriptor === descriptor && d.count === next);
+  return deed ?? null;
+}
+
+/** The hero's current title — the highest-ranked forged deed, or null. */
+export function getTitle(heroId: HeroId): string | null {
+  const counts = getFinishCounts(heroId);
+  for (let i = TITLE_DEEDS.length - 1; i >= 0; i--) {
+    const d = TITLE_DEEDS[i]!;
+    if ((counts[d.descriptor] ?? 0) >= d.count) return d.title;
+  }
+  return null;
 }
 
 // ── Rivalries — per-matchup lifetime records ─────────────────────────────────

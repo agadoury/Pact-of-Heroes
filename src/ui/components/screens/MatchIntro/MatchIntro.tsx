@@ -12,7 +12,7 @@ import { clsx } from '@/ui/util/clsx'
 import type { HeroId } from '@/game/types'
 import { DURATION } from '@/ui/util/duration'
 import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
-import { getMatchup } from '@/store/collectionStorage'
+import { getMatchup, getTitle } from '@/store/collectionStorage'
 import s from './MatchIntro.module.css'
 
 export interface MatchIntroProps {
@@ -55,7 +55,7 @@ export function MatchIntro({
             <HeroSilhouette heroId={playerHero} size={100} variant="portrait" />
           </div>
           <div className={s.name}>{capName(playerHero)}</div>
-          <div className={s.role}>Challenger</div>
+          <div className={s.role}>{getTitle(playerHero) ?? 'Challenger'}</div>
         </div>
         <div className={s.separator} aria-hidden="true">
           <div className={s.vsGlyph}>VS</div>

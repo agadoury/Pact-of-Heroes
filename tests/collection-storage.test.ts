@@ -157,6 +157,25 @@ describe("next unlock target", () => {
   });
 });
 
+describe("deeds & titles", () => {
+  it("forges a title exactly at the threshold and ranks later deeds higher", async () => {
+    const { recordFinish, getTitle, TITLE_DEEDS } = await import("../src/store/collectionStorage");
+    const flawless = TITLE_DEEDS.find(d => d.descriptor === "FLAWLESS")!;
+    for (let i = 1; i < flawless.count; i++) {
+      expect(recordFinish("berserker", "FLAWLESS")).toBeNull();
+    }
+    const forged = recordFinish("berserker", "FLAWLESS");
+    expect(forged?.title).toBe(flawless.title);
+    expect(getTitle("berserker")).toBe(flawless.title);
+    // Plain VICTORY never counts.
+    expect(recordFinish("berserker", "VICTORY")).toBeNull();
+    // A higher-ranked deed outranks the earlier title.
+    const crit = TITLE_DEEDS.find(d => d.descriptor === "CRITICAL VICTORY")!;
+    for (let i = 0; i < crit.count; i++) recordFinish("berserker", "CRITICAL VICTORY");
+    expect(getTitle("berserker")).toBe(crit.title);
+  });
+});
+
 describe("rivalries", () => {
   it("tracks lifetime W/L per matchup and brands a rival at the streak", () => {
     for (let i = 0; i < RIVAL_LOSS_STREAK; i++) recordMatchup("berserker", "pyromancer", false);

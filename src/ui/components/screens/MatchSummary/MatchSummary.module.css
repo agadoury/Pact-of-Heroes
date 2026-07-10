@@ -212,3 +212,35 @@
   .streakChip { animation: none; }
   .nextUnlockFill.nextUnlockFull { animation: none; }
 }
+
+/* Deeds & Titles */
+.heroTitle {
+  margin-top: -2px;
+  font-family: var(--font-family-body);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--gold-bright);
+  letter-spacing: 0.04em;
+}
+.titleForged {
+  margin-top: 2px;
+  padding: 3px 16px;
+  border: 1.5px solid var(--gold-bright);
+  border-radius: 4px;
+  font-family: var(--font-family-display);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  background: rgba(240, 198, 104, 0.08);
+  transform: rotate(-2deg);
+  animation: forgeStamp 260ms cubic-bezier(0.34, 1.8, 0.64, 1) 400ms both;
+}
+@keyframes forgeStamp {
+  0%   { opacity: 0; transform: rotate(-2deg) scale(1.9); }
+  100% { opacity: 1; transform: rotate(-2deg) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .titleForged { animation: forgeStamp 200ms ease-out both; }
+}
