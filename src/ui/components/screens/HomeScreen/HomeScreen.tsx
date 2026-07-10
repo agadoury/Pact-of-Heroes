@@ -18,6 +18,8 @@ import { useUIStore } from '@/ui/store/uiStore'
 import { loadDefaultHero, loadLastRank } from '@/store/deckStorage'
 import { isNightmareUnlocked, getStreaks } from '@/store/collectionStorage'
 import { dailyPact, isFirstDawnAvailable, RENOWN_FIRST_DAWN, RENOWN_FEATURED_BONUS } from '@/store/dailyStorage'
+import { getCoachSeen } from '@/store/coachStorage'
+import { FIRST_BLOOD } from '@/game/firstBlood'
 import { getRegisteredHeroIds, getHero } from '@/content'
 import { clsx } from '@/ui/util/clsx'
 import s from './HomeScreen.module.css'
@@ -84,6 +86,20 @@ export function HomeScreen(): JSX.Element {
   // Berserker on a fresh install) against a random other hero, no select
   // screen, no intro cinematic.
   const quickMatch = () => {
+    // First Blood: a brand-new player's first Quick Match is the guided
+    // duel — fixed seed, teaching first roll, Squire opponent, intro on.
+    if (getCoachSeen().matchesSeen === 0) {
+      clearMatchState()
+      const ui = useUIStore.getState()
+      ui.setViewer('p1')
+      ui.resetForMatch()
+      useGameStore.getState().startMatch({
+        p1: FIRST_BLOOD.p1, p2: FIRST_BLOOD.p2, mode: 'vs-ai',
+        seed: FIRST_BLOOD.seed, coin: FIRST_BLOOD.coin, aiRank: FIRST_BLOOD.rank,
+      })
+      navigate('/play')
+      return
+    }
     const heroIds = getRegisteredHeroIds()
     const mine = loadDefaultHero() ?? 'berserker'
     const others = heroIds.filter(id => id !== mine)

@@ -47,6 +47,8 @@ export const RENOWN_ULTIMATE_BONUS = 1;
 /** "On Fire" — extra Renown per win once a streak reaches the threshold. */
 export const RENOWN_STREAK_BONUS = 1;
 export const STREAK_BONUS_AT = 3;
+/** Finishing your very first match seals the pact — paid win or lose. */
+export const RENOWN_FIRST_PACT = 5;
 
 interface HeroCollectionEntry {
   renown: number;                 // spendable balance
@@ -194,6 +196,8 @@ export function computeRenownAward(
     firstDawn?: boolean;
     /** Playing the featured hero of the week (+2, win or lose). */
     featured?: boolean;
+    /** The player's first-ever finished match (+5, win or lose). */
+    firstPact?: boolean;
   },
   stakes?: { rank?: AiRank; sealed?: boolean },
 ): RenownAward {
@@ -226,6 +230,9 @@ export function computeRenownAward(
   }
   if (perf?.featured) {
     breakdown.push({ label: "Featured hero", amount: RENOWN_FEATURED_BONUS });
+  }
+  if (perf?.firstPact) {
+    breakdown.push({ label: "First Pact", amount: RENOWN_FIRST_PACT });
   }
 
   let total = breakdown.reduce((s2, b) => s2 + b.amount, 0);

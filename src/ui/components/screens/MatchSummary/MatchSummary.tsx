@@ -20,6 +20,7 @@ import {
   type RenownAward, type NextUnlockTarget,
 } from '@/store/collectionStorage'
 import { featuredHero, isFirstDawnAvailable, claimFirstDawn } from '@/store/dailyStorage'
+import { getCoachSeen } from '@/store/coachStorage'
 import { Button } from '@/ui/components/atoms/Button'
 import { AmbientBackdrop } from '@/ui/components/shared/AmbientBackdrop'
 import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
@@ -129,6 +130,8 @@ export function MatchSummary(): JSX.Element {
       streak: projectedStreak,
       firstDawn,
       featured: myHeroId === featuredHero(),
+      // First-ever finished match — the coach counter is at exactly 1.
+      firstPact: getCoachSeen().matchesSeen === 1,
     }, matchMode === 'vs-ai' ? { rank: aiRank, sealed: sealedBy != null } : undefined)
     const gained = awardMatchRenown(myHeroId, award.total, key, won)
     if (gained > 0 && firstDawn) claimFirstDawn()
