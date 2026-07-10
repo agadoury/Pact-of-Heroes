@@ -58,6 +58,7 @@ import { getHero } from '@/content'
 import { canPlay } from '@/game/cards'
 import { pendingActorFor } from '@/game/ai'
 import { clsx } from '@/ui/util/clsx'
+import { haptic } from '@/ui/util/haptics'
 import { derivePhaseDisplay } from '@/ui/selectors/phaseDisplay'
 import { deriveLadder } from '@/ui/selectors/ladder'
 import { deriveStatusTrack } from '@/ui/selectors/statusTrack'
@@ -215,6 +216,7 @@ export function MatchScreen(): JSX.Element {
       if (rolled) {
         setRollSignal(n => n + 1)
         setRollingUntil(performance.now() + 1100)
+        haptic('roll')
       }
       lastDiceEventIdx.current = log.length
     })
@@ -280,6 +282,20 @@ export function MatchScreen(): JSX.Element {
   const hitFlashPlayer = useJuiceStore(j => j.hitFlashPlayer)
   const hitFlashAt     = useJuiceStore(j => j.hitFlashAt)
 
+  // Haptics — a physical layer under the visual one. Every in-match
+  // button press ticks (8ms); dice rolls pulse; landed damage thumps.
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null
+      if (target?.closest('button')) haptic('tap')
+    }
+    window.addEventListener('pointerdown', onDown, { passive: true })
+    return () => window.removeEventListener('pointerdown', onDown)
+  }, [])
+  useEffect(() => {
+    if (hitFlashAt > 0) haptic('hit')
+  }, [hitFlashAt])
+
   // The produced ending: when the match ends and the last cinematic
   // drains, hijack the screen with the Killing Blow Takeover (crimson
   // final hit → VICTORY/DEFEAT stinger with the descriptor), then cut to
@@ -324,6 +340,7 @@ export function MatchScreen(): JSX.Element {
           if (ev?.t === 'status-detonated' && ev.holder === loser) { abilityLabel = `${ev.status.split(':').pop()} detonation`; break }
         }
       }
+      haptic('heavy')
       setKillingBlow({
         outcome: live.winner === 'draw' ? 'draw' : live.winner === vId ? 'victory' : 'defeat',
         descriptor: summary.descriptor,

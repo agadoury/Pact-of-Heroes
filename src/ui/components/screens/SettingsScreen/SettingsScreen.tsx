@@ -13,6 +13,7 @@ import { Button } from '@/ui/components/atoms/Button'
 import { AmbientBackdrop } from '@/ui/components/shared/AmbientBackdrop'
 import { audio } from '@/audio/manager'
 import { setMusicVolume as setBusMusicVolume } from '@/ui/util/ambientMusic'
+import { hapticsEnabled, setHapticsEnabled, hapticsSupported, haptic } from '@/ui/util/haptics'
 import { clsx } from '@/ui/util/clsx'
 import s from './SettingsScreen.module.css'
 
@@ -37,6 +38,14 @@ export function SettingsScreen(): JSX.Element {
     const next = !muted
     setMuted(next)
     audio.setMuted(next)
+  }
+
+  const [haptics, setHaptics] = useState<boolean>(hapticsEnabled())
+  const toggleHaptics = () => {
+    const next = !haptics
+    setHaptics(next)
+    setHapticsEnabled(next)
+    if (next) haptic('hit')   // confirm with a buzz the user can feel
   }
 
   return (
@@ -79,6 +88,21 @@ export function SettingsScreen(): JSX.Element {
             onChange={e => onMusicChange(Number(e.target.value) / 100)}
             className={s.slider}
           />
+        </div>
+      </section>
+
+      <section className={s.section}>
+        <h2>Feel</h2>
+        <div className={s.row}>
+          <span className={s.label}>
+            Haptics{hapticsSupported() ? '' : ' (unsupported here)'}
+          </span>
+          <button
+            className={clsx(s.toggle, haptics && s.on)}
+            onClick={toggleHaptics}
+          >
+            {haptics ? 'ON' : 'OFF'}
+          </button>
         </div>
       </section>
 

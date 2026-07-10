@@ -65,6 +65,9 @@ export const DURATION = {
   upkeepBeat:   950,   // full lightweight variant beat
   upkeepGap:    100,   // between consecutive upkeep beats
 
+  // Defense roll cinematic — dice tumble (~1.3s incl. stagger) + verdict
+  defenseRollBeat: 2450,
+
   // Card-play read beat (overlay + resolution sequence)
   cardPlayBeat: 2600,
 

@@ -11,16 +11,17 @@
  */
 
 import type { PlayerId } from './ui'
-import type { Card } from '@/game/types'
+import type { Card, HeroId } from '@/game/types'
 
 /** Every FOP scene variant. */
 export type FOPScene =
-  | { kind: 'ability';     data: AbilityResolutionData }
-  | { kind: 'detonation';  data: DetonationData }
-  | { kind: 'sub-event';   data: SubEventData }
-  | { kind: 'card-play';   data: CardPlayData }
-  | { kind: 'consume';     data: ConsumeData }
-  | { kind: 'defense';     data: DefenseData }
+  | { kind: 'ability';      data: AbilityResolutionData }
+  | { kind: 'detonation';   data: DetonationData }
+  | { kind: 'sub-event';    data: SubEventData }
+  | { kind: 'card-play';    data: CardPlayData }
+  | { kind: 'consume';      data: ConsumeData }
+  | { kind: 'defense';      data: DefenseData }
+  | { kind: 'defense-roll'; data: DefenseRollData }
 
 /** Full ability resolution — the standard 2000ms cinematic. */
 export interface AbilityResolutionData {
@@ -90,6 +91,20 @@ export interface DefenseData {
   reduction:   number
   landed:      boolean
   incoming:    number
+}
+
+/** Defense roll cinematic — the defender's dice visibly tumble and land
+ *  on the engine-resolved faces, then a landed/missed verdict slams in.
+ *  Plays BEFORE the attack-impact scene in the resolution queue. */
+export interface DefenseRollData {
+  defenseName: string
+  defender:    PlayerId
+  /** Defender's hero — resolves die face definitions + element tone. */
+  heroId:      HeroId
+  /** Rolled dice as indices into the hero's die face list. */
+  faceIndices: number[]
+  landed:      boolean
+  reduction:   number
 }
 
 /** Resolution state machine phases. */

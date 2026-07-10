@@ -1029,7 +1029,7 @@ export type GameEvent =
   /** Defender has chosen which defense (or null = take-it-undefended). */
   | { t: "defense-intended"; defender: PlayerId; abilityIndex: number | null; abilityName?: string; diceCount?: number }
   /** Single defensive roll, no rerolls, no locking. */
-  | { t: "defense-dice-rolled"; player: PlayerId; dice: ReadonlyArray<{ index: number; current: number; symbol: SymbolId }>; abilityName: string }
+  | { t: "defense-dice-rolled"; player: PlayerId; hero: HeroId; dice: ReadonlyArray<{ index: number; current: number; symbol: SymbolId }>; abilityName: string }
   | { t: "defense-resolved"; player: PlayerId; reduction: number; matchedTier?: AbilityTier; abilityName?: string; landed: boolean }
   | { t: "status-applied"; status: StatusId; holder: PlayerId; applier: PlayerId; stacks: number; total: number }
   | { t: "status-ticked"; status: StatusId; holder: PlayerId; effect: "damage" | "heal" | "decrement"; amount: number; stacksRemaining: number }

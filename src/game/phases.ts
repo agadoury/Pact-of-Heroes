@@ -542,6 +542,7 @@ export function resolveDefenseChoice(state: GameState, abilityIndex: number | nu
     events.push({
       t: "defense-dice-rolled",
       player: defender.player,
+      hero: defender.hero,
       dice: rolledDescriptors,
       abilityName: chosen.name,
     });

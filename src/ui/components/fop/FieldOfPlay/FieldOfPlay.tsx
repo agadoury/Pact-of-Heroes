@@ -16,6 +16,7 @@ import { EffectRows } from '../EffectRows'
 import { ParticleField } from '../ParticleField'
 import { ConsumeContent } from '../ConsumeContent'
 import { DetonationContent } from '../DetonationContent'
+import { DefenseRollContent } from '../DefenseRollContent'
 import { UpkeepFOP } from '../UpkeepFOP'
 import s from './FieldOfPlay.module.css'
 
@@ -91,6 +92,8 @@ export function FieldOfPlay({
               phase={phase}
             />
           </>
+        ) : scene.kind === 'defense-roll' ? (
+          <DefenseRollContent data={scene.data} phase={phase} />
         ) : null}
       </div>
     </div>
@@ -103,10 +106,11 @@ function toneOf(scene: FOPScene): 'gold' | 'ember' | 'frost' | 'dawn' | 'crimson
     case 'detonation':  return 'detonation'
     case 'consume':     return scene.data.consumed[0]?.kind === 'cinder' ? 'ember' :
                                 scene.data.consumed[0]?.kind === 'verdict' ? 'dawn' : 'frost'
-    case 'sub-event':   return 'gold'
-    case 'defense':     return 'frost'
-    case 'card-play':   return scene.data.tone === 'gold' ? 'gold' : scene.data.tone
-    default:            return 'gold'
+    case 'sub-event':    return 'gold'
+    case 'defense':      return 'frost'
+    case 'defense-roll': return 'frost'
+    case 'card-play':    return scene.data.tone === 'gold' ? 'gold' : scene.data.tone
+    default:             return 'gold'
   }
 }
 

@@ -49,20 +49,55 @@ describe('fopAggregator', () => {
 
     const batch2: GameEvent[] = [
       { t: 'defense-intended', defender: 'p2', abilityIndex: 0, abilityName: 'Wolfhide', diceCount: 3 },
-      { t: 'defense-dice-rolled', player: 'p2', dice: [], abilityName: 'Wolfhide' },
+      { t: 'defense-dice-rolled', player: 'p2', hero: 'berserker', dice: [
+        { index: 0, current: 1, symbol: 'berserker:axe' },
+        { index: 1, current: 4, symbol: 'berserker:shield' },
+        { index: 2, current: 1, symbol: 'berserker:axe' },
+      ], abilityName: 'Wolfhide' },
       { t: 'defense-resolved', player: 'p2', reduction: 2, landed: true, abilityName: 'Wolfhide' },
       { t: 'damage-dealt',     from: 'p1', to: 'p2', amount: 5, type: 'undefendable', mitigated: 2 },
       { t: 'hp-changed',       player: 'p2', delta: -5, total: 20 },
       { t: 'phase-changed',    player: 'p2', from: 'defensive-roll', to: 'main-post' },
     ]
     const s2 = aggregateEvents(s1.state, batch2)
-    expect(s2.emitted.length).toBe(1)
-    const scene = s2.emitted[0]!
+    // The defense roll plays as its own scene BEFORE the attack impact —
+    // the defender's dice visibly tumble, then the hit lands.
+    expect(s2.emitted.length).toBe(2)
+    const roll = s2.emitted[0]!
+    expect(roll.kind).toBe('defense-roll')
+    if (roll.kind === 'defense-roll') {
+      expect(roll.data.defenseName).toBe('Wolfhide')
+      expect(roll.data.defender).toBe('p2')
+      expect(roll.data.heroId).toBe('berserker')
+      expect(roll.data.faceIndices).toEqual([1, 4, 1])
+      expect(roll.data.landed).toBe(true)
+      expect(roll.data.reduction).toBe(2)
+    }
+    const scene = s2.emitted[1]!
+    expect(scene.kind).toBe('ability')
     if (scene.kind === 'ability') {
       expect(scene.data.abilityName).toBe('Solar Blade')
       expect(scene.data.damage).toBe(5)
       expect(scene.data.effects.some(e => e.kind === 'block' && e.description.includes('blocks'))).toBe(true)
     }
+    expect(s2.state.defenseRoll ?? null).toBeNull()
+  })
+
+  it('take-the-hit (no dice rolled) emits no defense-roll scene', () => {
+    const batch1: GameEvent[] = [
+      { t: 'ability-triggered', player: 'p1', tier: 2, abilityName: 'Cleave', isCritical: false },
+      { t: 'attack-intended',   attacker: 'p1', defender: 'p2', abilityName: 'Cleave', tier: 2, damageType: 'normal', incomingAmount: 5, defendable: true },
+    ]
+    const s1 = aggregateEvents(initialAggregatorState, batch1)
+    const batch2: GameEvent[] = [
+      { t: 'defense-intended', defender: 'p2', abilityIndex: null },
+      { t: 'defense-resolved', player: 'p2', reduction: 0, landed: false },
+      { t: 'damage-dealt',     from: 'p1', to: 'p2', amount: 5, type: 'normal', mitigated: 0 },
+      { t: 'phase-changed',    player: 'p2', from: 'defensive-roll', to: 'main-post' },
+    ]
+    const s2 = aggregateEvents(s1.state, batch2)
+    expect(s2.emitted.length).toBe(1)
+    expect(s2.emitted[0]!.kind).toBe('ability')
   })
 
   it('emits sub-event scenes for status ticks but not routine draw/CP income', () => {

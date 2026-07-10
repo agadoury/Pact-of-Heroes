@@ -19,7 +19,7 @@
  * Bible reference: Part 5.1.
  */
 
-import type { GameEvent, PlayerId } from '@/game/types'
+import type { GameEvent, HeroId, PlayerId } from '@/game/types'
 import { statusDisplayName } from '@/ui/types/statusInfo'
 import type {
   FOPScene,
@@ -28,6 +28,7 @@ import type {
   SubEventData,
   DetonationData,
   DefenseData,
+  DefenseRollData,
 } from '@/ui/types/fop'
 
 // ---------------------------------------------------------------------------
@@ -60,11 +61,22 @@ interface DetonationPending {
 
 type PendingScene = AbilityPending | CardPlayPending | DetonationPending | null
 
-export interface AggregatorState {
-  pending: PendingScene
+/** A defense roll waiting for its verdict (`defense-resolved` arrives in
+ *  the same batch). Held outside `pending` — the attack's ability buffer
+ *  stays open while the defender rolls. */
+interface DefenseRollStash {
+  defender:    PlayerId
+  heroId:      HeroId
+  defenseName: string
+  faceIndices: number[]
 }
 
-export const initialAggregatorState: AggregatorState = { pending: null }
+export interface AggregatorState {
+  pending: PendingScene
+  defenseRoll?: DefenseRollStash | null
+}
+
+export const initialAggregatorState: AggregatorState = { pending: null, defenseRoll: null }
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -86,6 +98,7 @@ export function aggregateEvents(
   events: readonly GameEvent[],
 ): AggregatorResult {
   let pending = state.pending
+  let defenseRoll = state.defenseRoll ?? null
   const emitted: FOPScene[] = []
 
   const flush = () => {
@@ -234,16 +247,47 @@ export function aggregateEvents(
         break
       }
 
+      case 'defense-dice-rolled': {
+        // Stash the roll — the verdict (`defense-resolved`) arrives later
+        // in the same batch and closes it into a defense-roll scene.
+        defenseRoll = {
+          defender:    ev.player,
+          heroId:      ev.hero,
+          defenseName: ev.abilityName,
+          faceIndices: ev.dice.map(d => d.current),
+        }
+        break
+      }
+
       case 'defense-resolved': {
+        // A stashed roll becomes its own cinematic — the defender's dice
+        // visibly tumble BEFORE the attack impact scene (the pending
+        // ability buffer flushes later in this batch), so defense never
+        // reads as automatic. Misses play too: "my combo failed" is
+        // information the defender must see.
+        if (defenseRoll) {
+          emitted.push({
+            kind: 'defense-roll',
+            data: {
+              defenseName: defenseRoll.defenseName,
+              defender:    defenseRoll.defender,
+              heroId:      defenseRoll.heroId,
+              faceIndices: defenseRoll.faceIndices,
+              landed:      ev.landed,
+              reduction:   ev.reduction,
+            } satisfies DefenseRollData,
+          })
+          defenseRoll = null
+        }
         if (pending?.kind === 'ability' && ev.reduction > 0) {
           pending.effects.push({
             kind:        'block',
             description: `${ev.abilityName ?? 'Defense'} blocks ${ev.reduction}`,
             target:      pending.defender,
           })
-        } else if (!pending && ev.abilityName) {
-          // Undefendable / no pending ability — surface as a standalone
-          // defense scene (rare, but possible if choreography desync).
+        } else if (!pending && ev.abilityName && emitted.every(sc => sc.kind !== 'defense-roll')) {
+          // Undefendable / no pending ability and no roll to show —
+          // surface as a standalone defense scene (rare desync path).
           emitted.push({
             kind: 'defense',
             data: {
@@ -282,7 +326,10 @@ export function aggregateEvents(
 
   // Preserve reference identity when nothing changed — avoids spurious
   // uiStore updates and lets `Object.is` comparisons work in tests.
-  const nextState = pending === state.pending ? state : { pending }
+  const nextState =
+    pending === state.pending && defenseRoll === (state.defenseRoll ?? null)
+      ? state
+      : { pending, defenseRoll }
   return { state: nextState, emitted }
 }
 

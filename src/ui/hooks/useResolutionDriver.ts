@@ -44,6 +44,19 @@ const CARD_PLAY_SEQUENCE: PhaseStep[] = [
   { at: DURATION.cardPlayBeat,       phase: 'idle' },
 ]
 
+/** Defense roll: name in fast, dice tumble through ~1.5s (the content
+ *  component throws them ~220ms after mount; air time ~1.1s incl. the
+ *  per-die stagger), verdict slams at damage-in, brief hold, out. */
+const DEFENSE_ROLL_SEQUENCE: PhaseStep[] = [
+  { at: 0,                               phase: 'preconfirm' },
+  { at: 80,                              phase: 'fade-in' },
+  { at: 200,                             phase: 'name-in' },
+  { at: 1550,                            phase: 'damage-in' },
+  { at: 1750,                            phase: 'holding' },
+  { at: DURATION.defenseRollBeat - 100,  phase: 'fade-out' },
+  { at: DURATION.defenseRollBeat,        phase: 'idle' },
+]
+
 /** Full-cinematic sequence, paced by content: the hold grows with the
  *  number of effect rows (and detonations get an extra beat) so players
  *  have time to read what actually happened. */
@@ -78,9 +91,10 @@ function standardSequence(scene: FOPScene | null): PhaseStep[] {
 function sequenceFor(scene: FOPScene | null): PhaseStep[] {
   if (!scene) return standardSequence(null)
   switch (scene.kind) {
-    case 'sub-event': return SUB_EVENT_SEQUENCE
-    case 'card-play': return CARD_PLAY_SEQUENCE
-    default:          return standardSequence(scene)
+    case 'sub-event':    return SUB_EVENT_SEQUENCE
+    case 'card-play':    return CARD_PLAY_SEQUENCE
+    case 'defense-roll': return DEFENSE_ROLL_SEQUENCE
+    default:             return standardSequence(scene)
   }
 }
 
