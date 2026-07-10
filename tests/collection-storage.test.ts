@@ -7,6 +7,7 @@ import {
   hasAffordableUnlock, clearAllCollections, abilityPrice, cardPrice,
   getRankWins, recordRankWin, isNightmareUnlocked, NIGHTMARE_UNLOCK_WINS,
   getStreaks, getNextUnlockTarget, RENOWN_STREAK_BONUS, STREAK_BONUS_AT,
+  getMatchup, recordMatchup, RENOWN_REVENGE_BONUS, RIVAL_LOSS_STREAK,
   RENOWN_WIN, RENOWN_LOSS, RENOWN_STARTING, RENOWN_ULTIMATE_BONUS,
 } from "../src/store/collectionStorage";
 import { RANK_RENOWN_MULT } from "../src/game/ai";
@@ -153,6 +154,28 @@ describe("next unlock target", () => {
       ...getCardCatalog("berserker").map(cardPrice),
     ];
     expect(t!.price).toBeLessThanOrEqual(Math.min(...all) + 5);
+  });
+});
+
+describe("rivalries", () => {
+  it("tracks lifetime W/L per matchup and brands a rival at the streak", () => {
+    for (let i = 0; i < RIVAL_LOSS_STREAK; i++) recordMatchup("berserker", "pyromancer", false);
+    const m = getMatchup("berserker", "pyromancer");
+    expect(m).toMatchObject({ w: 0, l: RIVAL_LOSS_STREAK, isRival: true });
+    // Directional: the reverse matchup is untouched.
+    expect(getMatchup("pyromancer", "berserker").l).toBe(0);
+    // A win repays the grudge and clears the brand.
+    recordMatchup("berserker", "pyromancer", true);
+    const after = getMatchup("berserker", "pyromancer");
+    expect(after).toMatchObject({ w: 1, lossStreak: 0, isRival: false });
+  });
+
+  it("Revenge pays on wins only", () => {
+    const win = computeRenownAward(true, { revenge: true });
+    expect(win.total).toBe(RENOWN_WIN + RENOWN_REVENGE_BONUS);
+    expect(win.breakdown.some(b => b.label === "Revenge")).toBe(true);
+    const loss = computeRenownAward(false, { revenge: true });
+    expect(loss.total).toBe(RENOWN_LOSS);
   });
 });
 

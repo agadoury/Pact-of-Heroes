@@ -49,6 +49,10 @@ export const RENOWN_STREAK_BONUS = 1;
 export const STREAK_BONUS_AT = 3;
 /** Finishing your very first match seals the pact — paid win or lose. */
 export const RENOWN_FIRST_PACT = 5;
+/** Beating a hero who had you 3+ losses down — the grudge repaid. */
+export const RENOWN_REVENGE_BONUS = 2;
+/** Consecutive losses to one hero before they brand as your RIVAL. */
+export const RIVAL_LOSS_STREAK = 3;
 
 interface HeroCollectionEntry {
   renown: number;                 // spendable balance
@@ -74,6 +78,9 @@ interface StorageRoot {
   lastAwardKey: string | null;
   /** Consecutive wins across all heroes. Optional for pre-existing saves. */
   globalStreak?: number;
+  /** Lifetime W/L per matchup, keyed `${myHero}:${oppHero}` — the rivalry
+   *  ledger. Optional for pre-existing saves. */
+  matchups?: Record<string, { w: number; l: number; lossStreak: number }>;
 }
 
 function emptyEntry(): HeroCollectionEntry {
@@ -96,6 +103,7 @@ function readRoot(): StorageRoot {
       perHero: parsed.perHero ?? {},
       lastAwardKey: parsed.lastAwardKey ?? null,
       globalStreak: parsed.globalStreak ?? 0,
+      matchups: parsed.matchups ?? {},
     };
   } catch {
     return emptyRoot();
@@ -198,6 +206,8 @@ export function computeRenownAward(
     featured?: boolean;
     /** The player's first-ever finished match (+5, win or lose). */
     firstPact?: boolean;
+    /** Beat a hero who had a 3+ loss streak on you (+2, wins only). */
+    revenge?: boolean;
   },
   stakes?: { rank?: AiRank; sealed?: boolean },
 ): RenownAward {
@@ -233,6 +243,9 @@ export function computeRenownAward(
   }
   if (perf?.firstPact) {
     breakdown.push({ label: "First Pact", amount: RENOWN_FIRST_PACT });
+  }
+  if (won && perf?.revenge) {
+    breakdown.push({ label: "Revenge", amount: RENOWN_REVENGE_BONUS });
   }
 
   let total = breakdown.reduce((s2, b) => s2 + b.amount, 0);
@@ -276,6 +289,35 @@ export function recordRankWin(heroId: HeroId, rank: AiRank): void {
 /** Nightmare opens per-hero after enough Champion wins — a rank you earn. */
 export function isNightmareUnlocked(heroId: HeroId): boolean {
   return (getRankWins(heroId).champion ?? 0) >= NIGHTMARE_UNLOCK_WINS;
+}
+
+// ── Rivalries — per-matchup lifetime records ─────────────────────────────────
+
+export interface MatchupRecord {
+  w: number;
+  l: number;
+  lossStreak: number;
+  /** 3+ straight losses to this hero — they're branded your RIVAL. */
+  isRival: boolean;
+}
+
+export function getMatchup(myHero: HeroId, oppHero: HeroId): MatchupRecord {
+  const rec = readRoot().matchups?.[`${myHero}:${oppHero}`];
+  const lossStreak = rec?.lossStreak ?? 0;
+  return { w: rec?.w ?? 0, l: rec?.l ?? 0, lossStreak, isRival: lossStreak >= RIVAL_LOSS_STREAK };
+}
+
+/** Record a matchup result (call once per finished match — the caller's
+ *  award idempotency gates re-invocation). */
+export function recordMatchup(myHero: HeroId, oppHero: HeroId, won: boolean): void {
+  const root = readRoot();
+  const key = `${myHero}:${oppHero}`;
+  const rec = root.matchups?.[key] ?? { w: 0, l: 0, lossStreak: 0 };
+  const next = won
+    ? { ...rec, w: rec.w + 1, lossStreak: 0 }
+    : { ...rec, l: rec.l + 1, lossStreak: rec.lossStreak + 1 };
+  root.matchups = { ...(root.matchups ?? {}), [key]: next };
+  writeRoot(root);
 }
 
 /** Award match Renown to the hero the viewer played. Idempotent per

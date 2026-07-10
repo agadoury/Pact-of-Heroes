@@ -20,6 +20,7 @@ import { useUIStore, wireResolutionBridge } from '@/ui/store/uiStore'
 import { useResolutionDriver } from '@/ui/hooks/useResolutionDriver'
 import { useAiDriver } from '@/ui/hooks/useAiDriver'
 import { useAudioDriver } from '@/ui/hooks/useAudioDriver'
+import { useBarkDriver } from '@/ui/hooks/useBarkDriver'
 import { useJuice, useJuiceStore } from '@/ui/hooks/useJuice'
 import { ScreenShake } from '@/ui/components/shared/ScreenShake'
 import { TurnBanner } from '@/ui/components/shared/TurnBanner'
@@ -283,6 +284,9 @@ export function MatchScreen(): JSX.Element {
   // Audio + juice (screen shake, hit flash).
   useAudioDriver()
   useJuice()
+
+  // Hero barks — speech bubbles on the strips at big moments.
+  const activeBark = useBarkDriver()
 
   // Read hit-flash target so strips flash when they take damage.
   const hitFlashPlayer = useJuiceStore(j => j.hitFlashPlayer)
@@ -1034,6 +1038,16 @@ export function MatchScreen(): JSX.Element {
 
       {fastForward ? (
         <div className={s.ffChip} aria-live="polite">▶▶ Fast-forward</div>
+      ) : null}
+
+      {activeBark && !introActive && !killingBlow ? (
+        <div
+          key={activeBark.id}
+          className={s.barkBubble}
+          data-side={activeBark.player === viewerId ? 'bottom' : 'top'}
+        >
+          &ldquo;{activeBark.text}&rdquo;
+        </div>
       ) : null}
 
       {matchMode === 'vs-ai' && !state.winner && state.phase !== 'match-end' ? (

@@ -16,7 +16,7 @@ import { useUIStore } from '@/ui/store/uiStore'
 import { clearMatchState } from '@/ui/store/matchPersistence'
 import {
   awardMatchRenown, computeRenownAward, hasAffordableUnlock, recordRankWin,
-  getStreaks, getNextUnlockTarget, STREAK_BONUS_AT,
+  getStreaks, getNextUnlockTarget, getMatchup, recordMatchup, STREAK_BONUS_AT,
   type RenownAward, type NextUnlockTarget,
 } from '@/store/collectionStorage'
 import { featuredHero, isFirstDawnAvailable, claimFirstDawn } from '@/store/dailyStorage'
@@ -132,6 +132,8 @@ export function MatchSummary(): JSX.Element {
       featured: myHeroId === featuredHero(),
       // First-ever finished match — the coach counter is at exactly 1.
       firstPact: getCoachSeen().matchesSeen === 1,
+      // Beat a hero who had you 3+ losses down — the grudge repaid.
+      revenge: won && getMatchup(myHeroId, state.players[viewerId === 'p1' ? 'p2' : 'p1'].hero).isRival,
     }, matchMode === 'vs-ai' ? { rank: aiRank, sealed: sealedBy != null } : undefined)
     const gained = awardMatchRenown(myHeroId, award.total, key, won)
     if (gained > 0 && firstDawn) claimFirstDawn()
@@ -145,6 +147,8 @@ export function MatchSummary(): JSX.Element {
       // Rank wins feed the Nightmare unlock. `fresh` doubles as the
       // idempotency gate — re-renders award 0 and skip the record too.
       if (won && gained > 0 && matchMode === 'vs-ai') recordRankWin(myHeroId, aiRank)
+      // Rivalry ledger — lifetime W/L per matchup, rendered on MatchIntro.
+      recordMatchup(myHeroId, state.players[viewerId === 'p1' ? 'p2' : 'p1'].hero, won)
     }
     setNextUnlock(getNextUnlockTarget(myHeroId))
     setUnlockReady(hasAffordableUnlock(myHeroId))

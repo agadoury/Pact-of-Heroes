@@ -12,6 +12,7 @@ import { clsx } from '@/ui/util/clsx'
 import type { HeroId } from '@/game/types'
 import { DURATION } from '@/ui/util/duration'
 import { HeroSilhouette } from '@/ui/components/shared/HeroSilhouette'
+import { getMatchup } from '@/store/collectionStorage'
 import s from './MatchIntro.module.css'
 
 export interface MatchIntroProps {
@@ -44,6 +45,8 @@ export function MatchIntro({
 
   if (!active) return null
 
+  const record = getMatchup(playerHero, opponentHero)
+
   return (
     <div className={clsx(s.overlay, className)} onClick={onComplete}>
       <div className={s.split}>
@@ -63,9 +66,17 @@ export function MatchIntro({
             <HeroSilhouette heroId={opponentHero} size={100} variant="portrait" />
           </div>
           <div className={s.name}>{capName(opponentHero)}</div>
-          <div className={s.role}>Rival</div>
+          <div className={clsx(s.role, record.isRival && s.rivalBrand)}>
+            {record.isRival ? 'YOUR RIVAL' : 'Rival'}
+          </div>
         </div>
       </div>
+      {record.w + record.l > 0 ? (
+        <div className={s.record}>
+          Lifetime: {record.w}–{record.l}
+          {record.isRival ? ` · ${record.lossStreak} straight losses — take revenge (+2)` : ''}
+        </div>
+      ) : null}
       <div className={s.beginText}>Match begins…</div>
       <div className={s.skipHint}>tap to skip</div>
     </div>

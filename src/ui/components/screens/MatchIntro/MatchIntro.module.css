@@ -174,3 +174,21 @@
   .side, .separator, .rays { animation: none; opacity: 1; transform: none; }
   .beginText, .skipHint { animation: none; opacity: 0.5; }
 }
+
+/* Rivalry ledger — lifetime record under the VS panel. */
+.record {
+  margin-top: 10px;
+  font-family: var(--font-family-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+  text-align: center;
+}
+
+.rivalBrand {
+  color: #f06848 !important;
+  text-shadow: 0 0 10px rgba(240, 104, 72, 0.6);
+  letter-spacing: 0.2em;
+}
